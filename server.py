@@ -19,6 +19,20 @@ from common import gemini_enhance, load_prompts  # noqa: E402
 app = Flask(__name__, static_folder="web", static_url_path="")
 
 
+@app.after_request
+def add_cors(response):
+    """السماح للتطبيق المثبّت (APK/Capacitor) بنداء الخادم من نطاق مختلف."""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+
+@app.route("/api/<path:_any>", methods=["OPTIONS"])
+def api_preflight(_any):
+    return Response(status=204)
+
+
 @app.route("/api/enhance", methods=["POST"])
 def api_enhance():
     """تحويل أمر المستخدم البسيط إلى Enhanced Prompt عبر Gemini."""

@@ -214,11 +214,25 @@
 
 <div id="toast">✅ تم النسخ</div>
 
+<!-- ===== Server settings modal (needed in APK mode) ===== -->
+<div id="settingsModal" style="display:none; position:fixed; inset:0; z-index:100; background:rgba(5,3,15,.7); backdrop-filter:blur(4px)">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(92vw,420px)">
+    <div class="card" style="margin:0">
+      <h2><i class="fa-solid fa-server" style="color:var(--fire2)"></i> عنوان الخادم</h2>
+      <p class="hint">في وضع التطبيق (APK) أدخل رابط الخادم الذي يشغّل <b>server.py</b> — مثال: <code>https://abc123.freebuff.app</code> — ثم احفظ. في وضع المتصفح اتركه فارغاً.</p>
+      <input id="apiBaseInput" type="url" placeholder="https://your-server-url" style="width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-family:inherit; font-size:14px" dir="ltr">
+      <button class="btn" id="saveApiBaseBtn"><i class="fa-solid fa-check"></i> حفظ</button>
+      <button class="btn" id="closeSettingsBtn" style="background:var(--card2); border:1px solid var(--border)"><i class="fa-solid fa-xmark"></i> إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <nav class="bottom">
   <div class="nav-inner">
     <button class="nav-btn active" data-view="enhance"><i class="fa-solid fa-wand-magic-sparkles"></i><span>تحسين</span></button>
     <button class="nav-btn" data-view="library"><i class="fa-solid fa-layer-group"></i><span>المكتبة</span></button>
     <button class="nav-btn" id="installBtn"><i class="fa-solid fa-mobile-screen"></i><span>تثبيت</span></button>
+    <button class="nav-btn" id="settingsBtn"><i class="fa-solid fa-gear"></i><span>الخادم</span></button>
   </div>
   <div style="text-align:center; margin-top:6px; font-size:10px; color:var(--muted)" id="pwaHint">أضف التطبيق لشاشة هاتفك من قائمة المتصفح</div>
 </nav>
@@ -227,6 +241,24 @@
 const $ = (s) => document.querySelector(s);
 let deferredPrompt = null;
 let selectedLib = null;
+
+/* ===== Capacitor/APK detection + API base ===== */
+const IS_NATIVE_APP = typeof window.Capacitor !== 'undefined';
+const API_BASE = (localStorage.getItem('fenix_api_base') || '').replace(/\/+$/, '');
+const apiUrl = (path) => API_BASE + path;
+
+/* ===== Server settings modal ===== */
+$('#settingsBtn').addEventListener('click', () => {
+  $('#apiBaseInput').value = localStorage.getItem('fenix_api_base') || '';
+  $('#settingsModal').style.display = 'block';
+});
+$('#closeSettingsBtn').addEventListener('click', () => { $('#settingsModal').style.display = 'none'; });
+$('#saveApiBaseBtn').addEventListener('click', () => {
+  const v = $('#apiBaseInput').value.trim().replace(/\/+$/, '');
+  localStorage.setItem('fenix_api_base', v);
+  showToast(v ? '✅ تم حفظ عنوان الخادم — أعد فتح التطبيق' : '✅ تم الحفظ — الوضع المحلي');
+  setTimeout(() => location.reload(), 900);
+});
 
 /* ===== View switching ===== */
 function switchView(view) {
@@ -248,13 +280,13 @@ function renderMd(text) {
 $('#enhanceBtn').addEventListener('click', async () => {
   const text = $('#enhanceInput').value.trim();
   if (!text) { showToast('✏️ اكتب طلبك أولاً'); return; }
-  await runRequest('/api/enhance', { text }, $('#enhanceBtn'), $('#resultCard'), $('#resultBody'));
+  await runRequest(apiUrl('/api/enhance'), { text }, $('#enhanceBtn'), $('#resultCard'), $('#resultBody'));
 });
 
 /* ===== Library flow ===== */
 async function loadLibrary() {
   try {
-    const res = await fetch('/api/library');
+    const res = await fetch(apiUrl('/api/library'));
     const items = await res.json();
     $('#libList').innerHTML = items.map(it => `
       <div class="lib-item" data-id="${it.id}">
@@ -277,7 +309,7 @@ document.querySelectorAll('.lib-item').forEach(() => {});
 $('#libRunBtn').addEventListener('click', async () => {
   const text = $('#libInput').value.trim();
   if (!text || !selectedLib) { showToast('✏️ اختر قالباً واكتب طلبك'); return; }
-  await runRequest(`/api/library/${selectedLib}`, { text }, $('#libRunBtn'), $('#libResultCard'), $('#libResultBody'));
+  await runRequest(apiUrl(`/api/library/${selectedLib}`), { text }, $('#libRunBtn'), $('#libResultCard'), $('#libResultBody'));
 });
 
 /* ===== Shared request helper ===== */
@@ -354,8 +386,13 @@ $('#installBtn').addEventListener('click', async () => {
 
 /* ===== Init ===== */
 loadLibrary();
-if ('serviceWorker' in navigator) {
+if (!IS_NATIVE_APP && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+if (IS_NATIVE_APP) {
+  // داخل التطبيق: زر التثبيت غير مطلوب، وزر الخادم يستحق الانتباه إن كان فارغاً
+  $('#installBtn').style.display = 'none';
+  $('#pwaHint').textContent = API_BASE ? 'متصل بـ: ' + API_BASE : '⚠️ عيّن عنوان الخادم من زر ⚙️';
 }
 </script>
 </body>

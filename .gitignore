@@ -5,3 +5,16 @@ __pycache__/
 .venv/
 venv/
 *.log
+
+# Node
+node_modules/
+
+# Android / Capacitor build outputs (source android/ is committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+*.apk
+*.aab

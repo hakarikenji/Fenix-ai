@@ -1,0 +1,11 @@
+{
+  "appId": "com.fenix.studio",
+  "appName": "Fenix Studio",
+  "webDir": "web",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
