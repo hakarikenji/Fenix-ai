@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fenix Studio — مهندس الأوامر</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0a1f;
+    --bg2: #151030;
+    --card: #1a1438;
+    --card2: #221a4a;
+    --border: #2e2560;
+    --text: #f3f0ff;
+    --muted: #a89fd8;
+    --fire1: #ff6b35;
+    --fire2: #f7c548;
+    --fire3: #ff3d6e;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: 100%; }
+  body {
+    font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(255,61,110,.14), transparent 60%),
+      radial-gradient(1000px 500px at 10% 110%, rgba(255,107,53,.10), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    padding-bottom: 84px; /* space for bottom nav */
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  /* ===== Header ===== */
+  header { padding: 22px 0 14px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 14px; flex: none;
+    display: grid; place-items: center; font-size: 22px;
+    background: linear-gradient(135deg, var(--fire1), var(--fire3));
+    box-shadow: 0 8px 24px rgba(255,61,110,.35);
+  }
+  .brand h1 { font-size: 20px; letter-spacing: .3px; }
+  .brand p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ===== Tabs ===== */
+  .tabs { display: flex; gap: 8px; margin: 18px 0 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 5px; }
+  .tab {
+    flex: 1; padding: 10px 6px; border: none; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--muted); font-family: inherit; font-size: 13.5px; font-weight: 600;
+    transition: all .2s ease;
+  }
+  .tab.active { background: linear-gradient(135deg, var(--fire1), var(--fire3)); color: #fff; box-shadow: 0 4px 14px rgba(255,61,110,.3); }
+  .tab i { margin-left: 6px; }
+
+  .view { display: none; animation: fadeIn .25s ease; }
+  .view.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: linear-gradient(180deg, var(--card), var(--bg2));
+    border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 15.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .card .hint { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+
+  textarea {
+    width: 100%; min-height: 110px; resize: vertical;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; font-family: inherit; font-size: 14.5px; line-height: 1.7;
+    transition: border-color .2s;
+  }
+  textarea:focus { outline: none; border-color: var(--fire1); box-shadow: 0 0 0 3px rgba(255,107,53,.15); }
+  textarea::placeholder { color: #6b6394; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 12px; padding: 13px; border: none; border-radius: 12px; cursor: pointer;
+    background: linear-gradient(135deg, var(--fire1), var(--fire3));
+    color: #fff; font-family: inherit; font-size: 15px; font-weight: 700;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255,61,110,.35); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+  /* ===== Library ===== */
+  .lib-item {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color .2s, transform .15s;
+  }
+  .lib-item:hover { border-color: var(--fire1); transform: translateY(-1px); }
+  .lib-item.selected { border-color: var(--fire2); box-shadow: 0 0 0 2px rgba(247,197,72,.25); }
+  .lib-item h3 { font-size: 14.5px; margin-bottom: 4px; }
+  .lib-item p { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+  /* ===== Result ===== */
+  #resultCard { display: none; }
+  #resultCard.show { display: block; animation: fadeIn .3s ease; }
+  .result-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .result-head h2 { font-size: 14.5px; color: var(--fire2); }
+  .copy-btn {
+    border: 1px solid var(--border); background: var(--card2); color: var(--text);
+    border-radius: 9px; padding: 7px 14px; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600;
+    transition: all .2s;
+  }
+  .copy-btn:hover { border-color: var(--fire1); color: var(--fire2); }
+  .result-body {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; font-size: 13.5px; line-height: 1.9; max-height: 420px; overflow-y: auto;
+    word-break: break-word;
+  }
+  .result-body pre {
+    background: #0a0818; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; overflow-x: auto; direction: ltr; text-align: left; margin: 8px 0; font-size: 12.5px;
+  }
+  .result-body code { font-family: ui-monospace, monospace; }
+
+  /* ===== Spinner / Toast ===== */
+  .spinner { width: 17px; height: 17px; border: 2.5px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--card2); border: 1px solid var(--ok); color: var(--ok);
+    padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: all .3s ease; z-index: 99;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Bottom nav ===== */
+  nav.bottom {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+    background: rgba(13,10,31,.92); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .nav-inner { max-width: 640px; margin: 0 auto; display: flex; justify-content: space-around; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--muted); font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 12px;
+  }
+  .nav-btn i { font-size: 18px; }
+  .nav-btn.active { color: var(--fire2); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="brand">
+      <div class="logo">🔥</div>
+      <div>
+        <h1>Fenix Studio</h1>
+        <p>مهندس الأوامر الأول — في جيبك</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs" id="mainTabs">
+    <button class="tab active" data-view="enhance"><i class="fa-solid fa-wand-magic-sparkles"></i>تحسين</button>
+    <button class="tab" data-view="library"><i class="fa-solid fa-layer-group"></i>المكتبة</button>
+  </div>
+
+  <!-- ====== View: Enhance ====== -->
+  <section class="view active" id="view-enhance">
+    <div class="card">
+      <h2><i class="fa-solid fa-bolt" style="color:var(--fire2)"></i> حوّل فكرتك لأمر احترافي</h2>
+      <p class="hint">اكتب طلبك بأي صيغة بسيطة — سنحوّله إلى Enhanced Prompt جاهز للإرسال لأي نموذج ذكاء اصطناعي.</p>
+      <textarea id="enhanceInput" placeholder="مثال: اكتب لي تقرير عن مبيعات المتجر..."></textarea>
+      <button class="btn" id="enhanceBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> حسّن الأمر</button>
+    </div>
+    <div class="card" id="resultCard">
+      <div class="result-head">
+        <h2><i class="fa-solid fa-circle-check"></i> الأمر المحسّن</h2>
+        <button class="copy-btn" id="copyBtn"><i class="fa-regular fa-copy"></i> نسخ</button>
+      </div>
+      <div class="result-body" id="resultBody"></div>
+    </div>
+  </section>
+
+  <!-- ====== View: Library ====== -->
+  <section class="view" id="view-library">
+    <div class="card">
+      <h2><i class="fa-solid fa-layer-group" style="color:var(--fire2)"></i> برومبتات جاهزة</h2>
+      <p class="hint">اختر قالباً جاهزاً، أدخل طلبك، واحصل على نتيجة فورية — مثالي للفيديوهات والملفات الضخمة.</p>
+      <div id="libList"></div>
+    </div>
+    <div class="card" id="libInputCard" style="display:none">
+      <h2 id="libSelectedTitle"></h2>
+      <textarea id="libInput" placeholder=""></textarea>
+      <button class="btn" id="libRunBtn"><i class="fa-solid fa-play"></i> تشغيل</button>
+    </div>
+    <div class="card" id="libResultCard" style="display:none">
+      <div class="result-head">
+        <h2>النتيجة</h2>
+        <button class="copy-btn" id="libCopyBtn"><i class="fa-regular fa-copy"></i> نسخ</button>
+      </div>
+      <div class="result-body" id="libResultBody"></div>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast">✅ تم النسخ</div>
+
+<nav class="bottom">
+  <div class="nav-inner">
+    <button class="nav-btn active" data-view="enhance"><i class="fa-solid fa-wand-magic-sparkles"></i><span>تحسين</span></button>
+    <button class="nav-btn" data-view="library"><i class="fa-solid fa-layer-group"></i><span>المكتبة</span></button>
+    <button class="nav-btn" id="installBtn"><i class="fa-solid fa-mobile-screen"></i><span>تثبيت</span></button>
+  </div>
+  <div style="text-align:center; margin-top:6px; font-size:10px; color:var(--muted)" id="pwaHint">أضف التطبيق لشاشة هاتفك من قائمة المتصفح</div>
+</nav>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let deferredPrompt = null;
+let selectedLib = null;
+
+/* ===== View switching ===== */
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  $('#view-' + view).classList.add('active');
+  document.querySelectorAll('#mainTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelectorAll('.nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+}
+document.querySelectorAll('.tab, .nav-btn[data-view]').forEach(el =>
+  el.addEventListener('click', () => switchView(el.dataset.view))
+);
+
+/* ===== Markdown rendering ===== */
+function renderMd(text) {
+  try { return marked.parse(text); } catch { return '<p>' + text.replace(/\n/g, '<br>') + '</p>'; }
+}
+
+/* ===== Enhance flow ===== */
+$('#enhanceBtn').addEventListener('click', async () => {
+  const text = $('#enhanceInput').value.trim();
+  if (!text) { showToast('✏️ اكتب طلبك أولاً'); return; }
+  await runRequest('/api/enhance', { text }, $('#enhanceBtn'), $('#resultCard'), $('#resultBody'));
+});
+
+/* ===== Library flow ===== */
+async function loadLibrary() {
+  try {
+    const res = await fetch('/api/library');
+    const items = await res.json();
+    $('#libList').innerHTML = items.map(it => `
+      <div class="lib-item" data-id="${it.id}">
+        <h3>${it.title}</h3>
+        <p>${it.description}</p>
+      </div>`).join('');
+    document.querySelectorAll('.lib-item').forEach(el =>
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.lib-item').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedLib = el.dataset.id;
+        $('#libInputCard').style.display = 'block';
+        $('#libResultCard').classList.remove('show');
+      })
+    );
+  } catch { $('#libList').innerHTML = '<p class="hint">تعذر تحميل المكتبة</p>'; }
+}
+
+document.querySelectorAll('.lib-item').forEach(() => {});
+$('#libRunBtn').addEventListener('click', async () => {
+  const text = $('#libInput').value.trim();
+  if (!text || !selectedLib) { showToast('✏️ اختر قالباً واكتب طلبك'); return; }
+  await runRequest(`/api/library/${selectedLib}`, { text }, $('#libRunBtn'), $('#libResultCard'), $('#libResultBody'));
+});
+
+/* ===== Shared request helper ===== */
+async function runRequest(url, body, btn, resultCard, resultBody) {
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> جاري العمل...';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'خطأ غير معروف');
+    resultBody.innerHTML = renderMd(data.result);
+    resultCard.classList.add('show');
+    resultCard.style.display = 'block';
+    resultBody.dataset.raw = data.result;
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    showToast('⚠️ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+/* ===== Copy ===== */
+function bindCopy(btnId, bodyId) {
+  $(btnId).addEventListener('click', async () => {
+    const raw = $(bodyId).dataset.raw || $(bodyId).innerText;
+    try {
+      await navigator.clipboard.writeText(raw);
+      showToast('✅ تم النسخ');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = raw; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      showToast('✅ تم النسخ');
+    }
+  });
+}
+bindCopy('#copyBtn', '#resultBody');
+bindCopy('#libCopyBtn', '#libResultBody');
+
+/* ===== Toast ===== */
+let toastTimer;
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ===== PWA install ===== */
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  $('#installBtn').classList.add('active');
+  $('#pwaHint').textContent = 'اضغط زر التثبيت لإضافة التطبيق لشاشتك';
+});
+$('#installBtn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    if (choice.outcome === 'accepted') showToast('🎉 تم تثبيت التطبيق');
+    deferredPrompt = null;
+  } else {
+    showToast('📱 من قائمة المتصفح: «إضافة إلى الشاشة الرئيسية»');
+  }
+});
+
+/* ===== Init ===== */
+loadLibrary();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
