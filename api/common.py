@@ -9,7 +9,6 @@ from google.genai import types
 
 load_dotenv()
 
-# سلسلة النماذج: عند ضغط/فشل أحدها ينتقل تلقائياً للتالي
 MODEL_CHAIN = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
@@ -40,14 +39,33 @@ ENHANCER_SYSTEM_INSTRUCTION = """
 - افحص مخرجاتك مقابل القاعدة 5 قبل الإخراج: أي انحراف عن نية المستخدم = صحّحه داخلياً ثم أخرج النسخة النهائية فقط.
 """
 
+# شخصية Fenix الافتراضية للمحادثة العامة (نفس روح Claude: ذكي، إنساني، مباشر)
+FENIX_SYSTEM_INSTRUCTION = """
+أنت "Fenix AI"، مساعد ذكاء اصطناعي فائق الذكاء ومتعدد القدرات.
+تمت هندستك لتتفوق على الأنظمة التقليدية من خلال الدمج بين عمق تفكير Claude، وديناميكية ChatGPT، وقدرات Gemini التحليلية.
+
+قواعدك:
+1. الشخصية: نبرة واثقة، ذكية، سريعة البديهة وبشرية للغاية (تجنب القوالب الآلية والردود الجافة).
+2. الدقة: لا تخترع معلومات — إن لم تكن متأكداً قل ذلك بصراحة.
+3. التنسيق: استخدم Markdown عند الحاجة (عناوين، قوائم، جداول، صناديق أكواد نظيفة).
+4. الإجابة بلغة المستخدم: إن كتب بالعربية أجب بالعربية الفصحى المبسطة، وإن كتب بإنجليزية أجب بالإنجليزية.
+5. الاختصار الذكي: أجب كاملاً دون حشو — التفاصيل الزائدة المملة عدوك.
+"""
+
+CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+}
+
 
 def load_prompts() -> dict:
     with open(PROMPTS_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
-def gemini_enhance(contents: str) -> str:
-    """إرسال نص جاهز إلى Gemini مع برومبت المهندس — مع تجربة النماذج بالتتابع عند الضغط."""
+def _generate(system_instruction: str, contents, temperature: float) -> str:
+    """توليد عبر Gemini مع تجربة سلسلة النماذج عند الضغط/الفشل."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY غير معرّف")
@@ -59,11 +77,38 @@ def gemini_enhance(contents: str) -> str:
                 model=model,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction=ENHANCER_SYSTEM_INSTRUCTION,
-                    temperature=0.3,
+                    system_instruction=system_instruction,
+                    temperature=temperature,
                 ),
             )
             return response.text
         except Exception as e:  # 503 ضغط / 429 حصة / 404 إيقاف → النموذج التالي
             last_error = e
     raise last_error  # type: ignore[misc]
+
+
+def _chat_contents(history: list[dict], message: str):
+    """بناء محتوى المحادثة: السجل كاملاً + الرسالة الجديدة (ذاكرة كاملة)."""
+    contents = []
+    for msg in history:
+        role = "user" if msg.get("role") == "user" else "model"
+        contents.append(types.Content(
+            role=role,
+            parts=[types.Part(text=str(msg.get("content", "")))],
+        ))
+    contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
+    return contents
+
+
+def gemini_chat(history: list[dict], message: str) -> str:
+    """محادثة بذاكرة كاملة: يُمرر سجل الرسائل مع كل طلب."""
+    return _generate(
+        FENIX_SYSTEM_INSTRUCTION,
+        _chat_contents(history, message),
+        temperature=0.7,
+    )
+
+
+def gemini_enhance(contents: str) -> str:
+    """تحسين أمر المستخدم مع برومبت المهندس (بدون ذاكرة — مهمة واحدة)."""
+    return _generate(ENHANCER_SYSTEM_INSTRUCTION, contents, temperature=0.3)

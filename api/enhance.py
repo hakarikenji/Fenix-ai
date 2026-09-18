@@ -1,13 +1,7 @@
 """دالة الاستضافة: تحسين أمر المستخدم عبر Gemini."""
 import json
 
-from common import gemini_enhance
-
-CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
+from common import CORS, gemini_enhance
 
 
 def handler(request):

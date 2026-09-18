@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_icons import CENTER, SIZE, draw_flame, lerp  # noqa: E402
 
-DARK_BG = (13, 10, 31, 255)  # #0d0a1f
+DARK_BG = (250, 249, 245, 255)  # #faf9f5 — الأبيض الدافئ بهوية Claude
 RES = "android/app/src/main/res"
 
 LAUNCHER_SIZES = {

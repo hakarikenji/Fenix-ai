@@ -14,7 +14,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 
 # استيراد الأدوات المشتركة من مجلد api/
 sys.path.insert(0, str(Path(__file__).parent / "api"))
-from common import gemini_enhance, load_prompts  # noqa: E402
+from common import gemini_chat, gemini_enhance, load_prompts  # noqa: E402
 
 app = Flask(__name__, static_folder="web", static_url_path="")
 
@@ -31,6 +31,23 @@ def add_cors(response):
 @app.route("/api/<path:_any>", methods=["OPTIONS"])
 def api_preflight(_any):
     return Response(status=204)
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """محادثة Fenix بذاكرة كاملة: السجل من العميل + رسالة جديدة → رد النموذج."""
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []
+    if not message:
+        return jsonify({"error": "اكتب رسالتك أولاً"}), 400
+    if not isinstance(history, list):
+        history = []
+    history = history[-40:]
+    try:
+        return jsonify({"reply": gemini_chat(history, message)})
+    except Exception as e:
+        return jsonify({"error": f"تعذر الاتصال: {e}"}), 502
 
 
 @app.route("/api/enhance", methods=["POST"])
