@@ -11,14 +11,14 @@ from google.genai import types
 load_dotenv()
 
 MODEL_CHAINS = {
-    "pro": ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash"],
-    "flash": ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+    "pro": ["gemini-3.1-pro-preview", "gemini-pro-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"],
+    "flash": ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"],
 }
 # Models exposed to the embedded (offline-packaged) client: only names that
 # actually exist on the public Gemini API today.
 EMBEDDED_MODEL_CHAINS = {
-    "pro": ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash"],
-    "flash": ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+    "pro": ["gemini-3.1-pro-preview", "gemini-pro-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"],
+    "flash": ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"],
 }
 
 PROMPTS_PATH = Path(__file__).parent / "prompts.json"

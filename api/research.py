@@ -120,8 +120,8 @@ def run_research(message: str, tier: str = "flash", gemini_key: str | None = Non
         "systemInstruction": {"parts": [{"text": RESEARCH_SYSTEM}]},
         "generationConfig": {"temperature": 0.3},
     }
-    chain = ["gemini-3-flash-preview", "gemini-2.5-flash"] if tier != "pro" else [
-        "gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash"]
+    chain = ["gemini-3.5-flash", "gemini-flash-lite-latest"] if tier != "pro" else [
+        "gemini-3.1-pro-preview", "gemini-pro-latest", "gemini-3.5-flash"]
     answer, last_err = None, None
     for model in chain:
         try:
