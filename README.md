@@ -1,17 +1,31 @@
-# 🔥 Fenix AI
+# 🔥 Phoenix
 
-A Claude-style multimodal AI chat app — clean white interface with a teal accent, full conversation memory, and a confident, human personality. Works as an installable PWA on any phone and as a native Android APK.
+**Phoenix — an AI assistant built by Yassine**, powered by Google's Gemini model. Phoenix's identity is honest: the engine is Gemini; the uniqueness is the system around it — personality, structured memory, evolution, web research, projects with an elite coding mode, and verification honesty.
+
+Works as an installable PWA on any phone and as a native Android APK. **Zero user configuration**: the AI key lives only on the server; users open the app, sign in, and chat.
+
+## 🔐 Where the AI key lives (developer)
+
+| Environment | Where to set it |
+|---|---|
+| Freebuff sandbox / preview | `.env.local` → `GEMINI_API_KEY` (already set) |
+| Freebuff production hosting | **Deploy → Environment** → add `GEMINI_API_KEY` |
+| GitHub Actions / other hosting | Repository secret `GEMINI_API_KEY` |
+
+The client never sees any key. The APK needs only **one non-secret value**: your server URL, set by you in `web/config.js` (`window.PHOENIX_SERVER`) before building. Web/PWA users need nothing at all — the app talks to its own origin.
 
 ## 💬 The app
 
-- **Real chat with memory**: the model remembers the entire conversation, including images and documents you shared earlier
-- **Floating composer** at the bottom, Enter to send, auto-growing textarea
-- **Chats drawer**: multiple conversations saved locally, rename-free titles, one-tap switch and delete
-- **Settings sheet**: Intelligence (Flash / Pro), Reply style (Concise / Detailed), Light / Dark theme
-- **Attachments**: photo library, camera capture, and documents (PDF, text, code, CSV, JSON…) — previewed before sending
-- **Markdown rendering**: headings, lists, tables, code blocks, with one-tap copy on every reply
-- **Prompt library** built into the API: Smart Video Finder, Smart Workspace Mode, Side Artifacts
-- Model fallback chain: if a Gemini model is under pressure or retired, the server automatically tries the next one — the app never stops
+- **Email accounts**: sign up / sign in (PBKDF2-hashed passwords, bearer tokens). Guests can chat — everything stays on-device
+- **Structured memory (user-controlled)**: six categories — preferences, projects, goals, working style, facts, temporary context. View, edit, delete, clear, and export everything. Phoenix never stores anything behind your back
+- **Phoenix Evolution**: a separate layer that learns how Phoenix should *work with you* — only from repeated evidence (3+ observations before an insight becomes active), never invented. Fully inspectable Evolution Log; correct, delete or disable it entirely
+- **Phoenix Coder (projects)**: create a project (name, stack, goal, files) — every message runs through the elite code-builder persona with full project context. Verification honesty built in: code is labeled **Proposed** until you actually run it — Phoenix never says "Fixed" or "Test passed" without a real confirmation
+- **Challenge Mode**: when Phoenix sees a materially better approach it offers a factual comparison instead of blindly following
+- **Web research**: for time-sensitive questions Phoenix searches the web, fetches pages, and shows numbered **Sources** — only when `SERPER_API_KEY` is configured on the server; otherwise it says so honestly instead of faking results (get a free key at [serper.dev](https://serper.dev))
+- **Real chat with memory**: the model remembers the whole conversation including images and documents
+- **Voice input 🎙**: native speech recognition in the APK, Web Speech API in browsers
+- **Attachments**: photo library, native camera, documents (PDF, code, CSV, JSON…)
+- Model fallback chain: if a Gemini model is under pressure or retired, the app moves to the next one automatically
 
 ## 🤖 Android APK
 
@@ -30,7 +44,11 @@ cd android && ./gradlew assembleDebug
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> ⚠️ The installed app needs a running server (locally or hosted). Open **Chats → API Server** in the app and set the server URL once — it is saved locally.
+> ✅ **Secure by design** — no AI key in the app, ever. The APK calls your Phoenix server, which holds `GEMINI_API_KEY` in its environment. Set your server URL once in `web/config.js` before `npx cap sync android`.
+>
+> Native camera capture uses the `@capacitor/camera` and voice input the `@capacitor-community/speech-recognition` plugin — both open a proper native permission prompt on first use.
+>
+> 🔐 Server-side data (accounts, projects, memory, evolution) lives in `.data/` (gitignored JSON with PBKDF2-hashed passwords). Memory and evolution are per-user and fully user-controlled (view / edit / delete / export / disable).
 
 ## 📱 PWA (quick alternative, no APK)
 
@@ -54,22 +72,29 @@ python server.py        # serves on 0.0.0.0:8000
 ## 🗂️ Project structure
 
 ```
-server.py                Flask dev server: UI + /api/chat /api/enhance /api/library
-api/                     Shared AI logic (chat with memory, enhancer, prompt library)
-web/                     App UI (used by both PWA and the Capacitor APK)
+server.py                Flask server: UI + /api/chat /api/auth/* /api/projects* /api/memory* /api/evolution*
+api/
+  common.py              Phoenix personas (identity, coder, verification honesty) + Gemini calls
+  store.py               Accounts (PBKDF2) + cloud projects
+  memory.py              Structured memory store (6 categories, CRUD + export)
+  evolution.py           Evidence-based evolution profile + log
+  research.py            Serper web search + Gemini synthesis (honest when unconfigured)
+web/
+  index.html             App UI (PWA + Capacitor APK)
+  config.js              The ONLY config file: server URL for the APK (non-secret)
 android/                 Capacitor Android project
-capacitor.config.json    Capacitor settings
-scripts/                 Icon / splash generators for web + Android
-fenix.py, enhance.py     Terminal tools (interactive chat, prompt enhancer)
 ```
 
 ## ⚙️ Setup
 
-Put the key in `.env` (or via Freebuff Settings → Environment):
-```
-GEMINI_API_KEY=your-api-key-here
-```
-Get one free at [Google AI Studio](https://aistudio.google.com/app/apikey).
+Server environment variables (users never see or enter these):
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | ✅ yes | The AI engine (server-side only) — [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `SERPER_API_KEY` | optional | Enables live web research with sources — [serper.dev](https://serper.dev) |
+
+On Freebuff: **Settings → Environment** for the sandbox/preview, and **Deploy → Environment** for production hosting. The key is read by the server only — it never reaches any client.
 
 Terminal tools:
 ```bash

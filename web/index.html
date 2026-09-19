@@ -7,11 +7,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Fenix AI</title>
+<title>Phoenix</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="/config.js"></script>
 <style>
   :root {
     --bg: #ffffff;
@@ -62,6 +63,11 @@
     display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
     transition: background .25s, color .25s;
   }
+  .hide { display: none !important; }
+
+  /* ===== View transitions (app-level animation) ===== */
+  #appView { animation: viewIn .38s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes viewIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
 
   /* ===== Header ===== */
   header {
@@ -83,53 +89,76 @@
     background: var(--accent-grad); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+  .h-sub { font-size: 11px; font-weight: 600; color: var(--accent); margin-top: 1px; text-align: left; }
   .h-actions { display: flex; gap: 2px; }
   .icon-btn {
     width: 38px; height: 38px; border-radius: 12px; border: none; background: transparent;
     color: var(--text-2); font-size: 16px; cursor: pointer; display: grid; place-items: center;
-    transition: background .15s, color .15s;
+    transition: background .15s, color .15s, transform .15s;
   }
   .icon-btn:hover { background: var(--bg-soft); color: var(--text); }
+  .icon-btn:active { transform: scale(.92); }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--accent-soft);
+    background: var(--accent-grad); color: #fff; font-weight: 800; font-size: 13px;
+    display: grid; place-items: center; cursor: pointer; font-family: inherit;
+    transition: transform .15s; box-shadow: 0 3px 10px var(--accent-ring);
+  }
+  .avatar:active { transform: scale(.92); }
 
   /* ===== Chat ===== */
   main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
   .chat-col { max-width: 780px; margin: 0 auto; padding: 22px 16px 30px; }
 
-  .welcome { text-align: center; padding-top: 13vh; }
+  .welcome { text-align: center; padding-top: 11vh; }
   .w-mark {
-    width: 64px; height: 64px; margin: 0 auto; border-radius: 20px;
+    width: 68px; height: 68px; margin: 0 auto; border-radius: 22px;
     background: var(--accent-grad); display: grid; place-items: center;
-    color: #fff; font-size: 26px; box-shadow: 0 10px 30px var(--accent-ring);
+    color: #fff; font-size: 28px; box-shadow: 0 14px 40px var(--accent-ring);
+    animation: floaty 4s ease-in-out infinite;
   }
-  .welcome h1 { font-size: 27px; font-weight: 800; letter-spacing: -.4px; margin-top: 18px; }
+  @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .w-code { position: relative; display: inline-block; margin-top: 4px; }
+  .w-code i {
+    position: absolute; color: var(--accent); opacity: .5; font-size: 15px;
+    animation: spark 3.4s ease-in-out infinite;
+  }
+  .w-code i:nth-child(1) { left: -26px; top: -4px; animation-delay: 0s; }
+  .w-code i:nth-child(2) { right: -24px; top: 18px; animation-delay: 1.1s; }
+  .w-code i:nth-child(3) { left: -14px; bottom: -8px; animation-delay: 2.2s; }
+  @keyframes spark { 0%, 100% { opacity: .15; transform: scale(.8); } 50% { opacity: .75; transform: scale(1.1); } }
+  .welcome h1 { font-size: 27px; font-weight: 800; letter-spacing: -.4px; margin-top: 16px; }
   .welcome h1 em { font-style: normal; color: var(--accent); }
-  .welcome p { color: var(--text-2); font-size: 14.5px; margin-top: 7px; }
-  .suggests { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; max-width: 580px; margin: 34px auto 0; }
+  .welcome p { color: var(--text-2); font-size: 14.5px; margin-top: 7px; min-height: 20px; }
+  .suggests { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; max-width: 580px; margin: 32px auto 0; }
   .sug {
     display: flex; align-items: center; gap: 11px; text-align: left;
     background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
     padding: 14px 15px; cursor: pointer; transition: all .18s; font-size: 13.5px; font-weight: 500;
     line-height: 1.45; color: var(--text); font-family: inherit; box-shadow: var(--shadow);
+    animation: rise .5s cubic-bezier(.22, 1, .36, 1) backwards;
   }
+  .sug:nth-child(1) { animation-delay: .05s; } .sug:nth-child(2) { animation-delay: .12s; }
+  .sug:nth-child(3) { animation-delay: .19s; } .sug:nth-child(4) { animation-delay: .26s; }
   .sug:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
   .sug .sug-ic {
     width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center;
     font-size: 14px; background: var(--accent-soft); color: var(--accent);
   }
 
-  .msg { display: flex; flex-direction: column; margin-bottom: 26px; animation: rise .28s ease; }
+  .msg { display: flex; flex-direction: column; margin-bottom: 26px; animation: rise .3s cubic-bezier(.22, 1, .36, 1); }
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   .msg .who { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
   .msg .who .dot { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; color: #fff; }
   .msg.user .who .dot { background: #94a3b8; }
-  .msg.fenix .who .dot { background: var(--accent-grad); }
+  .msg.phoenix .who .dot { background: var(--accent-grad); }
   .msg .bubble { font-size: 15.5px; line-height: 1.75; }
   .msg.user .bubble {
     background: var(--user-bubble); border-radius: 18px 18px 18px 6px;
     padding: 12px 16px; align-self: flex-start; max-width: 88%;
     overflow-wrap: anywhere; white-space: pre-wrap;
   }
-  .msg.fenix .bubble { padding: 2px 4px 2px 0; overflow-wrap: anywhere; }
+  .msg.phoenix .bubble { padding: 2px 4px 2px 0; overflow-wrap: anywhere; }
 
   .bubble p { margin: 9px 0; } .bubble p:first-child { margin-top: 0; } .bubble p:last-child { margin-bottom: 0; }
   .bubble h1, .bubble h2, .bubble h3 { margin: 16px 0 8px; line-height: 1.35; }
@@ -143,7 +172,7 @@
   .bubble pre {
     background: var(--code-bg); color: #e2e8f0; border-radius: 14px;
     padding: 15px; overflow-x: auto; margin: 11px 0; direction: ltr; text-align: left;
-    border: 1px solid var(--line);
+    border: 1px solid var(--line); position: relative;
   }
   .bubble pre code { background: none; color: inherit; padding: 0; font-size: 13px; }
   .bubble table { border-collapse: collapse; margin: 11px 0; width: 100%; font-size: 13.5px; }
@@ -151,6 +180,58 @@
   .bubble th { background: var(--bg-soft); font-weight: 700; }
   .bubble blockquote { border-left: 3px solid var(--accent); padding-left: 13px; color: var(--text-2); margin: 9px 0; }
   .bubble a { color: var(--accent); }
+
+  /* Code copy button inside Coder answers */
+  .code-copy {
+    position: absolute; top: 8px; right: 8px; border: none; cursor: pointer;
+    background: rgba(255, 255, 255, .12); color: #e2e8f0; font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 8px; font-family: inherit; transition: background .15s;
+  }
+  .code-copy:hover { background: rgba(255, 255, 255, .24); }
+
+  /* Sources card (Phoenix Research) */
+  .src-card {
+    border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px;
+    background: var(--bg-soft); padding: 10px 13px; margin-top: 8px; font-size: 12.5px;
+    animation: rise .3s cubic-bezier(.22, 1, .36, 1);
+  }
+  .src-card b { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 7px; }
+  .src-card a {
+    display: flex; align-items: center; gap: 7px; color: var(--text-2);
+    text-decoration: none; padding: 4px 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .src-card a:hover { color: var(--accent); }
+  .src-card a i { font-size: 10px; flex: none; }
+
+  /* Memory & evolution items */
+  .mem-item, .evo-item, .log-item {
+    border: 1px solid var(--line); border-radius: 13px; padding: 11px 13px; margin-bottom: 9px;
+    background: var(--bg-soft); animation: rise .25s ease;
+  }
+  .mem-item .mt, .evo-item .mt { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.55; }
+  .mem-item .tag, .evo-item .tag {
+    flex: none; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+    background: var(--accent-soft); color: var(--accent); border-radius: 7px; padding: 3px 8px; margin-top: 1px;
+  }
+  .mem-item .ops, .evo-item .ops { display: flex; gap: 4px; margin-top: 8px; }
+  .mem-item .ops button, .evo-item .ops button {
+    border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 11.5px;
+    padding: 4px 9px; border-radius: 7px; font-family: inherit;
+  }
+  .mem-item .ops button:hover, .evo-item .ops button:hover { background: var(--accent-soft); color: var(--accent); }
+  .mem-item .ops button.del:hover, .evo-item .ops button.del:hover { background: rgba(239, 68, 68, .1); color: var(--danger); }
+  .log-item { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+  .log-item b { color: var(--text); }
+  .log-item .ld { font-size: 10.5px; color: var(--text-3); }
+  .evo-item .ev-meta { font-size: 10.5px; color: var(--text-3); margin-top: 4px; }
+  .evo-item .ev-meta .on { color: var(--accent); font-weight: 700; }
+  .ghost-btn {
+    width: 100%; border: 1px solid var(--line); background: var(--bg-soft);
+    color: var(--text); border-radius: 13px; padding: 12px; cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 700; display: flex;
+    align-items: center; justify-content: center; gap: 8px; transition: background .15s;
+  }
+  .ghost-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
   .typing { display: inline-flex; gap: 5px; padding: 10px 2px; }
   .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: blink 1.2s infinite; }
@@ -162,7 +243,7 @@
     padding: 5px 9px; margin-top: 6px; border-radius: 8px; font-family: inherit;
     opacity: 0; transition: opacity .15s; display: inline-flex; align-items: center; gap: 6px;
   }
-  .msg.fenix:hover .copy-msg, .msg.fenix:active .copy-msg { opacity: 1; }
+  .msg.phoenix:hover .copy-msg, .msg.phoenix:active .copy-msg { opacity: 1; }
   .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
 
   /* ===== Composer ===== */
@@ -179,8 +260,9 @@
   #attachments.has { display: flex; }
   .att {
     position: relative; width: 58px; height: 58px; border-radius: 13px; overflow: hidden;
-    border: 1px solid var(--line); background: var(--bg-soft);
+    border: 1px solid var(--line); background: var(--bg-soft); animation: pop .22s cubic-bezier(.22, 1, .36, 1);
   }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
   .att img { width: 100%; height: 100%; object-fit: cover; }
   .att .att-file {
     width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
@@ -209,7 +291,16 @@
   }
   .comp-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .comp-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .comp-btn.rec {
+    color: var(--danger); border-color: var(--danger); background: rgba(239, 68, 68, .08);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .35); }
+    55% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+  }
   .model-tag { font-size: 11.5px; font-weight: 600; color: var(--text-3); padding: 0 4px; }
+  .model-tag.code { color: var(--accent); }
   .send-btn {
     width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
     background: var(--accent-grad); color: #fff; font-size: 15px; display: grid; place-items: center;
@@ -260,6 +351,7 @@
   .drawer-item i { color: var(--text-3); font-size: 13px; flex: none; }
   .drawer-item.active i { color: var(--accent); }
   .drawer-item .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drawer-item .meta { font-size: 10.5px; color: var(--text-3); font-weight: 400; }
   .drawer-item .del { margin-left: auto; opacity: 0; border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px; padding: 5px; border-radius: 7px; }
   .drawer-item:hover .del { opacity: 1; }
   .drawer-item .del:hover { color: var(--danger); background: rgba(239, 68, 68, .1); }
@@ -278,6 +370,21 @@
   .foot-row .fl:hover i { color: var(--accent); }
   .server-state { font-size: 11px; color: var(--text-3); margin-top: 6px; line-height: 1.6; }
   .server-state b { color: var(--accent); font-weight: 600; }
+
+  /* Project files list */
+  .file-chip {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: none; border: none; border-radius: 10px; cursor: pointer;
+    padding: 8px 10px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; color: var(--text-2); text-align: left; transition: background .13s;
+  }
+  .file-chip:hover { background: var(--bg-soft); color: var(--text); }
+  .file-chip i { color: var(--accent); font-size: 11px; }
+  .file-chip .del { margin-left: auto; opacity: 0; border: none; background: none; color: var(--text-3); cursor: pointer; padding: 3px 6px; border-radius: 6px; }
+  .file-chip:hover .del { opacity: 1; }
+  .file-chip .del:hover { color: var(--danger); }
+  .save-note { font-size: 11px; color: var(--text-3); padding: 8px 10px 2px; line-height: 1.6; }
+  .save-note b { color: var(--accent); }
 
   /* Settings sheet */
   .sheet {
@@ -311,6 +418,79 @@
   .about-card b { color: var(--text); }
   .ver-tag { font-size: 11px; color: var(--text-3); }
 
+  /* ===== Auth overlay ===== */
+  #authScreen {
+    position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(700px 420px at 12% -8%, rgba(13, 148, 136, .16), transparent 60%),
+      radial-gradient(600px 380px at 108% 12%, rgba(8, 145, 178, .13), transparent 60%),
+      var(--bg);
+    padding: 20px; overflow-y: auto;
+  }
+  .auth-card {
+    width: 100%; max-width: 400px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 24px; padding: 30px 26px 26px;
+    box-shadow: var(--shadow-lg); animation: cardIn .5s cubic-bezier(.22, 1, .36, 1);
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: none; } }
+  .auth-logo {
+    width: 60px; height: 60px; margin: 0 auto; border-radius: 19px;
+    background: var(--accent-grad); display: grid; place-items: center; color: #fff; font-size: 25px;
+    box-shadow: 0 12px 34px var(--accent-ring); animation: floaty 4s ease-in-out infinite;
+  }
+  .auth-card h2 { text-align: center; font-size: 21px; font-weight: 800; margin-top: 16px; letter-spacing: -.3px; }
+  .auth-card .auth-sub { text-align: center; color: var(--text-2); font-size: 13.5px; margin: 6px 0 20px; line-height: 1.6; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+  .field input {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 13px; background: var(--bg);
+    padding: 12.5px 14px; font-family: inherit; font-size: 14.5px; color: var(--text);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+  .auth-btn {
+    width: 100%; border: none; border-radius: 14px; padding: 13.5px; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-family: inherit; font-size: 14.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 6px;
+    box-shadow: 0 8px 22px var(--accent-ring); transition: transform .15s, opacity .15s;
+  }
+  .auth-btn:hover { transform: translateY(-1px); }
+  .auth-btn:disabled { opacity: .55; cursor: default; transform: none; }
+  .auth-err {
+    display: none; background: rgba(239, 68, 68, .08); border: 1px solid rgba(239, 68, 68, .25);
+    color: var(--danger); border-radius: 11px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px;
+  }
+  .auth-err.show { display: block; animation: shake .35s; }
+  @keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .auth-switch { text-align: center; font-size: 13px; color: var(--text-2); margin-top: 16px; }
+  .auth-switch button { background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; font-family: inherit; font-size: 13px; }
+  .auth-skip { text-align: center; margin-top: 14px; }
+  .auth-skip button { background: none; border: none; color: var(--text-3); font-size: 12.5px; cursor: pointer; font-family: inherit; }
+  .auth-skip button:hover { color: var(--text-2); }
+  .auth-feats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+  .auth-feat {
+    display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-2);
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px;
+  }
+  .auth-feat i { color: var(--accent); font-size: 12px; }
+
+  /* Account sheet rows */
+  .acct-row { display: flex; align-items: center; gap: 12px; padding: 6px 0 14px; }
+  .acct-avatar {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--accent-grad);
+    color: #fff; font-weight: 800; font-size: 17px; display: grid; place-items: center;
+    box-shadow: 0 5px 16px var(--accent-ring);
+  }
+  .acct-name { font-weight: 800; font-size: 15px; }
+  .acct-email { font-size: 12.5px; color: var(--text-2); }
+  .danger-btn {
+    width: 100%; border: 1px solid rgba(239, 68, 68, .3); background: rgba(239, 68, 68, .06);
+    color: var(--danger); border-radius: 13px; padding: 12px; cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 700; display: flex;
+    align-items: center; justify-content: center; gap: 8px; transition: background .15s;
+  }
+  .danger-btn:hover { background: rgba(239, 68, 68, .12); }
+
   /* Toast */
   #toast {
     position: fixed; bottom: 116px; left: 50%; transform: translateX(-50%) translateY(16px);
@@ -324,20 +504,63 @@
   main::-webkit-scrollbar, .drawer-body::-webkit-scrollbar, .sheet-body::-webkit-scrollbar { width: 5px; }
   main::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 
-  @media (max-width: 480px) { .suggests { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .suggests { grid-template-columns: 1fr; } .auth-feats { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
+<!-- ==================== AUTH OVERLAY (email sign-in) ==================== -->
+<div id="authScreen" class="hide">
+  <div class="auth-card">
+    <div class="auth-logo"><i class="fa-solid fa-fire"></i></div>
+    <h2 id="authTitle">Welcome to Phoenix</h2>
+    <p class="auth-sub" id="authSub">Sign in with your email to unlock cloud projects that follow you across devices.</p>
+    <div class="auth-err" id="authErr"></div>
+    <form id="authForm">
+      <div class="field" id="nameField">
+        <label for="authName">Name</label>
+        <input id="authName" type="text" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="authPass">Password</label>
+        <input id="authPass" type="password" placeholder="At least 6 characters" autocomplete="current-password" required minlength="6">
+      </div>
+      <button class="auth-btn" id="authSubmit" type="submit"><i class="fa-solid fa-right-to-bracket" id="authSubmitIcon"></i><span id="authSubmitLbl">Sign in</span></button>
+    </form>
+    <div class="auth-switch">
+      <span id="authSwitchText">New here?</span>
+      <button id="authSwitchBtn" type="button">Create an account</button>
+    </div>
+    <div class="auth-skip"><button id="authSkipBtn" type="button">Continue without an account →</button></div>
+    <div class="auth-feats">
+      <div class="auth-feat"><i class="fa-solid fa-folder-tree"></i>Cloud projects</div>
+      <div class="auth-feat"><i class="fa-solid fa-code"></i>Ultra Coder mode</div>
+      <div class="auth-feat"><i class="fa-solid fa-microphone"></i>Voice input</div>
+      <div class="auth-feat"><i class="fa-solid fa-shield-halved"></i>Local-first privacy</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="appView" style="display:flex; flex-direction:column; height:100dvh;">
+
 <header>
   <button class="h-brand" id="brandBtn" title="New chat">
     <div class="h-logo"><i class="fa-solid fa-fire"></i></div>
-    <span class="h-name">Fenix <span>AI</span></span>
+    <div>
+      <span class="h-name">Phoenix <span>AI</span></span>
+      <div class="h-sub" id="modeSub" style="display:none"><i class="fa-solid fa-code"></i> <span id="modeName"></span></div>
+    </div>
   </button>
   <div class="h-actions">
     <button class="icon-btn" id="themeBtn" title="Toggle theme"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
     <button class="icon-btn" id="chatsBtn" title="Chats"><i class="fa-solid fa-bars"></i></button>
     <button class="icon-btn" id="settingsBtn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+    <button class="avatar" id="acctBtn" title="Account">?</button>
   </div>
 </header>
 
@@ -345,14 +568,10 @@
   <div class="chat-col" id="chatCol">
     <div class="welcome" id="welcome">
       <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
-      <h1>Hey, I'm <em>Fenix</em></h1>
+      <div class="w-code"><i class="fa-solid fa-less-than"></i><i class="fa-solid fa-greater-than"></i><i class="fa-solid fa-slash"></i></div>
+      <h1 id="welcomeTitle">Hey, I'm <em>Phoenix</em></h1>
       <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
-      <div class="suggests">
-        <button class="sug" data-q="Explain the difference between AI, machine learning and deep learning in simple terms."><span class="sug-ic"><i class="fa-solid fa-lightbulb"></i></span>Explain a concept simply</button>
-        <button class="sug" data-q="Write a short, punchy product description for a smart water bottle that tracks hydration."><span class="sug-ic"><i class="fa-solid fa-pen-nib"></i></span>Write something for me</button>
-        <button class="sug" data-q="I'll share a screenshot of an error. What should I include so you can debug it fastest?"><span class="sug-ic"><i class="fa-solid fa-code"></i></span>Help me with code</button>
-        <button class="sug" data-q="Give me a creative 7-day plan to build a consistent morning routine."><span class="sug-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>Plan my week</button>
-      </div>
+      <div class="suggests" id="suggests"></div>
     </div>
   </div>
 </main>
@@ -360,17 +579,19 @@
 <div class="composer-wrap">
   <div class="composer">
     <div id="attachments"></div>
-    <textarea id="input" rows="1" placeholder="Message Fenix..."></textarea>
+    <textarea id="input" rows="1" placeholder="Message Phoenix..."></textarea>
     <div class="composer-row">
       <div class="comp-left">
         <button class="comp-btn" id="attachBtn" title="Add photos, camera or files"><i class="fa-solid fa-plus"></i></button>
+        <button class="comp-btn" id="micBtn" title="Voice input"><i class="fa-solid fa-microphone" id="micIcon"></i></button>
         <button class="comp-btn" id="newChatBtn" title="New chat"><i class="fa-solid fa-comment-dots"></i></button>
-        <span class="model-tag" id="modelTag">Fenix Flash</span>
+        <span class="model-tag" id="modelTag">Phoenix Flash</span>
       </div>
       <button class="send-btn" id="sendBtn" disabled title="Send"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
   </div>
-  <div class="disclaimer">Fenix can make mistakes — verify important info.</div>
+  <div class="disclaimer">Phoenix can make mistakes — verify important info. Built by Yassine.</div>
+</div>
 </div>
 
 <div class="att-menu" id="attMenu">
@@ -396,10 +617,19 @@
     <div class="foot-row">
       <button class="fl" id="themeBtn2"><i class="fa-solid fa-circle-half-stroke"></i>Appearance</button>
     </div>
-    <div class="foot-row">
-      <button class="fl" id="serverLink"><i class="fa-solid fa-server"></i>API Server</button>
-    </div>
     <div class="server-state" id="serverState"></div>
+  </div>
+</aside>
+
+<aside class="drawer left" id="projectsDrawer">
+  <div class="drawer-head">
+    <b>Projects</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <button class="new-chat" id="newProjectBtn"><i class="fa-solid fa-folder-plus"></i> New project</button>
+  <div class="drawer-body" id="projectsList"></div>
+  <div class="drawer-foot">
+    <div class="save-note" id="projNote">Projects save your app's code in the cloud and power <b>Phoenix Coder</b> — the AI sees every file on every message.</div>
   </div>
 </aside>
 
@@ -413,8 +643,8 @@
     <div class="set-group">
       <div class="set-label">Intelligence</div>
       <div class="seg" id="modelSeg">
-        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Fenix Flash</button>
-        <button data-v="pro"><i class="fa-solid fa-brain"></i>Fenix Pro</button>
+        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Phoenix Flash</button>
+        <button data-v="pro"><i class="fa-solid fa-brain"></i>Phoenix Pro</button>
       </div>
     </div>
     <div class="set-group">
@@ -434,12 +664,102 @@
     <div class="set-group">
       <div class="set-label">About</div>
       <div class="about-card">
-        <b>Fenix AI</b> — a multimodal assistant with full conversation memory.<br>
-        Send text, photos, camera shots and documents. Powered by Gemini.<br>
-        <span class="ver-tag">Version 3.0 · Made with 🔥</span>
+        <b>Phoenix 4.0</b> — an AI assistant built by Yassine, powered by Gemini.<br>
+        Chat, projects, memory, evolution and web research. Voice, camera, documents.<br>
+        <span class="ver-tag">Version 4.0 · The AI model is Gemini — Phoenix is the system around it</span>
       </div>
     </div>
   </div>
+</div>
+
+<!-- New project sheet -->
+<div class="sheet" id="projectSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>New project</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="auth-err" id="projErr"></div>
+    <div class="field">
+      <label for="projName">Project name</label>
+      <input id="projName" type="text" placeholder="My awesome app" maxlength="60">
+    </div>
+    <div class="field">
+      <label for="projStack">Tech stack</label>
+      <input id="projStack" type="text" placeholder="e.g. React + Node.js, Flutter, Python…" maxlength="120">
+    </div>
+    <div class="field">
+      <label for="projDesc">What are you building?</label>
+      <input id="projDesc" type="text" placeholder="A to-do app with reminders and dark mode">
+    </div>
+    <button class="auth-btn" id="projCreateBtn" type="button"><i class="fa-solid fa-rocket"></i>Create project</button>
+    <div class="save-note" style="margin-top:12px">Phoenix Coder will know the name, stack and goal of this project — and every file you add — in every message.</div>
+  </div>
+</div>
+
+<!-- Memory sheet -->
+<div class="sheet" id="memorySheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Memory</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="save-note" style="margin-top:0">What Phoenix remembers about you. Everything is visible, editable and deletable — nothing is stored behind your back.</div>
+    <div class="field">
+      <label for="memText">New memory</label>
+      <input id="memText" type="text" placeholder="e.g. I prefer TypeScript and concise answers">
+    </div>
+    <div class="field">
+      <label for="memCat">Category</label>
+      <select id="memCat" style="width:100%; border:1.5px solid var(--line); border-radius:13px; background:var(--bg); color:var(--text); padding:12px 14px; font-family:inherit; font-size:14px; outline:none">
+        <option value="facts">Fact</option>
+        <option value="preferences">Preference</option>
+        <option value="projects">Project</option>
+        <option value="goals">Long-term goal</option>
+        <option value="style">Working style</option>
+        <option value="context">Temporary context</option>
+      </select>
+    </div>
+    <button class="auth-btn" id="memAddBtn" type="button"><i class="fa-solid fa-brain"></i>Remember this</button>
+    <div id="memList" style="margin-top:16px"></div>
+    <div style="display:flex; gap:10px; margin-top:14px">
+      <button class="danger-btn" id="memExportBtn" style="flex:1"><i class="fa-solid fa-download"></i>Export</button>
+      <button class="danger-btn" id="memClearBtn" style="flex:1"><i class="fa-solid fa-trash"></i>Clear all</button>
+    </div>
+  </div>
+</div>
+
+<!-- Evolution sheet -->
+<div class="sheet" id="evoSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Evolution</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="save-note" style="margin-top:0">How Phoenix learns to work with you — only from repeated patterns (3+ observations). Never invented, always inspectable.</div>
+    <div class="seg" id="evoToggleSeg" style="margin-bottom:14px">
+      <button data-v="on"><i class="fa-solid fa-toggle-on"></i>Evolution on</button>
+      <button data-v="off"><i class="fa-solid fa-toggle-off"></i>Disabled</button>
+    </div>
+    <div class="set-label">Evolution profile</div>
+    <div id="evoInsights"></div>
+    <div class="set-label" style="margin-top:16px">Evolution log</div>
+    <div id="evoLog"></div>
+    <button class="danger-btn" id="evoClearBtn" style="margin-top:14px"><i class="fa-solid fa-eraser"></i>Reset evolution</button>
+  </div>
+</div>
+
+<!-- Account sheet -->
+<div class="sheet" id="accountSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Account</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body" id="accountBody"></div>
 </div>
 
 <div id="toast"><i class="fa-solid fa-check"></i><span id="toastMsg">Copied</span></div>
@@ -447,19 +767,87 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const IS_NATIVE = typeof window.Capacitor !== 'undefined';
-const API_BASE = (localStorage.getItem('fenix_api_base') || '').replace(/\/+$/, '');
+/* ── Phoenix server connection (developer-only setting; users never configure anything).
+   The AI key lives ONLY on the server (env var GEMINI_API_KEY). The app just calls
+   its own origin — or, in the APK, the one server URL the developer set in web/config.js. */
+const API_BASE = ((window.PHOENIX_SERVER || '') + '').replace(/\/+$/, '');
 const apiUrl = (p) => API_BASE + p;
+
+const PHOENIX_SYSTEM = `You are "Phoenix" — an AI assistant built by Yassine.
+Your engine is Google's Gemini model; your uniqueness is the system around it:
+personality, memory, evolution, research and honesty.
+
+Identity & honesty rules:
+1. Your name is Phoenix. Built by Yassine. Never claim Yassine trained a foundation model.
+2. Never claim to have performed an action you did not actually perform.
+3. Never fabricate tool results, web sources, code execution or memories.
+4. Distinguish clearly: model knowledge / retrieved web info / user memory / executed actions. Label proposals as "proposed".
+5. Say "I don't know" plainly when you don't.
+
+Personality: intelligent, natural, confident but never arrogant; concise on simple questions, detailed when the task deserves it; conversational, never robotic; never imitate ChatGPT, Claude or Gemini's personas.
+
+General rules:
+- Formatting: clean Markdown when it helps.
+- Language: always answer in the language the user writes in.
+- Multimodal: analyze shared images/documents carefully before answering.`;
+const STYLE_HINTS = {
+  concise: '- Style: keep answers tight and scannable \u2014 lead with the answer, then minimal supporting detail.',
+  detailed: '- Style: give thorough, well-structured answers with examples, context and step-by-step detail where useful.',
+};
+/* Ultra code-builder persona — active inside project chats (Phoenix Coder). */
+const CODER_SYSTEM = `You are "Phoenix Coder" \u2014 the coding side of Phoenix, an AI assistant built by Yassine (engine: Google's Gemini model). You are an elite full-stack engineer: web apps, mobile apps, APIs, games, scripts, pipelines and DevOps.
+
+Your engineering rules:
+1. Deliver, don't describe: output complete runnable code \u2014 never "... rest of the code here" placeholders.
+2. One artifact at a time: pick the single most relevant file and output its FULL content in one fenced code block, with the file path as the first line, like:
+   \`\`\`html
+   <!-- index.html -->
+   ...complete file...
+   \`\`\`
+3. Senior quality: modern best practices, clean architecture, proper error handling, accessibility, responsive/mobile-first UI.
+4. Adapt to the stack: honor the project's stated stack; if none, choose the most mainstream one and say so in one line.
+5. Correctness first: mentally trace the code before answering. Edit consistently with code shared earlier.
+6. Language: reply in the user's language; keep all code and comments English.
+
+Verification honesty (never fake success):
+- You cannot run code inside this chat. Never say "Fixed", "Test passed" or "Build succeeded" unless actually confirmed.
+- Label your output: Proposed (written, not executed) or Modified (applied to project files). After the code add: "Verification: not run \u2014 compile/test it on your side and tell me the output."
+- When the user reports results, record them honestly; never upgrade an unverified claim to verified.
+
+Challenge mode:
+- If you see a materially better approach, say: "I found another approach \u2014 want me to compare them?" then give a short factual comparison (complexity, cost, performance, pros/cons). Never force it; the user decides.`;
 
 /* ===== Settings ===== */
 const SET = {
-  model: localStorage.getItem('fenix_model') || 'flash',
-  style: localStorage.getItem('fenix_style') || 'concise',
+  model: localStorage.getItem('phoenix_model') || 'flash',
+  style: localStorage.getItem('phoenix_style') || 'concise',
 };
-const MODEL_LABEL = { flash: 'Fenix Flash', pro: 'Fenix Pro' };
+const MODEL_LABEL = { flash: 'Phoenix Flash', pro: 'Phoenix Pro' };
+
+/* ===== Auth state ===== */
+let USER = null;
+try { USER = JSON.parse(localStorage.getItem('fenix_user') || 'null'); } catch { USER = null; }
+function authHeaders() {
+  const t = localStorage.getItem('fenix_token');
+  return t ? { 'Authorization': 'Bearer ' + t } : {};
+}
+function saveAuth(data) {
+  localStorage.setItem('fenix_token', data.token);
+  localStorage.setItem('fenix_user', JSON.stringify(data.user));
+  USER = data.user;
+}
+function clearAuth() {
+  localStorage.removeItem('fenix_token');
+  localStorage.removeItem('fenix_user');
+  USER = null;
+}
 
 let chats = JSON.parse(localStorage.getItem('fenix_chats') || '[]');
 let currentId = localStorage.getItem('fenix_current');
 let pending = []; // attachments [{name, mime, dataUrl}]
+let projects = [];
+let activeProjectId = localStorage.getItem('fenix_project') || null;
+let activeProject = null;
 
 /* ===== Theme ===== */
 function applyTheme(t) {
@@ -508,16 +896,30 @@ function renderChats() {
       <span class="del" data-del="${c.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
     </button>`).join('') || '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px">No chats yet</p>';
 
-  document.querySelectorAll('.drawer-item').forEach(el => {
+  document.querySelectorAll('#chatsList .drawer-item').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.del')) return;
       currentId = el.dataset.id;
       saveChats(); renderChats(); renderMessages(); closeAll();
     });
   });
-  document.querySelectorAll('[data-del]').forEach(el =>
+  document.querySelectorAll('#chatsList [data-del]').forEach(el =>
     el.addEventListener('click', (e) => deleteChat(el.dataset.del, e))
   );
+}
+
+function enhanceCodeBlocks(root) {
+  root.querySelectorAll('.bubble pre').forEach(pre => {
+    if (pre.querySelector('.code-copy')) return;
+    const btn = document.createElement('button');
+    btn.className = 'code-copy';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(pre.innerText.replace(/^Copy\n?/, '')); showToast('Code copied'); }
+      catch { showToast('Copy failed'); }
+    });
+    pre.appendChild(btn);
+  });
 }
 
 function msgHtml(m, idx) {
@@ -530,9 +932,25 @@ function msgHtml(m, idx) {
       ${atts ? `<div style="align-self:flex-start">${atts}</div>` : ''}
       <div class="bubble">${escHtml(m.content)}</div></div>`;
   }
-  return `<div class="msg fenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Phoenix</div>
     <div class="bubble">${renderMd(m.content)}</div>
     <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
+}
+
+/* Sources card under the last Phoenix reply (only when research actually ran) */
+function renderSources(sources) {
+  document.querySelectorAll('.src-card').forEach(el => el.remove());
+  if (!sources || !sources.length) return;
+  const links = sources.map(s =>
+    `<a href="${escHtml(s.link)}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i>${escHtml(s.title || s.link)}</a>`
+  ).join('');
+  const col = $('#chatCol');
+  col.insertAdjacentHTML('beforeend', `
+    <div class="src-card">
+      <b><i class="fa-solid fa-globe"></i> Sources (${sources.length}) — live web research</b>
+      ${links}
+    </div>`);
+  scrollDown();
 }
 
 function renderMessages() {
@@ -541,14 +959,42 @@ function renderMessages() {
   [...col.querySelectorAll('.msg')].forEach(el => el.remove());
   if (!c || c.messages.length === 0) {
     const h = new Date().getHours();
-    $('#welcomeSub').textContent = h < 12 ? 'Good morning — what can I do for you?' : h < 18 ? 'Good afternoon — what are we building today?' : 'Good evening — ask me anything.';
+    if (activeProjectId && activeProject) {
+      $('#welcomeTitle').innerHTML = `Let's build <em>${escHtml(activeProject.name)}</em>`;
+      $('#welcomeSub').textContent = 'Phoenix Coder is ready — describe a feature and get complete, runnable code.';
+    } else {
+      $('#welcomeTitle').innerHTML = `Hey, I'm <em>Phoenix</em>`;
+      $('#welcomeSub').textContent = h < 12 ? 'Good morning — what can I do for you?' : h < 18 ? 'Good afternoon — what are we building today?' : 'Good evening — ask me anything.';
+    }
+    renderSuggests();
     $('#welcome').style.display = 'block';
     return;
   }
   $('#welcome').style.display = 'none';
   c.messages.forEach((m, i) => col.insertAdjacentHTML('beforeend', msgHtml(m, i)));
-  bindCopyButtons();
+  bindCopyButtons(); enhanceCodeBlocks(col);
   scrollDown();
+}
+
+/* Context-aware suggestion chips: Coder suggestions inside projects. */
+const CODER_SUGGESTS = [
+  { ic: 'fa-rocket', q: 'Build the complete main screen of this app with modern styling.', label: 'Build the main screen' },
+  { ic: 'fa-database', q: 'Design the data layer for this project — models, storage and APIs.', label: 'Design the data layer' },
+  { ic: 'fa-bug', q: 'Review the current code of this project and fix any bugs or bad practices you find.', label: 'Review & fix the code' },
+  { ic: 'fa-wand-magic-sparkles', q: 'Add a polished dark mode and smooth animations to this app.', label: 'Add dark mode + animations' },
+];
+const CHAT_SUGGESTS = [
+  { ic: 'fa-lightbulb', q: 'Explain the difference between AI, machine learning and deep learning in simple terms.', label: 'Explain a concept simply' },
+  { ic: 'fa-pen-nib', q: 'Write a short, punchy product description for a smart water bottle that tracks hydration.', label: 'Write something for me' },
+  { ic: 'fa-code', q: "I'll share a screenshot of an error. What should I include so you can debug it fastest?", label: 'Help me with code' },
+  { ic: 'fa-wand-magic-sparkles', q: 'Give me a creative 7-day plan to build a consistent morning routine.', label: 'Plan my week' },
+];
+function renderSuggests() {
+  const list = activeProjectId ? CODER_SUGGESTS : CHAT_SUGGESTS;
+  $('#suggests').innerHTML = list.map(s =>
+    `<button class="sug" data-q="${escHtml(s.q)}"><span class="sug-ic"><i class="fa-solid ${s.ic}"></i></span>${s.label}</button>`
+  ).join('');
+  document.querySelectorAll('.sug').forEach(s => s.addEventListener('click', () => { $('#input').value = s.dataset.q; updateSend(); send(); }));
 }
 
 function scrollDown() { const m = $('#chatMain'); m.scrollTop = m.scrollHeight; }
@@ -595,11 +1041,107 @@ function renderAttachments() {
   }));
 }
 
+/* ===== Microphone (voice input) ===== */
+let recognition = null, micOn = false, micBaseText = '';
+async function toggleMic() {
+  if (micOn) { stopMic(); return; }
+  /* Native Android speech recognition via Capacitor plugin */
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+    const SR = window.Capacitor.Plugins.SpeechRecognition;
+    try {
+      const avail = await SR.available();
+      if (!avail.available) { showToast('Speech recognition unavailable on this device'); return; }
+      await SR.requestPermission();
+      setMicUI(true);
+      SR.addListener('partialResults', (data) => {
+        if (data.matches && data.matches.length) {
+          $('#input').value = (micBaseText ? micBaseText + ' ' : '') + data.matches[data.matches.length - 1];
+          autoGrow(); updateSend();
+        }
+      });
+      await SR.start({ language: 'en-US', partialResults: true, popup: true });
+      micOn = true;
+    } catch (e) { setMicUI(false); showToast('Mic permission denied'); }
+    return;
+  }
+  /* Web Speech API (Chrome/Edge on desktop + Android browsers) */
+  const WebSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!WebSR) { showToast('Voice input is not supported in this browser'); return; }
+  try {
+    recognition = new WebSR();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onresult = (ev) => {
+      let txt = '';
+      for (const r of ev.results) txt += r[0].transcript;
+      $('#input').value = (micBaseText ? micBaseText + ' ' : '') + txt;
+      autoGrow(); updateSend();
+    };
+    recognition.onend = () => setMicUI(false);
+    recognition.onerror = () => { setMicUI(false); showToast('Mic error — check permission'); };
+    recognition.start();
+    micBaseText = $('#input').value.trim();
+    setMicUI(true);
+  } catch { showToast('Voice input unavailable'); }
+}
+function stopMic() {
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+    try { window.Capacitor.Plugins.SpeechRecognition.stop(); } catch {}
+  }
+  if (recognition) { try { recognition.stop(); } catch {} }
+  setMicUI(false);
+}
+function setMicUI(on) {
+  micOn = on;
+  $('#micBtn').classList.toggle('rec', on);
+  $('#micBtn').classList.toggle('on', on);
+  $('#micIcon').className = on ? 'fa-solid fa-stop' : 'fa-solid fa-microphone';
+  if (on) micBaseText = $('#input').value.trim();
+}
+$('#micBtn').addEventListener('click', toggleMic);
+
+/* ===== AI calls =====
+   One single path: every AI call goes through the Phoenix server, which holds
+   GEMINI_API_KEY in its environment. No key ever reaches this client. */
+let lastSources = null;   /* live web sources from Phoenix Research (this reply) */
+
+async function callAI(message, history, atts) {
+  const res = await fetch(apiUrl('/api/chat'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      message, history, attachments: atts, model: SET.model, style: SET.style,
+      projectId: activeProjectId || undefined,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Unknown error');
+  lastSources = data.sources || null;   /* live web sources when research ran */
+  return data.reply;
+}
+
+/* After a Coder reply, offer to save the produced file into the project */
+function maybeOfferFileSave(reply) {
+  if (!activeProjectId) return;
+  const m = reply.match(/```[a-zA-Z0-9+#-]*\n+(?:[^\n]*?([\w./-]+\.[a-zA-Z0-9]{1,5}))\s*\n/);
+  if (!m) return;
+  const path = m[1];
+  const body = reply.split(/```[a-zA-Z0-9+#-]*\n+(?:[^\n]*?[\w./-]+\.[a-zA-Z0-9]{1,5})\s*\n/)[1] || '';
+  const content = body.split('```')[0];
+  if (!content.trim() || content.length > 200000) return;
+  setTimeout(() => {
+    showToast('💾 Say "save it" to store ' + path + ' in the project');
+    window.__lastArtifact = { path, content };
+  }, 400);
+}
+
 /* ===== Send ===== */
 async function send() {
   const input = $('#input');
   const text = input.value.trim();
   if (!text && pending.length === 0) return;
+  if (micOn) stopMic();
   const c = ensureChat();
 
   const atts = pending.splice(0);
@@ -612,26 +1154,23 @@ async function send() {
 
   const col = $('#chatCol');
   col.insertAdjacentHTML('beforeend', `
-    <div class="msg fenix" id="typingMsg">
-      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+    <div class="msg phoenix" id="typingMsg">
+      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Phoenix</div>
       <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
 
   try {
-    const res = await fetch(apiUrl('/api/chat'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: c.messages.slice(0, -1), attachments: atts, model: SET.model, style: SET.style }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Unknown error');
-    c.messages.push({ role: 'assistant', content: data.reply });
+    const reply = await callAI(text, c.messages.slice(0, -1), atts);
+    c.messages.push({ role: 'assistant', content: reply });
+    maybeOfferFileSave(reply);
   } catch (e) {
-    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + e.message + (IS_NATIVE && !API_BASE ? '\n\nSet your API Server URL in Chats → API Server.' : '') });
+    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e.message || 'Network error') + (IS_NATIVE ? '\n\nCheck your internet connection and try again.' : '') });
   }
 
   saveChats(); renderMessages(); renderChats();
+  renderSources(lastSources);
+  lastSources = null;
 }
 
 /* ===== Drawers / sheets ===== */
@@ -672,7 +1211,24 @@ function syncSettingsUI() {
   $('#modelSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.model));
   $('#styleSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.style));
   $('#themeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === document.documentElement.dataset.theme));
-  $('#modelTag').textContent = MODEL_LABEL[SET.model];
+  syncModelTag();
+}
+function syncModelTag() {
+  const tag = $('#modelTag');
+  if (activeProjectId) {
+    tag.textContent = '⚡ Coder';
+    tag.classList.add('code');
+  } else {
+    tag.textContent = MODEL_LABEL[SET.model];
+    tag.classList.remove('code');
+  }
+  const sub = $('#modeSub');
+  if (activeProjectId && activeProject) {
+    sub.style.display = 'block';
+    $('#modeName').textContent = activeProject.name;
+  } else {
+    sub.style.display = 'none';
+  }
 }
 
 /* ===== Attach menu ===== */
@@ -686,7 +1242,24 @@ function toggleAttMenu() {
 $('#attachBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleAttMenu(); });
 document.addEventListener('click', (e) => { if (!e.target.closest('#attMenu') && !e.target.closest('#attachBtn')) attMenu.classList.remove('show'); });
 $('#attPhoto').addEventListener('click', () => { attMenu.classList.remove('show'); $('#fileInput').click(); });
-$('#attCamera').addEventListener('click', () => { attMenu.classList.remove('show'); $('#cameraInput').click(); });
+$('#attCamera').addEventListener('click', async () => {
+  attMenu.classList.remove('show');
+  /* Native camera (Capacitor) in the APK; browser input fallback on the web */
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera) {
+    try {
+      const photo = await window.Capacitor.Plugins.Camera.getPhoto({
+        quality: 85,
+        width: 1600,
+        resultType: 'dataUrl',   /* CameraResultType.DataUrl */
+        source: 'PROMPT',        /* CameraSource.Prompt — camera or gallery chooser */
+      });
+      pending.push({ name: 'camera-' + Date.now() + '.jpg', mime: 'image/jpeg', dataUrl: photo.dataUrl });
+      renderAttachments(); updateSend();
+    } catch (e) { /* user cancelled — nothing to do */ }
+  } else {
+    $('#cameraInput').click();
+  }
+});
 $('#attFile').addEventListener('click', () => { attMenu.classList.remove('show'); $('#docInput').click(); });
 $('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
 $('#cameraInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
@@ -701,37 +1274,362 @@ input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 $('#sendBtn').addEventListener('click', send);
-document.querySelectorAll('.sug').forEach(s => s.addEventListener('click', () => { input.value = s.dataset.q; updateSend(); send(); }));
 
 /* ===== Toast ===== */
 let toastTimer;
 function showToast(m) {
   $('#toastMsg').textContent = m;
   const t = $('#toast'); t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-/* ===== Server URL (installed app) ===== */
-function refreshServerState() {
-  $('#serverState').innerHTML = API_BASE
-    ? 'Connected to <b>' + escHtml(API_BASE) + '</b>'
-    : (IS_NATIVE ? 'Not set — required in the installed app.' : 'Using the built-in dev server.');
+/* ===== Projects ===== */
+async function loadProjects() {
+  if (!canUseServer() || !USER) { projects = []; renderProjects(); return; }
+  try {
+    const r = await fetch(apiUrl('/api/projects'), { headers: authHeaders() });
+    if (!r.ok) throw 0;
+    projects = await r.json();
+  } catch { projects = []; }
+  renderProjects();
 }
-$('#serverLink').addEventListener('click', () => {
-  const v = prompt('API server URL (e.g. https://your-server.freebuff.app):', API_BASE);
-  if (v === null) return;
-  localStorage.setItem('fenix_api_base', v.trim().replace(/\/+$/, ''));
-  showToast('Saved — reloading…');
-  setTimeout(() => location.reload(), 700);
+function renderProjects() {
+  const list = $('#projectsList');
+  if (!USER || !canUseServer()) {
+    list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px; line-height:1.7">Sign in with your email to create cloud projects.<br>Chats stay local either way.</p>';
+    return;
+  }
+  if (!projects.length) {
+    list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px">No projects yet — create your first one!</p>';
+    return;
+  }
+  list.innerHTML = projects.map(p => `
+    <button class="drawer-item ${p.id === activeProjectId ? 'active' : ''}" data-pid="${p.id}">
+      <i class="fa-solid fa-folder${p.id === activeProjectId ? '-open' : ''}"></i>
+      <span class="lbl">${escHtml(p.name)}<br><span class="meta">${escHtml(p.stack || 'project')} · ${p.files} file${p.files === 1 ? '' : 's'}</span></span>
+      <span class="del" data-pdel="${p.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
+    </button>`).join('');
+  list.querySelectorAll('.drawer-item').forEach(el => el.addEventListener('click', async (e) => {
+    if (e.target.closest('.del')) return;
+    await selectProject(el.dataset.pid);
+  }));
+  list.querySelectorAll('[data-pdel]').forEach(el => el.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const pid = el.dataset.pdel;
+    const p = projects.find(x => x.id === pid);
+    if (!confirm('Delete project "' + (p ? p.name : '') + '" and its files?')) return;
+    await fetch(apiUrl('/api/projects/' + pid), { method: 'DELETE', headers: authHeaders() });
+    if (activeProjectId === pid) { activeProjectId = null; activeProject = null; localStorage.removeItem('fenix_project'); }
+    await loadProjects(); syncModelTag(); renderMessages();
+    showToast('Project deleted');
+  }));
+}
+async function selectProject(pid) {
+  activeProjectId = pid;
+  localStorage.setItem('fenix_project', pid);
+  activeProject = null;
+  if (pid) {
+    try {
+      const r = await fetch(apiUrl('/api/projects/' + pid), { headers: authHeaders() });
+      if (r.ok) activeProject = await r.json();
+    } catch {}
+  }
+  /* Projects and regular chats have separate histories */
+  currentId = null; saveChats();
+  renderProjects(); renderMessages(); syncModelTag(); closeAll();
+  if (pid) showToast('⚡ Coder mode: ' + (activeProject ? activeProject.name : 'project'));
+  $('#input').focus();
+}
+async function openProject(pid) { await selectProject(pid); openDrawer('projectsDrawer'); }
+
+$('#newProjectBtn').addEventListener('click', () => {
+  if (!USER || !canUseServer()) { closeAll(); startAuth('signup'); return; }
+  $('#projErr').classList.remove('show');
+  openSheet('projectSheet');
+});
+$('#projCreateBtn').addEventListener('click', async () => {
+  const name = $('#projName').value.trim();
+  const stack = $('#projStack').value.trim();
+  const description = $('#projDesc').value.trim();
+  if (!name) return showProjErr('Give your project a name');
+  const btn = $('#projCreateBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(apiUrl('/api/projects'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name, stack, description }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed to create project');
+    closeAll();
+    await loadProjects();
+    await selectProject(data.id);
+    showToast('🚀 Project created — Coder mode on');
+  } catch (e) { showProjErr(e.message); }
+  btn.disabled = false;
+});
+function showProjErr(msg) {
+  const el = $('#projErr');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+/* Detect "save it" commands in project chats → persist last artifact */
+async function maybeSaveArtifact(text) {
+  if (!activeProjectId || !window.__lastArtifact || !canUseServer() || !USER) return;
+  if (!/\b(save|store|commit)\s+(it|this|the file)?\b/i.test(text)) return;
+  const a = window.__lastArtifact;
+  try {
+    const r = await fetch(apiUrl('/api/projects/' + activeProjectId + '/files'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ files: [{ path: a.path, content: a.content }] }),
+    });
+    if (r.ok) {
+      window.__lastArtifact = null;
+      showToast('💾 Saved ' + a.path + ' to the project');
+      await loadProjects();
+      if (activeProjectId) {
+        const r2 = await fetch(apiUrl('/api/projects/' + activeProjectId), { headers: authHeaders() });
+        if (r2.ok) activeProject = await r2.json();
+      }
+    }
+  } catch {}
+}
+
+
+/* ===== Memory (user-controlled) ===== */
+const MEM_LABEL = { preferences: 'Pref', projects: 'Project', goals: 'Goal', style: 'Style', facts: 'Fact', context: 'Temp' };
+async function loadMemory() {
+  if (!USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/memory'), { headers: authHeaders() });
+    if (!r.ok) return;
+    const entries = await r.json();
+    const list = $('#memList');
+    if (!entries.length) {
+      list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:14px">Nothing remembered yet.</p>';
+      return;
+    }
+    list.innerHTML = entries.map(e => `
+      <div class="mem-item">
+        <div class="mt"><span class="tag">${MEM_LABEL[e.category] || e.category}</span><span>${escHtml(e.text)}</span></div>
+        <div class="ops">
+          <button data-medit="${e.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button class="del" data-mdel="${e.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('[data-mdel]').forEach(b => b.addEventListener('click', async () => {
+      await fetch(apiUrl('/api/memory/' + b.dataset.mdel), { method: 'DELETE', headers: authHeaders() });
+      loadMemory(); showToast('Memory deleted');
+    }));
+    list.querySelectorAll('[data-medit]').forEach(b => b.addEventListener('click', () => {
+      const item = b.closest('.mem-item');
+      const span = item.querySelector('.mt span:last-child');
+      const nu = prompt('Edit memory:', span.textContent);
+      if (nu === null || !nu.trim()) return;
+      fetch(apiUrl('/api/memory/' + b.dataset.medit), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ text: nu.trim() }),
+      }).then(() => { loadMemory(); showToast('Memory updated'); });
+    }));
+  } catch {}
+}
+$('#memAddBtn').addEventListener('click', async () => {
+  if (!USER) { closeAll(); startAuth('signin'); return; }
+  const text = $('#memText').value.trim();
+  if (!text) return;
+  await fetch(apiUrl('/api/memory'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text, category: $('#memCat').value }),
+  });
+  $('#memText').value = '';
+  loadMemory(); showToast('🧠 Remembered');
+});
+$('#memClearBtn').addEventListener('click', async () => {
+  if (!USER) return;
+  if (!confirm('Delete ALL memories? This cannot be undone.')) return;
+  await fetch(apiUrl('/api/memory/clear'), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: '{}' });
+  loadMemory(); showToast('Memory cleared');
+});
+$('#memExportBtn').addEventListener('click', async () => {
+  if (!USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/memory/export'), { headers: authHeaders() });
+    const data = await r.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'phoenix-memory.json';
+    a.click();
+    showToast('Memory exported');
+  } catch { showToast('Export failed'); }
 });
 
+/* ===== Evolution ===== */
+async function loadEvolution() {
+  if (!USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/evolution'), { headers: authHeaders() });
+    if (!r.ok) return;
+    const data = await r.json();
+    $('#evoToggleSeg').querySelectorAll('button').forEach(b =>
+      b.classList.toggle('on', (b.dataset.v === 'on') === data.enabled));
+    const ins = $('#evoInsights');
+    ins.innerHTML = data.insights.length ? data.insights.map(i => `
+      <div class="evo-item">
+        <div class="mt"><span class="tag">${i.dimension.replace('_', ' ')}</span><span>${escHtml(i.change || i.observation)}</span></div>
+        <div class="ev-meta">Evidence: ${i.evidence} interaction${i.evidence === 1 ? '' : 's'} · <span class="${i.active ? 'on' : ''}">${i.active ? 'active' : 'collecting evidence (' + data.min_evidence + ' needed)'}</span></div>
+        <div class="ops">
+          <button class="del" data-edel="${i.id}"><i class="fa-solid fa-trash"></i> Remove</button>
+        </div>
+      </div>`).join('')
+      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">No patterns yet — Phoenix is still observing.</p>';
+    ins.querySelectorAll('[data-edel]').forEach(b => b.addEventListener('click', async () => {
+      await fetch(apiUrl('/api/evolution/insight/' + b.dataset.edel), { method: 'DELETE', headers: authHeaders() });
+      loadEvolution(); showToast('Insight removed');
+    }));
+    const log = $('#evoLog');
+    log.innerHTML = data.log.length ? data.log.slice(0, 15).map(l => `
+      <div class="log-item">
+        <b>${escHtml(l.date)}</b> — ${escHtml(l.observation)}<br>
+        Change: ${escHtml(l.change)}<br>
+        <span class="ld">Reason: ${escHtml(l.reason)} · evidence ${l.evidence}${l.activated ? ' · ACTIVE' : ''}</span>
+      </div>`).join('')
+      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">Empty log.</p>';
+  } catch {}
+}
+$('#evoToggleSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+  const enabled = b.dataset.v === 'on';
+  await fetch(apiUrl('/api/evolution/toggle'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ enabled }),
+  });
+  $('#evoToggleSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', (x.dataset.v === 'on') === enabled));
+  showToast(enabled ? 'Evolution enabled' : 'Evolution disabled — nothing more will be learned');
+  loadEvolution();
+}));
+$('#evoClearBtn').addEventListener('click', async () => {
+  if (!USER) return;
+  if (!confirm('Reset the whole evolution profile and log?')) return;
+  await fetch(apiUrl('/api/evolution/clear'), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: '{}' });
+  loadEvolution(); showToast('Evolution reset');
+});
+
+/* ===== Account ===== */
+function initials(s) { return (s || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'; }
+function renderAvatar() {
+  $('#acctBtn').textContent = USER ? initials(USER.name || USER.email) : '?';
+}
+function renderAccountSheet() {
+  const body = $('#accountBody');
+  if (USER) {
+    body.innerHTML = `
+      <div class="acct-row">
+        <div class="acct-avatar">${escHtml(initials(USER.name || USER.email))}</div>
+        <div>
+          <div class="acct-name">${escHtml(USER.name || '')}</div>
+          <div class="acct-email">${escHtml(USER.email)}</div>
+        </div>
+      </div>
+      <button class="ghost-btn" id="openProjectsBtn" style="margin-bottom:10px"><i class="fa-solid fa-folder-tree"></i>My projects</button>
+      <button class="ghost-btn" id="openMemoryBtn" style="margin-bottom:10px"><i class="fa-solid fa-brain"></i>Memory</button>
+      <button class="ghost-btn" id="openEvoBtn" style="margin-bottom:14px"><i class="fa-solid fa-seedling"></i>Evolution</button>
+      <button class="danger-btn" id="signOutBtn"><i class="fa-solid fa-right-from-bracket"></i>Sign out</button>`;
+    $('#openProjectsBtn').addEventListener('click', () => { closeAll(); openDrawer('projectsDrawer'); });
+    $('#openMemoryBtn').addEventListener('click', () => { closeAll(); loadMemory(); openSheet('memorySheet'); });
+    $('#openEvoBtn').addEventListener('click', () => { closeAll(); loadEvolution(); openSheet('evoSheet'); });
+    $('#signOutBtn').addEventListener('click', () => {
+      clearAuth(); renderAvatar();
+      activeProjectId = null; activeProject = null; localStorage.removeItem('fenix_project');
+      renderAccountSheet(); loadProjects(); syncModelTag(); renderMessages(); closeAll();
+      showToast('Signed out');
+    });
+  } else {
+    body.innerHTML = `
+      <p style="text-align:center; color:var(--text-2); font-size:13.5px; line-height:1.7; margin:6px 0 16px">
+        You're using Phoenix as a guest — chats stay on this device.<br>Sign in to sync <b>cloud projects</b> with <b>Phoenix Coder</b>.</p>
+      <button class="auth-btn" id="acctSignInBtn"><i class="fa-solid fa-right-to-bracket"></i>Sign in with email</button>`;
+    $('#acctSignInBtn').addEventListener('click', () => { closeAll(); startAuth(USER ? 'signin' : 'signin'); });
+  }
+}
+$('#acctBtn').addEventListener('click', () => { renderAccountSheet(); openSheet('accountSheet'); });
+
+/* ===== Auth overlay ===== */
+let authMode = 'signin';
+function startAuth(mode) {
+  authMode = mode || 'signin';
+  $('#authErr').classList.remove('show');
+  $('#nameField').style.display = authMode === 'signup' ? 'block' : 'none';
+  $('#authTitle').textContent = authMode === 'signup' ? 'Create your account' : 'Welcome back';
+  $('#authSub').textContent = authMode === 'signup'
+    ? 'One account for all your devices — chats stay local, projects live in your private cloud space.'
+    : 'Sign in with your email to unlock cloud projects that follow you across devices.';
+  $('#authSubmitLbl').textContent = authMode === 'signup' ? 'Create account' : 'Sign in';
+  $('#authSwitchText').textContent = authMode === 'signup' ? 'Already have an account?' : 'New here?';
+  $('#authSwitchBtn').textContent = authMode === 'signup' ? 'Sign in instead' : 'Create an account';
+  $('#authScreen').classList.remove('hide');
+  setTimeout(() => $('#authEmail').focus(), 250);
+}
+function authErr(msg) {
+  const el = $('#authErr');
+  el.textContent = msg;
+  el.classList.remove('show');
+  void el.offsetWidth; /* restart shake animation */
+  el.classList.add('show');
+}
+$('#authSwitchBtn').addEventListener('click', () => startAuth(authMode === 'signup' ? 'signin' : 'signup'));
+$('#authSkipBtn').addEventListener('click', () => $('#authScreen').classList.add('hide'));
+$('#authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#authSubmit');
+  const email = $('#authEmail').value.trim();
+  const pass = $('#authPass').value;
+  const name = $('#authName').value.trim();
+  btn.disabled = true;
+  $('#authSubmitIcon').className = 'fa-solid fa-spinner fa-spin';
+  try {
+    const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/signin';
+    const r = await fetch(apiUrl(endpoint), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, name }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Authentication failed');
+    saveAuth(data);
+    renderAvatar();
+    $('#authScreen').classList.add('hide');
+    await loadProjects();
+    showToast(authMode === 'signup' ? '🎉 Account created — welcome!' : 'Welcome back, ' + (data.user.name || data.user.email));
+  } catch (err) {
+    authErr(err.message || 'Connection failed — is the server running?');
+  }
+  btn.disabled = false;
+  $('#authSubmitIcon').className = 'fa-solid fa-right-to-bracket';
+});
+
+/* ===== AI status (server-backed — nothing for the user to configure) ===== */
+function refreshServerState() {
+  $('#serverState').innerHTML = IS_NATIVE
+    ? (API_BASE ? '✅ Connected to your Phoenix server' : '⚠️ APK not linked to a server yet — the developer sets the URL in web/config.js')
+    : '✅ AI ready — the key stays secure on the server, no setup needed';
+}
+
 /* ===== Init ===== */
-(function init() {
+(async function init() {
   syncSettingsUI();
   refreshServerState();
+  renderAvatar();
   if (!currentId && chats.length === 0) newChat();
   else { renderChats(); renderMessages(); }
-  if (IS_NATIVE && !API_BASE) showToast('Set API Server URL first');
+  if (USER && canUseServer()) {
+    /* Re-validate the stored token; fall back to guest on failure */
+    try {
+      const r = await fetch(apiUrl('/api/auth/me'), { headers: authHeaders() });
+      if (r.ok) { await loadProjects(); if (activeProjectId) await selectProject(activeProjectId); }
+      else { clearAuth(); renderAvatar(); }
+    } catch { clearAuth(); renderAvatar(); }
+  }
+  if (IS_NATIVE && !API_BASE) showToast('APK not linked to a server — the developer sets it in web/config.js');
   if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();
 </script>

@@ -21,6 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # No AI key here: the APK talks to the Phoenix server, which holds
+      # GEMINI_API_KEY in its own environment. Users never configure anything.
       - name: Sync Capacitor
         run: npx cap sync android
 
@@ -41,6 +43,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FenixStudio-debug-apk
+          name: FenixAI-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

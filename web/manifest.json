@@ -1,7 +1,7 @@
 {
-  "name": "Fenix AI",
-  "short_name": "Fenix",
-  "description": "Multimodal AI assistant — full-memory chat with photos, camera, documents, prompt enhancer and a pro prompt library",
+  "name": "Phoenix",
+  "short_name": "Phoenix",
+  "description": "Phoenix — an AI assistant built by Yassine. Chat, projects, memory, evolution and web research.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
@@ -11,8 +11,23 @@
   "background_color": "#ffffff",
   "theme_color": "#0d9488",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
