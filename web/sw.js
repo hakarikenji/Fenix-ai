@@ -1,4 +1,4 @@
-/* Phoenix — Service Worker */
+/* Fenix — Service Worker */
 const CACHE = "phoenix-v6";
 const SHELL = [
   "/",

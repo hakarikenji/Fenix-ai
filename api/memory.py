@@ -1,7 +1,7 @@
 """
-Phoenix Memory — structured, user-controlled memory store.
+Fenix Memory — structured, user-controlled memory store.
 
-Categories (A–F from the Phoenix spec):
+Categories (A–F from the Fenix spec):
   preferences  — user preferences
   projects     — what the user is working on
   goals        — long-term goals

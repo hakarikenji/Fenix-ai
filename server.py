@@ -1,5 +1,5 @@
 """
-Phoenix — خادم التطبيق
+Fenix — خادم التطبيق
 يقدم واجهة الويب ويستضيف /api/* بنفس منطق دوال الإنتاج في api/
 (المفتاح يبقى مخفياً في الخادم ولا يظهر في التطبيق إطلاقاً).
 
@@ -48,7 +48,7 @@ def api_preflight(_any):
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
-    """Multimodal Phoenix chat with full memory: history + new turn → model reply."""
+    """Multimodal Fenix chat with full memory: history + new turn → model reply."""
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     history = data.get("history") or []
@@ -95,7 +95,7 @@ def api_chat():
                 )
             return jsonify({"reply": reply})
 
-        # Phoenix Research: auto web search for time-sensitive questions
+        # Fenix Research: auto web search for time-sensitive questions
         # (only when SERPER_API_KEY is configured server-side; never faked).
         res = research_engine.maybe_research(message, gemini_key=KEY, tier=tier)
         if res:
@@ -162,7 +162,7 @@ def api_embedded_config():
     })
 
 
-# ===================== Phoenix Memory (user-controlled) =====================
+# ===================== Fenix Memory (user-controlled) =====================
 
 def _require_user():
     token = store.bearer_token()
@@ -226,7 +226,7 @@ def api_memory_export():
     return jsonify(memory_store.export_memory(token))
 
 
-# ===================== Phoenix Evolution =====================
+# ===================== Fenix Evolution =====================
 
 @app.route("/api/evolution", methods=["GET"])
 def api_evolution_profile():
@@ -388,5 +388,5 @@ def healthz():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    print(f"🔥 Phoenix running on port {port}")
+    print(f"🔥 Fenix running on port {port}")
     app.run(host="0.0.0.0", port=port, threaded=True)

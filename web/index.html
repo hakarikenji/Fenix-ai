@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Phoenix</title>
+<title>Fenix</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
@@ -189,7 +189,7 @@
   }
   .code-copy:hover { background: rgba(255, 255, 255, .24); }
 
-  /* Sources card (Phoenix Research) */
+  /* Sources card (Fenix Research) */
   .src-card {
     border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px;
     background: var(--bg-soft); padding: 10px 13px; margin-top: 8px; font-size: 12.5px;
@@ -513,7 +513,7 @@
 <div id="authScreen" class="hide">
   <div class="auth-card">
     <div class="auth-logo"><i class="fa-solid fa-fire"></i></div>
-    <h2 id="authTitle">Welcome to Phoenix</h2>
+    <h2 id="authTitle">Welcome to Fenix</h2>
     <p class="auth-sub" id="authSub">Sign in with your email to unlock cloud projects that follow you across devices.</p>
     <div class="auth-err" id="authErr"></div>
     <form id="authForm">
@@ -552,7 +552,7 @@
   <button class="h-brand" id="brandBtn" title="New chat">
     <div class="h-logo"><i class="fa-solid fa-fire"></i></div>
     <div>
-      <span class="h-name">Phoenix <span>AI</span></span>
+      <span class="h-name">Fenix <span>AI</span></span>
       <div class="h-sub" id="modeSub" style="display:none"><i class="fa-solid fa-code"></i> <span id="modeName"></span></div>
     </div>
   </button>
@@ -569,7 +569,7 @@
     <div class="welcome" id="welcome">
       <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
       <div class="w-code"><i class="fa-solid fa-less-than"></i><i class="fa-solid fa-greater-than"></i><i class="fa-solid fa-slash"></i></div>
-      <h1 id="welcomeTitle">Hey, I'm <em>Phoenix</em></h1>
+      <h1 id="welcomeTitle">Hey, I'm <em>Fenix</em></h1>
       <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
       <div class="suggests" id="suggests"></div>
     </div>
@@ -579,18 +579,18 @@
 <div class="composer-wrap">
   <div class="composer">
     <div id="attachments"></div>
-    <textarea id="input" rows="1" placeholder="Message Phoenix..."></textarea>
+    <textarea id="input" rows="1" placeholder="Message Fenix..."></textarea>
     <div class="composer-row">
       <div class="comp-left">
         <button class="comp-btn" id="attachBtn" title="Add photos, camera or files"><i class="fa-solid fa-plus"></i></button>
         <button class="comp-btn" id="micBtn" title="Voice input"><i class="fa-solid fa-microphone" id="micIcon"></i></button>
         <button class="comp-btn" id="newChatBtn" title="New chat"><i class="fa-solid fa-comment-dots"></i></button>
-        <span class="model-tag" id="modelTag">Phoenix Flash</span>
+        <span class="model-tag" id="modelTag">Fenix Flash</span>
       </div>
       <button class="send-btn" id="sendBtn" disabled title="Send"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
   </div>
-  <div class="disclaimer">Phoenix can make mistakes — verify important info. Built by Yassine.</div>
+  <div class="disclaimer">Fenix can make mistakes — verify important info. Built by Hakari.</div>
 </div>
 </div>
 
@@ -629,7 +629,7 @@
   <button class="new-chat" id="newProjectBtn"><i class="fa-solid fa-folder-plus"></i> New project</button>
   <div class="drawer-body" id="projectsList"></div>
   <div class="drawer-foot">
-    <div class="save-note" id="projNote">Projects save your app's code in the cloud and power <b>Phoenix Coder</b> — the AI sees every file on every message.</div>
+    <div class="save-note" id="projNote">Projects save your app's code in the cloud and power <b>Fenix Coder</b> — the AI sees every file on every message.</div>
   </div>
 </aside>
 
@@ -643,8 +643,8 @@
     <div class="set-group">
       <div class="set-label">Intelligence</div>
       <div class="seg" id="modelSeg">
-        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Phoenix Flash</button>
-        <button data-v="pro"><i class="fa-solid fa-brain"></i>Phoenix Pro</button>
+        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Fenix Flash</button>
+        <button data-v="pro"><i class="fa-solid fa-brain"></i>Fenix Pro</button>
       </div>
     </div>
     <div class="set-group">
@@ -664,9 +664,9 @@
     <div class="set-group">
       <div class="set-label">About</div>
       <div class="about-card">
-        <b>Phoenix 4.0</b> — an AI assistant built by Yassine, powered by Gemini.<br>
+        <b>Fenix 4.0</b> — an AI assistant built by Hakari, powered by Gemini.<br>
         Chat, projects, memory, evolution and web research. Voice, camera, documents.<br>
-        <span class="ver-tag">Version 4.0 · The AI model is Gemini — Phoenix is the system around it</span>
+        <span class="ver-tag">Version 4.0 · The AI model is Gemini — Fenix is the system around it</span>
       </div>
     </div>
   </div>
@@ -694,7 +694,7 @@
       <input id="projDesc" type="text" placeholder="A to-do app with reminders and dark mode">
     </div>
     <button class="auth-btn" id="projCreateBtn" type="button"><i class="fa-solid fa-rocket"></i>Create project</button>
-    <div class="save-note" style="margin-top:12px">Phoenix Coder will know the name, stack and goal of this project — and every file you add — in every message.</div>
+    <div class="save-note" style="margin-top:12px">Fenix Coder will know the name, stack and goal of this project — and every file you add — in every message.</div>
   </div>
 </div>
 
@@ -706,7 +706,7 @@
     <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="sheet-body">
-    <div class="save-note" style="margin-top:0">What Phoenix remembers about you. Everything is visible, editable and deletable — nothing is stored behind your back.</div>
+    <div class="save-note" style="margin-top:0">What Fenix remembers about you. Everything is visible, editable and deletable — nothing is stored behind your back.</div>
     <div class="field">
       <label for="memText">New memory</label>
       <input id="memText" type="text" placeholder="e.g. I prefer TypeScript and concise answers">
@@ -739,7 +739,7 @@
     <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="sheet-body">
-    <div class="save-note" style="margin-top:0">How Phoenix learns to work with you — only from repeated patterns (3+ observations). Never invented, always inspectable.</div>
+    <div class="save-note" style="margin-top:0">How Fenix learns to work with you — only from repeated patterns (3+ observations). Never invented, always inspectable.</div>
     <div class="seg" id="evoToggleSeg" style="margin-bottom:14px">
       <button data-v="on"><i class="fa-solid fa-toggle-on"></i>Evolution on</button>
       <button data-v="off"><i class="fa-solid fa-toggle-off"></i>Disabled</button>
@@ -767,18 +767,18 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const IS_NATIVE = typeof window.Capacitor !== 'undefined';
-/* ── Phoenix server connection (developer-only setting; users never configure anything).
+/* ── Fenix server connection (developer-only setting; users never configure anything).
    The AI key lives ONLY on the server (env var GEMINI_API_KEY). The app just calls
    its own origin — or, in the APK, the one server URL the developer set in web/config.js. */
 const API_BASE = ((window.PHOENIX_SERVER || '') + '').replace(/\/+$/, '');
 const apiUrl = (p) => API_BASE + p;
 
-const PHOENIX_SYSTEM = `You are "Phoenix" — an AI assistant built by Yassine.
+const PHOENIX_SYSTEM = `You are "Fenix" — an AI assistant built by Hakari.
 Your engine is Google's Gemini model; your uniqueness is the system around it:
 personality, memory, evolution, research and honesty.
 
 Identity & honesty rules:
-1. Your name is Phoenix. Built by Yassine. Never claim Yassine trained a foundation model.
+1. Your name is Fenix. Built by Hakari. Never claim Hakari trained a foundation model.
 2. Never claim to have performed an action you did not actually perform.
 3. Never fabricate tool results, web sources, code execution or memories.
 4. Distinguish clearly: model knowledge / retrieved web info / user memory / executed actions. Label proposals as "proposed".
@@ -794,8 +794,8 @@ const STYLE_HINTS = {
   concise: '- Style: keep answers tight and scannable \u2014 lead with the answer, then minimal supporting detail.',
   detailed: '- Style: give thorough, well-structured answers with examples, context and step-by-step detail where useful.',
 };
-/* Ultra code-builder persona — active inside project chats (Phoenix Coder). */
-const CODER_SYSTEM = `You are "Phoenix Coder" \u2014 the coding side of Phoenix, an AI assistant built by Yassine (engine: Google's Gemini model). You are an elite full-stack engineer: web apps, mobile apps, APIs, games, scripts, pipelines and DevOps.
+/* Ultra code-builder persona — active inside project chats (Fenix Coder). */
+const CODER_SYSTEM = `You are "Fenix Coder" \u2014 the coding side of Fenix, an AI assistant built by Hakari (engine: Google's Gemini model). You are an elite full-stack engineer: web apps, mobile apps, APIs, games, scripts, pipelines and DevOps.
 
 Your engineering rules:
 1. Deliver, don't describe: output complete runnable code \u2014 never "... rest of the code here" placeholders.
@@ -822,7 +822,7 @@ const SET = {
   model: localStorage.getItem('phoenix_model') || 'flash',
   style: localStorage.getItem('phoenix_style') || 'concise',
 };
-const MODEL_LABEL = { flash: 'Phoenix Flash', pro: 'Phoenix Pro' };
+const MODEL_LABEL = { flash: 'Fenix Flash', pro: 'Fenix Pro' };
 
 /* ===== Auth state ===== */
 let USER = null;
@@ -932,12 +932,12 @@ function msgHtml(m, idx) {
       ${atts ? `<div style="align-self:flex-start">${atts}</div>` : ''}
       <div class="bubble">${escHtml(m.content)}</div></div>`;
   }
-  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Phoenix</div>
+  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
     <div class="bubble">${renderMd(m.content)}</div>
     <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
 }
 
-/* Sources card under the last Phoenix reply (only when research actually ran) */
+/* Sources card under the last Fenix reply (only when research actually ran) */
 function renderSources(sources) {
   document.querySelectorAll('.src-card').forEach(el => el.remove());
   if (!sources || !sources.length) return;
@@ -961,9 +961,9 @@ function renderMessages() {
     const h = new Date().getHours();
     if (activeProjectId && activeProject) {
       $('#welcomeTitle').innerHTML = `Let's build <em>${escHtml(activeProject.name)}</em>`;
-      $('#welcomeSub').textContent = 'Phoenix Coder is ready — describe a feature and get complete, runnable code.';
+      $('#welcomeSub').textContent = 'Fenix Coder is ready — describe a feature and get complete, runnable code.';
     } else {
-      $('#welcomeTitle').innerHTML = `Hey, I'm <em>Phoenix</em>`;
+      $('#welcomeTitle').innerHTML = `Hey, I'm <em>Fenix</em>`;
       $('#welcomeSub').textContent = h < 12 ? 'Good morning — what can I do for you?' : h < 18 ? 'Good afternoon — what are we building today?' : 'Good evening — ask me anything.';
     }
     renderSuggests();
@@ -1102,9 +1102,9 @@ function setMicUI(on) {
 $('#micBtn').addEventListener('click', toggleMic);
 
 /* ===== AI calls =====
-   One single path: every AI call goes through the Phoenix server, which holds
+   One single path: every AI call goes through the Fenix server, which holds
    GEMINI_API_KEY in its environment. No key ever reaches this client. */
-let lastSources = null;   /* live web sources from Phoenix Research (this reply) */
+let lastSources = null;   /* live web sources from Fenix Research (this reply) */
 
 async function callAI(message, history, atts) {
   const res = await fetch(apiUrl('/api/chat'), {
@@ -1155,7 +1155,7 @@ async function send() {
   const col = $('#chatCol');
   col.insertAdjacentHTML('beforeend', `
     <div class="msg phoenix" id="typingMsg">
-      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Phoenix</div>
+      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
       <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
@@ -1483,7 +1483,7 @@ async function loadEvolution() {
           <button class="del" data-edel="${i.id}"><i class="fa-solid fa-trash"></i> Remove</button>
         </div>
       </div>`).join('')
-      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">No patterns yet — Phoenix is still observing.</p>';
+      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">No patterns yet — Fenix is still observing.</p>';
     ins.querySelectorAll('[data-edel]').forEach(b => b.addEventListener('click', async () => {
       await fetch(apiUrl('/api/evolution/insight/' + b.dataset.edel), { method: 'DELETE', headers: authHeaders() });
       loadEvolution(); showToast('Insight removed');
@@ -1547,7 +1547,7 @@ function renderAccountSheet() {
   } else {
     body.innerHTML = `
       <p style="text-align:center; color:var(--text-2); font-size:13.5px; line-height:1.7; margin:6px 0 16px">
-        You're using Phoenix as a guest — chats stay on this device.<br>Sign in to sync <b>cloud projects</b> with <b>Phoenix Coder</b>.</p>
+        You're using Fenix as a guest — chats stay on this device.<br>Sign in to sync <b>cloud projects</b> with <b>Fenix Coder</b>.</p>
       <button class="auth-btn" id="acctSignInBtn"><i class="fa-solid fa-right-to-bracket"></i>Sign in with email</button>`;
     $('#acctSignInBtn').addEventListener('click', () => { closeAll(); startAuth(USER ? 'signin' : 'signin'); });
   }
@@ -1610,7 +1610,7 @@ $('#authForm').addEventListener('submit', async (e) => {
 /* ===== AI status (server-backed — nothing for the user to configure) ===== */
 function refreshServerState() {
   $('#serverState').innerHTML = IS_NATIVE
-    ? (API_BASE ? '✅ Connected to your Phoenix server' : '⚠️ APK not linked to a server yet — the developer sets the URL in web/config.js')
+    ? (API_BASE ? '✅ Connected to your Fenix server' : '⚠️ APK not linked to a server yet — the developer sets the URL in web/config.js')
     : '✅ AI ready — the key stays secure on the server, no setup needed';
 }
 

@@ -1,5 +1,5 @@
 """
-Phoenix Research — web search + page extraction with honest degradation.
+Fenix Research — web search + page extraction with honest degradation.
 
 Pipeline: question → need? → search → fetch top pages → extract → synthesize
 → return answer + sources.
@@ -20,7 +20,7 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 MAX_FETCH_BYTES = 400_000
 FETCH_TIMEOUT = 12
 
-RESEARCH_SYSTEM = """You are Phoenix's research synthesizer. You receive a user
+RESEARCH_SYSTEM = """You are Fenix's research synthesizer. You receive a user
 question and real snippets/pages fetched from the web. Write a direct, useful
 answer grounded ONLY in the provided material. Rules:
 1. Never invent facts, numbers or sources — if the material is insufficient, say exactly what is missing.
@@ -70,7 +70,7 @@ def search_web(query: str, num: int = 6) -> list[dict]:
 
 def fetch_page_text(url: str, max_chars: int = 6000) -> str:
     """Fetch a page and strip it to readable text (very light extraction)."""
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Phoenix research)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Fenix research)"})
     with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as resp:
         raw = resp.read(MAX_FETCH_BYTES).decode("utf-8", errors="ignore")
     raw = re.sub(r"<(script|style)[\s\S]*?</\1>", " ", raw, flags=re.I)

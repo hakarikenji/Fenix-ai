@@ -1,7 +1,7 @@
 {
-  "name": "Phoenix",
-  "short_name": "Phoenix",
-  "description": "Phoenix — an AI assistant built by Yassine. Chat, projects, memory, evolution and web research.",
+  "name": "Fenix AI",
+  "short_name": "Fenix",
+  "description": "Fenix — an AI assistant built by Hakari. Chat, projects, memory, evolution and web research.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

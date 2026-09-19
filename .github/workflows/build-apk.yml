@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # No AI key here: the APK talks to the Phoenix server, which holds
+      # No AI key here: the APK talks to the Fenix server, which holds
       # GEMINI_API_KEY in its own environment. Users never configure anything.
       - name: Sync Capacitor
         run: npx cap sync android

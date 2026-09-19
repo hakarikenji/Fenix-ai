@@ -1,11 +1,11 @@
 """
-Phoenix Evolution — evidence-based learning profile about how Phoenix should
+Fenix Evolution — evidence-based learning profile about how Fenix should
 work with each user. Strictly separated from memory:
 
   Memory   = information ABOUT the user's world (facts, projects, goals).
-  Evolution= how Phoenix adapts its BEHAVIOR (communication, work style).
+  Evolution= how Fenix adapts its BEHAVIOR (communication, work style).
 
-Rules (from the Phoenix spec):
+Rules (from the Fenix spec):
 - Never invent traits: an insight needs >= MIN_EVIDENCE observations.
 - Everything is inspectable, editable and deletable by the user.
 - Evolution can be disabled entirely (enabled: false) — then nothing is

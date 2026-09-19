@@ -1,6 +1,6 @@
-# 🔥 Phoenix
+# 🔥 Fenix
 
-**Phoenix — an AI assistant built by Yassine**, powered by Google's Gemini model. Phoenix's identity is honest: the engine is Gemini; the uniqueness is the system around it — personality, structured memory, evolution, web research, projects with an elite coding mode, and verification honesty.
+**Fenix — an AI assistant built by Hakari**, powered by Google's Gemini model. Fenix's identity is honest: the engine is Gemini; the uniqueness is the system around it — personality, structured memory, evolution, web research, projects with an elite coding mode, and verification honesty.
 
 Works as an installable PWA on any phone and as a native Android APK. **Zero user configuration**: the AI key lives only on the server; users open the app, sign in, and chat.
 
@@ -17,11 +17,11 @@ The client never sees any key. The APK needs only **one non-secret value**: your
 ## 💬 The app
 
 - **Email accounts**: sign up / sign in (PBKDF2-hashed passwords, bearer tokens). Guests can chat — everything stays on-device
-- **Structured memory (user-controlled)**: six categories — preferences, projects, goals, working style, facts, temporary context. View, edit, delete, clear, and export everything. Phoenix never stores anything behind your back
-- **Phoenix Evolution**: a separate layer that learns how Phoenix should *work with you* — only from repeated evidence (3+ observations before an insight becomes active), never invented. Fully inspectable Evolution Log; correct, delete or disable it entirely
-- **Phoenix Coder (projects)**: create a project (name, stack, goal, files) — every message runs through the elite code-builder persona with full project context. Verification honesty built in: code is labeled **Proposed** until you actually run it — Phoenix never says "Fixed" or "Test passed" without a real confirmation
-- **Challenge Mode**: when Phoenix sees a materially better approach it offers a factual comparison instead of blindly following
-- **Web research**: for time-sensitive questions Phoenix searches the web, fetches pages, and shows numbered **Sources** — only when `SERPER_API_KEY` is configured on the server; otherwise it says so honestly instead of faking results (get a free key at [serper.dev](https://serper.dev))
+- **Structured memory (user-controlled)**: six categories — preferences, projects, goals, working style, facts, temporary context. View, edit, delete, clear, and export everything. Fenix never stores anything behind your back
+- **Fenix Evolution**: a separate layer that learns how Fenix should *work with you* — only from repeated evidence (3+ observations before an insight becomes active), never invented. Fully inspectable Evolution Log; correct, delete or disable it entirely
+- **Fenix Coder (projects)**: create a project (name, stack, goal, files) — every message runs through the elite code-builder persona with full project context. Verification honesty built in: code is labeled **Proposed** until you actually run it — Fenix never says "Fixed" or "Test passed" without a real confirmation
+- **Challenge Mode**: when Fenix sees a materially better approach it offers a factual comparison instead of blindly following
+- **Web research**: for time-sensitive questions Fenix searches the web, fetches pages, and shows numbered **Sources** — only when `SERPER_API_KEY` is configured on the server; otherwise it says so honestly instead of faking results (get a free key at [serper.dev](https://serper.dev))
 - **Real chat with memory**: the model remembers the whole conversation including images and documents
 - **Voice input 🎙**: native speech recognition in the APK, Web Speech API in browsers
 - **Attachments**: photo library, native camera, documents (PDF, code, CSV, JSON…)
@@ -44,7 +44,7 @@ cd android && ./gradlew assembleDebug
 # Output: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> ✅ **Secure by design** — no AI key in the app, ever. The APK calls your Phoenix server, which holds `GEMINI_API_KEY` in its environment. Set your server URL once in `web/config.js` before `npx cap sync android`.
+> ✅ **Secure by design** — no AI key in the app, ever. The APK calls your Fenix server, which holds `GEMINI_API_KEY` in its environment. Set your server URL once in `web/config.js` before `npx cap sync android`.
 >
 > Native camera capture uses the `@capacitor/camera` and voice input the `@capacitor-community/speech-recognition` plugin — both open a proper native permission prompt on first use.
 >
@@ -74,7 +74,7 @@ python server.py        # serves on 0.0.0.0:8000
 ```
 server.py                Flask server: UI + /api/chat /api/auth/* /api/projects* /api/memory* /api/evolution*
 api/
-  common.py              Phoenix personas (identity, coder, verification honesty) + Gemini calls
+  common.py              Fenix personas (identity, coder, verification honesty) + Gemini calls
   store.py               Accounts (PBKDF2) + cloud projects
   memory.py              Structured memory store (6 categories, CRUD + export)
   evolution.py           Evidence-based evolution profile + log
