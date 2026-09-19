@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Fenix Studio</string>
-    <string name="title_activity_main">Fenix Studio</string>
+    <string name="app_name">Fenix AI</string>
+    <string name="title_activity_main">Fenix AI</string>
     <string name="package_name">com.fenix.studio</string>
     <string name="custom_url_scheme">com.fenix.studio</string>
 </resources>

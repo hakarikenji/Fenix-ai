@@ -24,7 +24,7 @@ def flame_shape(size):
         (s * 0.28, s * 0.34),  # جناح أيسر أعلى
     ]
 
-def draw_flame(draw, size, offset=0, scale=1.0, colors=((255, 107, 53), (255, 61, 110))):
+def draw_flame(draw, size, offset=0, scale=1.0, colors=((20, 184, 166), (8, 145, 178))):
     pts = flame_shape(size)
     cx, cy = CENTER + offset, CENTER + offset
     scaled = [
@@ -43,14 +43,14 @@ def draw_flame(draw, size, offset=0, scale=1.0, colors=((255, 107, 53), (255, 61
         draw.polygon(layer_pts, fill=color)
 
 def make_icon(path, size, maskable=False):
-    img = Image.new("RGBA", (SIZE, SIZE), (13, 10, 31, 255))
+    img = Image.new("RGBA", (SIZE, SIZE), (255, 255, 255, 255))
     draw = ImageDraw.Draw(img)
 
-    # هالة خلفية
+    # Soft teal halo
     for r in range(SIZE, int(SIZE * 0.45), -8):
         t = (SIZE - r) / (SIZE * 0.55)
-        alpha = int(28 * (1 - t))
-        color = (255, 107, 53, alpha)
+        alpha = int(22 * (1 - t))
+        color = (13, 148, 136, alpha)
         draw.ellipse(
             [CENTER - r, CENTER - r, CENTER + r, CENTER + r],
             fill=color,
@@ -58,8 +58,8 @@ def make_icon(path, size, maskable=False):
 
     draw_flame(draw, SIZE, scale=0.78 if not maskable else 0.62)
 
-    # عين Fenix داخل الشعلة (تفاصيل الشخصية)
-    eye_color = (255, 240, 200, 255)
+    # Fenix eye inside the flame
+    eye_color = (255, 255, 255, 255)
     if not maskable:
         eye_r = SIZE * 0.045
         ey = CENTER + SIZE * 0.02

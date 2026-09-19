@@ -1,5 +1,5 @@
 /* Fenix Studio — Service Worker */
-const CACHE = "fenix-v2";
+const CACHE = "fenix-v3";
 const SHELL = [
   "/",
   "/index.html",

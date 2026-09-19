@@ -1,6 +1,6 @@
 {
   "appId": "com.fenix.studio",
-  "appName": "Fenix Studio",
+  "appName": "Fenix AI",
   "webDir": "web",
   "android": {
     "allowMixedContent": false

@@ -35,19 +35,24 @@ def api_preflight(_any):
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
-    """محادثة Fenix بذاكرة كاملة: السجل من العميل + رسالة جديدة → رد النموذج."""
+    """Multimodal Fenix chat with full memory: history + new turn → model reply."""
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     history = data.get("history") or []
-    if not message:
-        return jsonify({"error": "اكتب رسالتك أولاً"}), 400
+    attachments = data.get("attachments") or []
+    tier = data.get("model") if data.get("model") in ("pro", "flash") else "flash"
+    style = data.get("style") if data.get("style") in ("concise", "detailed") else "concise"
+    if not message and not attachments:
+        return jsonify({"error": "Type a message first"}), 400
     if not isinstance(history, list):
         history = []
     history = history[-40:]
     try:
-        return jsonify({"reply": gemini_chat(history, message)})
+        return jsonify({
+            "reply": gemini_chat(history, message, attachments, tier, style),
+        })
     except Exception as e:
-        return jsonify({"error": f"تعذر الاتصال: {e}"}), 502
+        return jsonify({"error": f"Connection failed: {e}"}), 502
 
 
 @app.route("/api/enhance", methods=["POST"])
@@ -56,11 +61,11 @@ def api_enhance():
     data = request.get_json(silent=True) or {}
     user_text = (data.get("text") or "").strip()
     if not user_text:
-        return jsonify({"error": "أدخل نصاً أولاً"}), 400
+        return jsonify({"error": "Enter some text first"}), 400
     try:
-        return jsonify({"result": gemini_enhance(f'أمر المستخدم:\n"""\n{user_text}\n"""')})
+        return jsonify({"result": gemini_enhance(f'User prompt:\n"""\n{user_text}\n"""')})
     except Exception as e:
-        return jsonify({"error": f"فشل الاتصال بـ Gemini: {e}"}), 502
+        return jsonify({"error": f"Gemini connection failed: {e}"}), 502
 
 
 @app.route("/api/library", methods=["GET"])
@@ -84,13 +89,13 @@ def api_library_apply(prompt_id: str):
     data = request.get_json(silent=True) or {}
     user_text = (data.get("text") or "").strip()
     if not user_text:
-        return jsonify({"error": "أدخل نصاً أولاً"}), 400
+        return jsonify({"error": "Enter some text first"}), 400
 
     filled = prompts[prompt_id]["template"].replace("{user_input}", user_text)
     try:
         return jsonify({"result": gemini_enhance(filled), "filled_prompt": filled})
     except Exception as e:
-        return jsonify({"error": f"فشل الاتصال بـ Gemini: {e}"}), 502
+        return jsonify({"error": f"Gemini connection failed: {e}"}), 502
 
 
 @app.route("/")
@@ -117,5 +122,5 @@ def healthz():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    print(f"🔥 Fenix Studio يعمل على المنفذ {port}")
+    print(f"🔥 Fenix AI running on port {port}")
     app.run(host="0.0.0.0", port=port, threaded=True)

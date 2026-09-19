@@ -1,94 +1,83 @@
 # 🔥 Fenix AI
 
-مساعد ذكاء اصطناعي كامل بأسلوب Claude — واجهة محادثة بيضاء نظيفة، ذاكرة كاملة للمحادثة، شخصية ذكية ومباشرة، مع أدوات إضافية (تحسين الأوامر + مكتبة برومبتات) مدمجة داخل الشات.
+A Claude-style multimodal AI chat app — clean white interface with a teal accent, full conversation memory, and a confident, human personality. Works as an installable PWA on any phone and as a native Android APK.
 
-## 💬 الواجهة (Claude-style)
+## 💬 The app
 
-- **شات حقيقي بذاكرة**: رسائل متتابعة، النموذج يتذكر كل المحادثة
-- **صندوق إدخال عائم** بأسفل الشاشة مع إرسال بـ Enter
-- **درج المحادثات**: محادثات متعددة محفوظة محلياً، حذف، تبديل
-- **درج الأدوات**: تحسين الأوامر + باحث الفيديو + وضع المستودع + Artifacts — النتائج تظهر داخل الشات
-- **Markdown كامل**: عناوين، جداول، صناديق أكواد، ونسخ أي رد
-- خلفية بيضاء دافئة (#faf9f5) وبرتقالي Fenix (#d97757)
+- **Real chat with memory**: the model remembers the entire conversation, including images and documents you shared earlier
+- **Floating composer** at the bottom, Enter to send, auto-growing textarea
+- **Chats drawer**: multiple conversations saved locally, rename-free titles, one-tap switch and delete
+- **Settings sheet**: Intelligence (Flash / Pro), Reply style (Concise / Detailed), Light / Dark theme
+- **Attachments**: photo library, camera capture, and documents (PDF, text, code, CSV, JSON…) — previewed before sending
+- **Markdown rendering**: headings, lists, tables, code blocks, with one-tap copy on every reply
+- **Prompt library** built into the API: Smart Video Finder, Smart Workspace Mode, Side Artifacts
+- Model fallback chain: if a Gemini model is under pressure or retired, the server automatically tries the next one — the app never stops
 
-## 🤖 تطبيق الأندرويد (APK)
+## 🤖 Android APK
 
-التطبيق مبني بـ [Capacitor](https://capacitorjs.com) — واجهة الويب نفسها داخل تطبيق أندرويد أصلي بأيقونة وشاشة بداية خاصتين بـ Fenix.
+The app is wrapped with [Capacitor](https://capacitorjs.com) — the same web UI inside a native Android app with its own Fenix icon and splash screen.
 
-**بناء APK تلقائياً:**
-- كل دفعة (push) إلى `main` تُشغّل سير عمل GitHub Actions (`.github/workflows/build-apk.yml`)
-- حمّل الـ APK من تبويب **Actions ← Build Android APK ← Artifacts**
-- ثبّته على هاتفك مباشرة (فعّل «التثبيت من مصادر غير معروفة» عند السؤال)
+**Automatic build:**
+- Every push to `main` runs the GitHub Actions workflow (`.github/workflows/build-apk.yml`)
+- Download the APK from **Actions → Build Android APK → Artifacts**
+- Install it on your phone (enable "Install from unknown sources" when asked)
 
-**بناء APK يدوياً على جهازك:**
+**Manual build on your machine:**
 ```bash
 npm install
 npx cap sync android
 cd android && ./gradlew assembleDebug
-# الناتج: android/app/build/outputs/apk/debug/app-debug.apk
+# Output: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> ⚠️ التطبيق يحتاج خادماً يعمل (server.py أو الاستضافة) — افتح زر **⚙️ الخادم** داخل التطبيق وضع رابط الخادم مرة واحدة، ويُحفظ محلياً.
+> ⚠️ The installed app needs a running server (locally or hosted). Open **Chats → API Server** in the app and set the server URL once — it is saved locally.
 
-## 📱 نسخة PWA (بديل سريع بدون APK)
+## 📱 PWA (quick alternative, no APK)
 
-تطبيق ويب كامل يعمل على هاتفك كأي تطبيق: أيقونة خاصة، ملء الشاشة، دعم أوفلاين للواجهة، وواجهة عربية RTL.
+Installable web app: own icon, full-screen, offline shell, English LTR UI.
 
-**المكونات:**
-- `server.py` — خادم التطوير (Flask): يقدم الواجهة + نقاط API (المفتاح يبقى مخفياً في الخادم)
-- `web/` — واجهة التطبيق (HTML/CSS/JS) + Manifest + Service Worker + أيقونات
-- `api/` — دوال الإنتاج السحابية (Serverless) بنفس منطق الخادم المحلي
+- `server.py` — dev server (Flask): serves the UI + `/api/*` endpoints (the API key stays hidden server-side)
+- `web/` — the app UI (HTML/CSS/JS) + Manifest + Service Worker + icons
+- `api/` — shared AI logic, also usable as cloud functions
 
-**التشغيل المحلي:**
+**Run locally:**
 ```bash
 pip install -r requirements.txt
-python server.py        # يعمل على 0.0.0.0:8000
+python server.py        # serves on 0.0.0.0:8000
 ```
 
-**التثبيت على الهاتف:**
-1. افتح رابط التطبيق من متصفح Chrome على أندرويد
-2. اضغط زر **«تثبيت»** في الشريط السفلي (أو: قائمة المتصفح ← «إضافة إلى الشاشة الرئيسية»)
-3. سيظهر التطبيق بأيقونة Fenix النارية — يعمل بملء الشاشة بدون شريط المتصفح
+**Install on your phone:**
+1. Open the app URL in Chrome on Android
+2. Tap **Install** in the bottom bar (or browser menu → "Add to Home screen")
+3. Fenix appears with its fire icon — full screen, no browser bar
 
-**مزايا التطبيق:**
-- ✨ **تحسين الأوامر**: اكتب فكرة بسيطة → احصل على Enhanced Prompt احترافي جاهز
-- 📚 **المكتبة الجاهزة**: باحث الفيديو الذكي (طوابع زمنية دقيقة)، وضع المستودع الذكي (إجابات من ملفاتك مع ذكر المصدر)، نافذة المحتوى الجانبية (Artifacts)
-- 📋 زر نسخ فوري لكل نتيجة
-
-## 🗂️ بنية المشروع
+## 🗂️ Project structure
 
 ```
-fenix.py, enhance.py     أدوات الطرفية
-server.py                خادم التطوير (Flask) + CORS للتطبيق
-web/                     واجهة التطبيق (تُستخدم في PWA وفي APK معاً)
-api/                     دوال الإنتاج السحابية
-android/                 مشروع الأندرويد (Capacitor)
-capacitor.config.json    إعدادات Capacitor
-scripts/                 مولدات الأيقونات وشاشات البداية
+server.py                Flask dev server: UI + /api/chat /api/enhance /api/library
+api/                     Shared AI logic (chat with memory, enhancer, prompt library)
+web/                     App UI (used by both PWA and the Capacitor APK)
+android/                 Capacitor Android project
+capacitor.config.json    Capacitor settings
+scripts/                 Icon / splash generators for web + Android
+fenix.py, enhance.py     Terminal tools (interactive chat, prompt enhancer)
 ```
 
-## ⚙️ الإعداد
+## ⚙️ Setup
 
-| الملف | الوظيفة |
-|---|---|
-| `fenix.py` | محرك Fenix: محادثة بذاكرة، تحليل صور وملفات، جلسة تفاعلية |
-| `enhance.py` | محسّن الأوامر من الطرفية |
-
-```bash
-python fenix.py                                # المحادثة التفاعلية
-python enhance.py "اكتب لي تقرير مبيعات"       # Enhanced Prompt فوري
-```
-
-## ⚙️ الإعداد
-
-ضع المفتاح في `.env` (أو عبر Settings → Environment في Freebuff):
+Put the key in `.env` (or via Freebuff Settings → Environment):
 ```
 GEMINI_API_KEY=your-api-key-here
 ```
-احصل عليه مجاناً من [Google AI Studio](https://aistudio.google.com/app/apikey).
+Get one free at [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-## 🧠 ملاحظات النماذج
+Terminal tools:
+```bash
+python fenix.py                     # interactive terminal chat
+python enhance.py "write a sales report"   # instant Enhanced Prompt
+```
 
-- نماذج Pro تتطلب خطة مدفوعة (حصة المجانية = 0)
-- `fenix.py` يختار تلقائياً: يجرّب Pro أولاً ثم ينتقل لأفضل Flash متاح
-- الخادم يستخدم سلسلة نماذج احتياطية: عند ضغط/إيقاف أي نموذج ينتقل تلقائياً للتالي — التطبيق لا يتوقف
+## 🧠 Model notes
+
+- Pro models require a paid plan (free-tier quota = 0)
+- The server uses a fallback model chain: when any model is pressed or unavailable it automatically moves to the next best one

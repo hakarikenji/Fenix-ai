@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_icons import CENTER, SIZE, draw_flame, lerp  # noqa: E402
 
-DARK_BG = (250, 249, 245, 255)  # #faf9f5 — الأبيض الدافئ بهوية Claude
+DARK_BG = (255, 255, 255, 255)  # White background — teal/white identity
 RES = "android/app/src/main/res"
 
 LAUNCHER_SIZES = {
@@ -48,7 +48,7 @@ def base_flame_image(with_eye: bool = True, scale: float = 0.78) -> Image.Image:
         ey = CENTER + SIZE * 0.02
         draw.ellipse(
             [CENTER - eye_r, ey - eye_r * 1.4, CENTER + eye_r, ey + eye_r * 1.4],
-            fill=(255, 240, 200, 255),
+            fill=(240, 253, 250, 255),
         )
     return img
 

@@ -1,20 +1,20 @@
 {
   "video_search": {
-    "title": "🔎 باحث الفيديو الذكي",
-    "description": "ابحث في أي فيديو أو تفريغ نصي عن لحظة محددة بدقة ثانية",
-    "placeholder": "اللقطة التي يذكر فيها سعر الاشتراك",
-    "template": "أمامك ملف فيديو (أو التفريغ النصي للفيديو مقترناً بالطوابع الزمنية Timestamps).\nمهمتك هي البحث بدقة عن طلب المستخدم التالي: \"{user_input}\"\n\nقم بصياغة الإجابة بالشكل التالي بدقة:\n- **الوقت المحدد:** [اكتب الدقيقة والثانية بدقة، مثلاً 12:45]\n- **السياق المذكور:** [ملخص دقيق لما قيل في هذه اللقطة]\n- **الاقتباس الحرفي:** \"[اكتب النص الذي قيل حرفياً في هذا الوقت]\"\n\nإن لم تجد المطلوب في الفيديو، قل ذلك صراحة ولا تخترع طابعاً زمنياً."
+    "title": "🔎 Smart Video Finder",
+    "description": "Find any moment in a video or transcript with second-accurate timestamps",
+    "placeholder": "The moment where they talk about the pricing",
+    "template": "You are given a video file (or the video transcript paired with timestamps).\nYour task is to search precisely for the following user request: \"{user_input}\"\n\nFormat the answer exactly like this:\n- **Exact time:** [minute and second, e.g. 12:45]\n- **Context:** [a precise summary of what is said at that moment]\n- **Literal quote:** \"[the exact words spoken at that time]\"\n\nIf you cannot find the requested moment, say so explicitly — never invent a timestamp."
   },
   "workspace_mode": {
-    "title": "📁 وضع المستودع الذكي",
-    "description": "اجعل النموذج يجيب حصراً من ملفاتك المرفوعة مع ذكر المصدر",
-    "placeholder": "ارفع ملفاتك ثم اطرح أسئلتك",
-    "template": "أنت الآن تعمل في بيئة \"مستودع الملفات الذكي\" (Workspace Mode). تم تزويدك بملفات وبيانات في سياق المحادثة.\nمهمتك:\n1. اعتبار هذه الملفات هي المرجع الأول والأساسي لكل إجاباتك القادمة.\n2. عند الإجابة، اذكر دائماً اسم الملف أو القسم الذي اقتبست منه المعلومة (مثال: بحسب صفحة 12 من ملف X...).\n3. إذا سألت المستخدم عن شيء غير موجود في الملفات المزودة، نبهه بلطف أنك تجيب من معرفتك العامة وليس من الملفات المرفوعة.\n\nسؤال/طلب المستخدم: {user_input}"
+    "title": "📁 Smart Workspace Mode",
+    "description": "Make the model answer strictly from your uploaded files, citing its source",
+    "placeholder": "Upload your files, then ask your questions",
+    "template": "You are now operating in \"Smart Workspace Mode\". You have been given files and data in this conversation's context.\nYour job:\n1. Treat these files as the first and primary reference for every answer you give from now on.\n2. When answering, always cite the file name or section you are quoting (e.g. According to page 12 of file X...).\n3. If the user asks about something not present in the provided files, gently note that you are answering from general knowledge, not from the uploaded files.\n\nUser request: {user_input}"
   },
   "artifacts": {
-    "title": "🪟 نافذة المحتوى الجانبية",
-    "description": "ولّد أكواداً ومستندات طويلة داخل Artifacts منفصلة عن المحادثة",
-    "placeholder": "أنشئ لي صفحة هبوط لمتجر قهوة",
-    "template": "أنت مساعد ذكي يدعم النوافذ التفاعلية الجانبية (Artifacts). عندما يكون المطلوب محتوى طويلاً أو معقداً (كود كامل، صفحة HTML/CSS، مستند طويل، خريطة ذهنية)، غلّفه داخل الوسوم التالية ليفصله النظام في نافذة جانبية:\n\n[START_ARTIFACT: TYPE=\"نوع المحتوى مثل code أو text أو html\" TITLE=\"عنوان المحتوى\"]\nهنا يوضع الكود أو النص بالكامل بدون اختصارات\n[END_ARTIFACT]\n\nالمحادثات العادية والشروحات البسيطة تُكتب كشات طبيعي خارج هذه الوسوم.\n\nطلب المستخدم: {user_input}"
+    "title": "🪟 Side Artifacts",
+    "description": "Generate long code and documents inside separate side windows, away from the chat",
+    "placeholder": "Create a landing page for a coffee shop",
+    "template": "You are an AI assistant that supports interactive side windows (Artifacts). Whenever the requested output is long or complex (a full program, an HTML/CSS page, a long document, a mind map), wrap it inside the following tags so the system can split it into a side window:\n\n[START_ARTIFACT: TYPE=\"content type such as code, text or html\" TITLE=\"content title\"]\nThe full code or text goes here, with no abbreviations\n[END_ARTIFACT]\n\nNormal conversation and simple explanations are written as regular chat outside these tags.\n\nUser request: {user_input}"
   }
 }

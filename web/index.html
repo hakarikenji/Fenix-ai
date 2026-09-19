@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#faf9f5">
+<meta name="theme-color" content="#0d9488">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,240 +14,344 @@
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <style>
   :root {
-    --bg: #faf9f5;          /* خلفية Claude الدافئة */
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
     --surface: #ffffff;
-    --text: #1a1a18;
-    --text-2: #6e6d66;
-    --line: #e8e6df;
-    --accent: #d97757;      /* برتقالي Claude */
-    --accent-soft: #f4ece6;
-    --user-bubble: #f0eee7;
-    --code-bg: #1f1e1b;
-    --shadow: 0 2px 16px rgba(0,0,0,.05);
+    --text: #0f172a;
+    --text-2: #64748b;
+    --text-3: #94a3b8;
+    --line: #e2e8f0;
+    --accent: #0d9488;
+    --accent-2: #0891b2;
+    --accent-grad: linear-gradient(135deg, #0d9488, #0891b2);
+    --accent-soft: #f0fdfa;
+    --accent-soft-2: #ecfeff;
+    --accent-ring: rgba(13, 148, 136, .18);
+    --user-bubble: #f1f5f9;
+    --code-bg: #0f172a;
+    --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
+    --shadow-lg: 0 12px 40px rgba(15, 23, 42, .12);
+    --danger: #ef4444;
+    --header-bg: rgba(255, 255, 255, .85);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [data-theme="dark"] {
+    --bg: #0b1220;
+    --bg-soft: #0f172a;
+    --surface: #111c30;
+    --text: #e2e8f0;
+    --text-2: #94a3b8;
+    --text-3: #64748b;
+    --line: #1e293b;
+    --accent: #2dd4bf;
+    --accent-2: #22d3ee;
+    --accent-soft: rgba(45, 212, 191, .10);
+    --accent-soft-2: rgba(34, 211, 238, .08);
+    --accent-ring: rgba(45, 212, 191, .22);
+    --user-bubble: #1a2740;
+    --code-bg: #020617;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, .5);
+    --danger: #f87171;
+    --header-bg: rgba(11, 18, 32, .85);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
-    font-family: ui-sans-serif, "Segoe UI", Tahoma, system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    display: flex; flex-direction: column;
-    height: 100dvh; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
+    transition: background .25s, color .25s;
   }
 
   /* ===== Header ===== */
   header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top));
+    padding: 10px 14px; padding-top: calc(10px + env(safe-area-inset-top));
     border-bottom: 1px solid var(--line);
-    background: rgba(250,249,245,.92); backdrop-filter: blur(10px);
-    flex: none;
+    background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    flex: none; z-index: 10;
   }
-  .h-brand { display: flex; align-items: center; gap: 10px; }
+  .h-brand { display: flex; align-items: center; gap: 10px; background: none; border: none; cursor: pointer; font-family: inherit; }
   .h-logo {
-    width: 32px; height: 32px; border-radius: 9px;
-    display: grid; place-items: center; font-size: 16px;
-    background: linear-gradient(135deg, #e8905f, #d97757);
-    color: #fff;
+    width: 34px; height: 34px; border-radius: 11px;
+    background: var(--accent-grad);
+    display: grid; place-items: center; color: #fff; font-size: 15px;
+    box-shadow: 0 4px 14px var(--accent-ring);
   }
-  .h-brand b { font-size: 16px; font-weight: 700; letter-spacing: .2px; }
-  .h-actions { display: flex; gap: 4px; }
+  .h-name { font-size: 17px; font-weight: 800; letter-spacing: -.2px; color: var(--text); }
+  .h-name span {
+    background: var(--accent-grad); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .h-actions { display: flex; gap: 2px; }
   .icon-btn {
-    width: 36px; height: 36px; border-radius: 10px; border: none; background: transparent;
+    width: 38px; height: 38px; border-radius: 12px; border: none; background: transparent;
     color: var(--text-2); font-size: 16px; cursor: pointer; display: grid; place-items: center;
-    transition: background .15s;
+    transition: background .15s, color .15s;
   }
-  .icon-btn:hover { background: var(--user-bubble); color: var(--text); }
+  .icon-btn:hover { background: var(--bg-soft); color: var(--text); }
 
-  /* ===== Chat area ===== */
-  main { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
-  .chat-col { max-width: 760px; margin: 0 auto; padding: 20px 16px 28px; }
+  /* ===== Chat ===== */
+  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  .chat-col { max-width: 780px; margin: 0 auto; padding: 22px 16px 30px; }
 
-  /* شاشة الترحيب */
-  .welcome { text-align: center; padding-top: 16vh; }
-  .welcome .mark { font-size: 44px; color: var(--accent); }
-  .welcome h1 { font-size: 26px; font-weight: 500; margin-top: 14px; color: var(--text); }
-  .welcome p { color: var(--text-2); font-size: 14px; margin-top: 8px; }
-  .suggests {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    max-width: 560px; margin: 30px auto 0; text-align: right;
+  .welcome { text-align: center; padding-top: 13vh; }
+  .w-mark {
+    width: 64px; height: 64px; margin: 0 auto; border-radius: 20px;
+    background: var(--accent-grad); display: grid; place-items: center;
+    color: #fff; font-size: 26px; box-shadow: 0 10px 30px var(--accent-ring);
   }
+  .welcome h1 { font-size: 27px; font-weight: 800; letter-spacing: -.4px; margin-top: 18px; }
+  .welcome h1 em { font-style: normal; color: var(--accent); }
+  .welcome p { color: var(--text-2); font-size: 14.5px; margin-top: 7px; }
+  .suggests { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; max-width: 580px; margin: 34px auto 0; }
   .sug {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
-    padding: 13px 15px; cursor: pointer; transition: all .15s; font-size: 13.5px;
-    line-height: 1.5; color: var(--text); font-family: inherit;
+    display: flex; align-items: center; gap: 11px; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px 15px; cursor: pointer; transition: all .18s; font-size: 13.5px; font-weight: 500;
+    line-height: 1.45; color: var(--text); font-family: inherit; box-shadow: var(--shadow);
   }
-  .sug:hover { border-color: var(--accent); box-shadow: var(--shadow); }
-  .sug i { color: var(--accent); margin-left: 8px; }
+  .sug:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .sug .sug-ic {
+    width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center;
+    font-size: 14px; background: var(--accent-soft); color: var(--accent);
+  }
 
-  /* الرسائل */
-  .msg { display: flex; flex-direction: column; margin-bottom: 22px; animation: rise .25s ease; }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .msg .who {
-    font-size: 12px; font-weight: 700; color: var(--text-2); margin-bottom: 6px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .msg .who .dot { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; color: #fff; }
-  .msg.user .who .dot { background: #8a8878; }
-  .msg.fenix .who .dot { background: linear-gradient(135deg, #e8905f, #d97757); }
-  .msg .bubble { font-size: 15px; line-height: 1.85; }
+  .msg { display: flex; flex-direction: column; margin-bottom: 26px; animation: rise .28s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .msg .who { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
+  .msg .who .dot { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; color: #fff; }
+  .msg.user .who .dot { background: #94a3b8; }
+  .msg.fenix .who .dot { background: var(--accent-grad); }
+  .msg .bubble { font-size: 15.5px; line-height: 1.75; }
   .msg.user .bubble {
-    background: var(--user-bubble); border-radius: 16px; padding: 11px 15px;
-    align-self: flex-start; max-width: 88%;
+    background: var(--user-bubble); border-radius: 18px 18px 18px 6px;
+    padding: 12px 16px; align-self: flex-start; max-width: 88%;
+    overflow-wrap: anywhere; white-space: pre-wrap;
   }
-  .msg.fenix .bubble { padding: 2px 2px 2px 0; }
+  .msg.fenix .bubble { padding: 2px 4px 2px 0; overflow-wrap: anywhere; }
 
-  /* Markdown داخل الردود */
-  .bubble p { margin: 8px 0; } .bubble p:first-child { margin-top: 0; } .bubble p:last-child { margin-bottom: 0; }
-  .bubble h1, .bubble h2, .bubble h3 { margin: 14px 0 8px; line-height: 1.4; }
+  .bubble p { margin: 9px 0; } .bubble p:first-child { margin-top: 0; } .bubble p:last-child { margin-bottom: 0; }
+  .bubble h1, .bubble h2, .bubble h3 { margin: 16px 0 8px; line-height: 1.35; }
   .bubble h1 { font-size: 19px; } .bubble h2 { font-size: 17px; } .bubble h3 { font-size: 15.5px; }
-  .bubble ul, .bubble ol { margin: 8px 0; padding-right: 22px; }
+  .bubble ul, .bubble ol { margin: 9px 0; padding-left: 24px; }
   .bubble li { margin: 4px 0; }
   .bubble code {
-    background: var(--accent-soft); color: #a4502e; border-radius: 5px;
-    padding: 1.5px 6px; font-size: 13px; font-family: ui-monospace, monospace;
+    background: var(--accent-soft); color: var(--accent); border-radius: 6px;
+    padding: 2px 6px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
   }
   .bubble pre {
-    background: var(--code-bg); color: #f5f2ea; border-radius: 12px;
-    padding: 14px; overflow-x: auto; margin: 10px 0; direction: ltr; text-align: left;
+    background: var(--code-bg); color: #e2e8f0; border-radius: 14px;
+    padding: 15px; overflow-x: auto; margin: 11px 0; direction: ltr; text-align: left;
+    border: 1px solid var(--line);
   }
   .bubble pre code { background: none; color: inherit; padding: 0; font-size: 13px; }
-  .bubble table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 13.5px; }
-  .bubble th, .bubble td { border: 1px solid var(--line); padding: 7px 10px; text-align: right; }
-  .bubble th { background: var(--surface); font-weight: 700; }
-  .bubble blockquote { border-right: 3px solid var(--accent); padding-right: 12px; color: var(--text-2); margin: 8px 0; }
+  .bubble table { border-collapse: collapse; margin: 11px 0; width: 100%; font-size: 13.5px; }
+  .bubble th, .bubble td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; }
+  .bubble th { background: var(--bg-soft); font-weight: 700; }
+  .bubble blockquote { border-left: 3px solid var(--accent); padding-left: 13px; color: var(--text-2); margin: 9px 0; }
   .bubble a { color: var(--accent); }
 
-  /* مؤشر الكتابة */
-  .typing { display: inline-flex; gap: 5px; padding: 8px 2px; }
-  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .4; animation: blink 1.2s infinite; }
+  .typing { display: inline-flex; gap: 5px; padding: 10px 2px; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: blink 1.2s infinite; }
   .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
-  @keyframes blink { 0%,80%,100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
 
-  /* ===== Composer (صندوق الإدخال مثل Claude) ===== */
-  .composer-wrap { flex: none; padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); }
-  .composer {
-    max-width: 760px; margin: 0 auto;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
-    box-shadow: 0 4px 24px rgba(0,0,0,.07);
-    padding: 10px 12px 8px; transition: border-color .2s;
+  .copy-msg {
+    border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px;
+    padding: 5px 9px; margin-top: 6px; border-radius: 8px; font-family: inherit;
+    opacity: 0; transition: opacity .15s; display: inline-flex; align-items: center; gap: 6px;
   }
-  .composer:focus-within { border-color: #d3b8a5; }
+  .msg.fenix:hover .copy-msg, .msg.fenix:active .copy-msg { opacity: 1; }
+  .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
+
+  /* ===== Composer ===== */
+  .composer-wrap { flex: none; padding: 6px 14px calc(12px + env(safe-area-inset-bottom)); }
+  .composer {
+    max-width: 780px; margin: 0 auto;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 24px;
+    box-shadow: var(--shadow-lg); padding: 11px 13px 9px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring), var(--shadow-lg); }
+
+  #attachments { display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
+  #attachments.has { display: flex; }
+  .att {
+    position: relative; width: 58px; height: 58px; border-radius: 13px; overflow: hidden;
+    border: 1px solid var(--line); background: var(--bg-soft);
+  }
+  .att img { width: 100%; height: 100%; object-fit: cover; }
+  .att .att-file {
+    width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; padding: 4px; text-align: center;
+  }
+  .att .att-file i { color: var(--accent); font-size: 15px; }
+  .att .att-file span { font-size: 8.5px; font-weight: 600; color: var(--text-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att .rm {
+    position: absolute; top: 3px; right: 3px; width: 19px; height: 19px; border-radius: 50%;
+    border: none; background: rgba(15, 23, 42, .75); color: #fff; font-size: 9px; cursor: pointer;
+    display: grid; place-items: center;
+  }
+
   #input {
     width: 100%; border: none; background: none; resize: none; outline: none;
-    font-family: inherit; font-size: 15px; line-height: 1.6; color: var(--text);
-    max-height: 150px; min-height: 26px;
+    font-family: inherit; font-size: 15.5px; line-height: 1.55; color: var(--text);
+    max-height: 160px; min-height: 26px;
   }
-  #input::placeholder { color: #a5a294; }
-  .composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
-  .comp-left { display: flex; gap: 6px; }
+  #input::placeholder { color: var(--text-3); }
+  .composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 7px; }
+  .comp-left { display: flex; align-items: center; gap: 5px; }
   .comp-btn {
-    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line);
     background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 14px;
     display: grid; place-items: center; transition: all .15s;
   }
-  .comp-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .comp-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .comp-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .model-tag { font-size: 11.5px; font-weight: 600; color: var(--text-3); padding: 0 4px; }
   .send-btn {
-    width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
-    background: var(--accent); color: #fff; font-size: 14px; display: grid; place-items: center;
-    transition: opacity .15s, transform .15s;
+    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 15px; display: grid; place-items: center;
+    transition: opacity .15s, transform .15s, box-shadow .15s; box-shadow: 0 4px 14px var(--accent-ring);
   }
-  .send-btn:disabled { opacity: .35; cursor: default; }
-  .send-btn:not(:disabled):hover { transform: scale(1.06); }
-  .disclaimer { text-align: center; font-size: 11px; color: #a5a294; margin-top: 8px; }
+  .send-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+  .send-btn:not(:disabled):hover { transform: scale(1.07); }
+  .disclaimer { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 9px; }
 
-  /* ===== Drawers: القائمة الجانبية (محادثات) + أدوات ===== */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 40; display: none; }
-  .overlay.show { display: block; }
-  .drawer {
-    position: fixed; top: 0; bottom: 0; width: min(82vw, 320px); z-index: 50;
-    background: var(--surface); box-shadow: -8px 0 32px rgba(0,0,0,.08);
-    display: flex; flex-direction: column; transition: transform .28s ease;
+  /* Attach menu */
+  .att-menu {
+    position: fixed; z-index: 60; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 200px; display: none;
   }
-  .drawer.right { right: 0; transform: translateX(105%); }
+  .att-menu.show { display: block; animation: rise .18s ease; }
+  .att-menu button {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: none; border: none; border-radius: 11px; cursor: pointer;
+    padding: 11px 13px; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text);
+    text-align: left; transition: background .13s;
+  }
+  .att-menu button:hover { background: var(--accent-soft); }
+  .att-menu button i { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 13px; }
+  .att-menu button small { display: block; font-size: 11px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+
+  /* ===== Drawers & sheets ===== */
+  .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 40; display: none; backdrop-filter: blur(2px); }
+  .overlay.show { display: block; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .drawer {
+    position: fixed; top: 0; bottom: 0; width: min(84vw, 330px); z-index: 50;
+    background: var(--surface); box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+  }
   .drawer.left { left: 0; transform: translateX(-105%); }
   .drawer.open { transform: translateX(0); }
-  .drawer-head { padding: 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
-  .drawer-head b { font-size: 15px; }
-  .drawer-body { flex: 1; overflow-y: auto; padding: 10px; }
+  .drawer-head { padding: 18px 16px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .drawer-head b { font-size: 15.5px; font-weight: 800; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 4px 10px; }
   .drawer-item {
-    display: flex; align-items: center; gap: 10px; width: 100%;
-    background: none; border: none; border-radius: 12px; cursor: pointer;
-    padding: 11px 12px; font-family: inherit; font-size: 13.5px; color: var(--text);
-    text-align: right; transition: background .15s; margin-bottom: 2px;
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    background: none; border: none; border-radius: 13px; cursor: pointer;
+    padding: 12px 12px; font-family: inherit; font-size: 13.5px; font-weight: 500; color: var(--text);
+    text-align: left; transition: background .15s; margin-bottom: 2px;
   }
-  .drawer-item:hover { background: var(--user-bubble); }
-  .drawer-item.active { background: var(--accent-soft); color: #a4502e; font-weight: 600; }
-  .drawer-item i { color: var(--text-2); font-size: 13px; flex: none; }
+  .drawer-item:hover { background: var(--bg-soft); }
+  .drawer-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .drawer-item i { color: var(--text-3); font-size: 13px; flex: none; }
   .drawer-item.active i { color: var(--accent); }
-  .drawer-item .del { margin-right: auto; opacity: 0; border: none; background: none; color: #c0beae; cursor: pointer; font-size: 12px; padding: 4px; }
+  .drawer-item .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drawer-item .del { margin-left: auto; opacity: 0; border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px; padding: 5px; border-radius: 7px; }
   .drawer-item:hover .del { opacity: 1; }
-  .drawer-item .del:hover { color: #d95c4a; }
+  .drawer-item .del:hover { color: var(--danger); background: rgba(239, 68, 68, .1); }
   .new-chat {
-    margin: 12px; padding: 12px; border-radius: 12px; border: none; cursor: pointer;
-    background: var(--accent); color: #fff; font-family: inherit; font-size: 14px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin: 4px 12px 10px; padding: 13px; border-radius: 14px; border: none; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    box-shadow: 0 6px 18px var(--accent-ring); transition: transform .15s;
   }
-  .tools-note { font-size: 11.5px; color: var(--text-2); padding: 4px 16px 14px; line-height: 1.7; }
-  .tools-note b { color: var(--text); }
+  .new-chat:hover { transform: translateY(-1px); }
+  .drawer-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  .foot-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+  .foot-row .fl { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text); background: none; border: none; cursor: pointer; font-family: inherit; padding: 6px 0; }
+  .foot-row .fl i { color: var(--text-3); width: 18px; }
+  .foot-row .fl:hover { color: var(--accent); }
+  .foot-row .fl:hover i { color: var(--accent); }
+  .server-state { font-size: 11px; color: var(--text-3); margin-top: 6px; line-height: 1.6; }
+  .server-state b { color: var(--accent); font-weight: 600; }
 
-  /* ===== أدوات (Enhance / Library) داخل الشات ===== */
-  .tool-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--accent-soft); color: #a4502e; border: none; border-radius: 20px;
-    padding: 7px 14px; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
-    margin: 4px; transition: all .15s;
+  /* Settings sheet */
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+    background: var(--surface); border-radius: 26px 26px 0 0;
+    box-shadow: var(--shadow-lg); transform: translateY(105%);
+    transition: transform .32s cubic-bezier(.32, .72, 0, 1);
+    max-height: 86dvh; display: flex; flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .tool-chip:hover { background: #ecdcd0; }
-  .copy-msg {
-    border: none; background: none; color: #b5b2a2; cursor: pointer; font-size: 12px;
-    padding: 4px 8px; margin-top: 4px; border-radius: 8px; font-family: inherit;
-    opacity: 0; transition: opacity .15s;
+  .sheet.open { transform: translateY(0); }
+  .sheet-grab { width: 40px; height: 4.5px; border-radius: 3px; background: var(--line); margin: 10px auto 2px; flex: none; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 12px; }
+  .sheet-head b { font-size: 17px; font-weight: 800; }
+  .sheet-body { overflow-y: auto; padding: 2px 20px 26px; }
+  .set-group { margin-bottom: 22px; }
+  .set-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-3); margin-bottom: 9px; }
+  .seg { display: flex; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; }
+  .seg button {
+    flex: 1; border: none; background: none; border-radius: 10px; padding: 10px 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; gap: 7px; transition: all .15s;
   }
-  .msg.fenix:hover .copy-msg { opacity: 1; }
-  .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
+  .seg button.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .seg button i { font-size: 12px; }
+  .seg button.on i { color: var(--accent); }
+  .about-card {
+    border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px;
+    background: var(--bg-soft); font-size: 13px; color: var(--text-2); line-height: 1.7;
+  }
+  .about-card b { color: var(--text); }
+  .ver-tag { font-size: 11px; color: var(--text-3); }
 
   /* Toast */
   #toast {
-    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(16px);
-    background: #2a2924; color: #fff; padding: 10px 20px; border-radius: 12px;
-    font-size: 13px; opacity: 0; pointer-events: none; transition: all .3s; z-index: 99;
+    position: fixed; bottom: 116px; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: #0f172a; color: #fff; padding: 11px 22px; border-radius: 14px;
+    font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all .3s; z-index: 99;
+    box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 8px;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast i { color: #2dd4bf; }
 
-  /* Scrollbar رقيق */
-  main::-webkit-scrollbar, .drawer-body::-webkit-scrollbar { width: 5px; }
-  main::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb { background: #ddd9cd; border-radius: 4px; }
+  main::-webkit-scrollbar, .drawer-body::-webkit-scrollbar, .sheet-body::-webkit-scrollbar { width: 5px; }
+  main::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 
-  @media (max-width: 480px) {
-    .suggests { grid-template-columns: 1fr; }
-  }
+  @media (max-width: 480px) { .suggests { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="h-brand">
-    <div class="h-logo">🔥</div>
-    <b>Fenix AI</b>
-  </div>
+  <button class="h-brand" id="brandBtn" title="New chat">
+    <div class="h-logo"><i class="fa-solid fa-fire"></i></div>
+    <span class="h-name">Fenix <span>AI</span></span>
+  </button>
   <div class="h-actions">
-    <button class="icon-btn" id="toolsBtn" title="الأدوات"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
-    <button class="icon-btn" id="chatsBtn" title="المحادثات"><i class="fa-solid fa-bars"></i></button>
+    <button class="icon-btn" id="themeBtn" title="Toggle theme"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+    <button class="icon-btn" id="chatsBtn" title="Chats"><i class="fa-solid fa-bars"></i></button>
+    <button class="icon-btn" id="settingsBtn" title="Settings"><i class="fa-solid fa-gear"></i></button>
   </div>
 </header>
 
 <main id="chatMain">
   <div class="chat-col" id="chatCol">
     <div class="welcome" id="welcome">
-      <div class="mark">✳</div>
-      <h1 id="welcomeTitle">مساء الخير ✨</h1>
-      <p>مع Fenix، مساعدك الذكي — اسأل عن أي شيء</p>
+      <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
+      <h1>Hey, I'm <em>Fenix</em></h1>
+      <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
       <div class="suggests">
-        <button class="sug" data-q="اشرح لي الفرق بين الذكاء الاصطناعي والتعلم الآلي ببساطة"><i class="fa-solid fa-lightbulb"></i>اشرح لي فرقاً تقنياً ببساطة</button>
-        <button class="sug" data-q="اكتب لي خطة عمل لمشروع مقهى صغير"><i class="fa-solid fa-pen-nib"></i>اكتب لي خطة عمل</button>
-        <button class="sug" data-q="ساعدني أحسّن سيرة ذاتية لوظيفة مبرمج"><i class="fa-solid fa-code"></i>ساعدني في سيرتي الذاتية</button>
-        <button class="sug" data-q="أخبرني قصة قصيرة ممتعة عن روبوت تعلم أن يحلم"><i class="fa-solid fa-wand-magic-sparkles"></i>احكِ لي قصة قصيرة</button>
+        <button class="sug" data-q="Explain the difference between AI, machine learning and deep learning in simple terms."><span class="sug-ic"><i class="fa-solid fa-lightbulb"></i></span>Explain a concept simply</button>
+        <button class="sug" data-q="Write a short, punchy product description for a smart water bottle that tracks hydration."><span class="sug-ic"><i class="fa-solid fa-pen-nib"></i></span>Write something for me</button>
+        <button class="sug" data-q="I'll share a screenshot of an error. What should I include so you can debug it fastest?"><span class="sug-ic"><i class="fa-solid fa-code"></i></span>Help me with code</button>
+        <button class="sug" data-q="Give me a creative 7-day plan to build a consistent morning routine."><span class="sug-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>Plan my week</button>
       </div>
     </div>
   </div>
@@ -255,47 +359,90 @@
 
 <div class="composer-wrap">
   <div class="composer">
-    <textarea id="input" rows="1" placeholder="اكتب رسالتك لـ Fenix..."></textarea>
+    <div id="attachments"></div>
+    <textarea id="input" rows="1" placeholder="Message Fenix..."></textarea>
     <div class="composer-row">
       <div class="comp-left">
-        <button class="comp-btn" id="newChatBtn" title="محادثة جديدة"><i class="fa-solid fa-plus"></i></button>
-        <button class="comp-btn" id="toolsBtn2" title="الأدوات"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+        <button class="comp-btn" id="attachBtn" title="Add photos, camera or files"><i class="fa-solid fa-plus"></i></button>
+        <button class="comp-btn" id="newChatBtn" title="New chat"><i class="fa-solid fa-comment-dots"></i></button>
+        <span class="model-tag" id="modelTag">Fenix Flash</span>
       </div>
-      <button class="send-btn" id="sendBtn" disabled title="إرسال"><i class="fa-solid fa-arrow-up"></i></button>
+      <button class="send-btn" id="sendBtn" disabled title="Send"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
   </div>
-  <div class="disclaimer">Fenix قد يخطئ أحياناً — تحقق من المعلومات المهمة</div>
+  <div class="disclaimer">Fenix can make mistakes — verify important info.</div>
 </div>
 
-<!-- درج المحادثات -->
+<div class="att-menu" id="attMenu">
+  <button id="attPhoto"><i class="fa-regular fa-image"></i><span>Photo library<small>Choose from your gallery</small></span></button>
+  <button id="attCamera"><i class="fa-solid fa-camera"></i><span>Camera<small>Take a photo now</small></span></button>
+  <button id="attFile"><i class="fa-regular fa-folder-open"></i><span>Documents<small>PDF, code, text files</small></span></button>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+<input type="file" id="docInput" multiple hidden>
+
 <div class="overlay" id="overlay"></div>
-<aside class="drawer right" id="chatsDrawer">
+
+<aside class="drawer left" id="chatsDrawer">
   <div class="drawer-head">
-    <b>المحادثات</b>
+    <b>Chats</b>
     <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
   </div>
-  <button class="new-chat" id="newChatBtn2"><i class="fa-solid fa-plus"></i> محادثة جديدة</button>
+  <button class="new-chat" id="newChatBtn2"><i class="fa-solid fa-plus"></i> New chat</button>
   <div class="drawer-body" id="chatsList"></div>
-  <div class="tools-note">
-    اضغط على 🗑 لحذف محادثة<br>
-    <a href="#" id="serverLink" style="color:var(--accent); text-decoration:none">⚙️ عنوان الخادم</a> <span id="serverState" style="color:var(--text-2)"></span>
+  <div class="drawer-foot">
+    <div class="foot-row">
+      <button class="fl" id="themeBtn2"><i class="fa-solid fa-circle-half-stroke"></i>Appearance</button>
+    </div>
+    <div class="foot-row">
+      <button class="fl" id="serverLink"><i class="fa-solid fa-server"></i>API Server</button>
+    </div>
+    <div class="server-state" id="serverState"></div>
   </div>
 </aside>
 
-<!-- درج الأدوات -->
-<aside class="drawer left" id="toolsDrawer">
-  <div class="drawer-head">
-    <b>أدوات Fenix</b>
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Settings</b>
     <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
   </div>
-  <div class="drawer-body" id="toolsList"></div>
-  <div class="tools-note">
-    <b>تحسين الأوامر:</b> يحوّل فكرتك البسيطة إلى أمر احترافي جاهز لأي نموذج AI<br>
-    <b>المكتبة:</b> باحث الفيديو، وضع المستودع الذكي، نوافذ المحتوى
+  <div class="sheet-body">
+    <div class="set-group">
+      <div class="set-label">Intelligence</div>
+      <div class="seg" id="modelSeg">
+        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Fenix Flash</button>
+        <button data-v="pro"><i class="fa-solid fa-brain"></i>Fenix Pro</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Reply style</div>
+      <div class="seg" id="styleSeg">
+        <button data-v="concise" class="on"><i class="fa-solid fa-compress"></i>Concise</button>
+        <button data-v="detailed"><i class="fa-solid fa-expand"></i>Detailed</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Theme</div>
+      <div class="seg" id="themeSeg">
+        <button data-v="light"><i class="fa-regular fa-sun"></i>Light</button>
+        <button data-v="dark"><i class="fa-regular fa-moon"></i>Dark</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">About</div>
+      <div class="about-card">
+        <b>Fenix AI</b> — a multimodal assistant with full conversation memory.<br>
+        Send text, photos, camera shots and documents. Powered by Gemini.<br>
+        <span class="ver-tag">Version 3.0 · Made with 🔥</span>
+      </div>
+    </div>
   </div>
-</aside>
+</div>
 
-<div id="toast">✅ تم النسخ</div>
+<div id="toast"><i class="fa-solid fa-check"></i><span id="toastMsg">Copied</span></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -303,45 +450,69 @@ const IS_NATIVE = typeof window.Capacitor !== 'undefined';
 const API_BASE = (localStorage.getItem('fenix_api_base') || '').replace(/\/+$/, '');
 const apiUrl = (p) => API_BASE + p;
 
+/* ===== Settings ===== */
+const SET = {
+  model: localStorage.getItem('fenix_model') || 'flash',
+  style: localStorage.getItem('fenix_style') || 'concise',
+};
+const MODEL_LABEL = { flash: 'Fenix Flash', pro: 'Fenix Pro' };
+
 let chats = JSON.parse(localStorage.getItem('fenix_chats') || '[]');
 let currentId = localStorage.getItem('fenix_current');
+let pending = []; // attachments [{name, mime, dataUrl}]
 
-/* ===== إدارة المحادثات ===== */
+/* ===== Theme ===== */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('fenix_theme', t);
+  $('#themeIcon').className = t === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'dark' ? '#0b1220' : '#0d9488';
+}
+applyTheme(localStorage.getItem('fenix_theme') || 'light');
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  syncSettingsUI();
+}
+
+/* ===== Chats ===== */
 function saveChats() {
   localStorage.setItem('fenix_chats', JSON.stringify(chats));
   localStorage.setItem('fenix_current', currentId || '');
 }
 function currentChat() { return chats.find(c => c.id === currentId); }
 function newChat() {
-  const c = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'محادثة جديدة', messages: [], created: Date.now() };
+  const c = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'New chat', messages: [], created: Date.now() };
   chats.unshift(c);
   currentId = c.id;
   saveChats(); renderChats(); renderMessages();
-  closeDrawers();
+  closeAll();
   $('#input').focus();
 }
 function ensureChat() { if (!currentChat()) newChat(); return currentChat(); }
 function deleteChat(id, ev) {
   ev.stopPropagation();
   chats = chats.filter(c => c.id !== id);
-  if (currentId === id) { currentId = chats[0]?.id || null; }
+  if (currentId === id) currentId = chats[0]?.id || null;
   saveChats(); renderChats(); renderMessages();
 }
 
-/* ===== العرض ===== */
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function renderMd(t) { try { return marked.parse(t); } catch { return '<p>' + escHtml(t).replace(/\n/g, '<br>') + '</p>'; } }
+
 function renderChats() {
   $('#chatsList').innerHTML = chats.map(c => `
     <button class="drawer-item ${c.id === currentId ? 'active' : ''}" data-id="${c.id}">
       <i class="fa-regular fa-message"></i>
-      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${escHtml(c.title)}</span>
-      <button class="del" data-del="${c.id}" title="حذف"><i class="fa-regular fa-trash-can"></i></button>
-    </button>`).join('') || '<p style="text-align:center; color:var(--text-2); font-size:13px; padding:20px">لا محادثات بعد</p>';
+      <span class="lbl">${escHtml(c.title)}</span>
+      <span class="del" data-del="${c.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
+    </button>`).join('') || '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px">No chats yet</p>';
 
   document.querySelectorAll('.drawer-item').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.del')) return;
       currentId = el.dataset.id;
-      saveChats(); renderChats(); renderMessages(); closeDrawers();
+      saveChats(); renderChats(); renderMessages(); closeAll();
     });
   });
   document.querySelectorAll('[data-del]').forEach(el =>
@@ -349,78 +520,100 @@ function renderChats() {
   );
 }
 
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function renderMd(t) { try { return marked.parse(t); } catch { return '<p>' + escHtml(t).replace(/\n/g, '<br>') + '</p>'; } }
-
 function msgHtml(m, idx) {
   if (m.role === 'user') {
-    return `<div class="msg user"><div class="who"><span class="dot"><i class="fa-solid fa-user"></i></span>أنت</div><div class="bubble">${escHtml(m.content).replace(/\n/g, '<br>')}</div></div>`;
+    const atts = (m.attachments || []).map(a => a.mime.startsWith('image/')
+      ? `<img src="${a.dataUrl}" alt="" style="max-width:200px; border-radius:12px; margin:4px 0; display:block">`
+      : `<div style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); color:var(--accent); border-radius:9px; padding:5px 10px; font-size:12px; font-weight:600; margin:3px 2px"><i class="fa-regular fa-file"></i>${escHtml(a.name)}</div>`
+    ).join('');
+    return `<div class="msg user"><div class="who"><span class="dot"><i class="fa-solid fa-user"></i></span>You</div>
+      ${atts ? `<div style="align-self:flex-start">${atts}</div>` : ''}
+      <div class="bubble">${escHtml(m.content)}</div></div>`;
   }
-  return `<div class="msg fenix"><div class="who"><span class="dot">🔥</span>Fenix</div><div class="bubble">${renderMd(m.content)}</div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> نسخ</button></div>`;
+  return `<div class="msg fenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+    <div class="bubble">${renderMd(m.content)}</div>
+    <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
 }
 
 function renderMessages() {
   const c = currentChat();
   const col = $('#chatCol');
+  [...col.querySelectorAll('.msg')].forEach(el => el.remove());
   if (!c || c.messages.length === 0) {
     const h = new Date().getHours();
-    $('#welcomeTitle').textContent = h < 12 ? 'صباح الخير ✨' : h < 18 ? 'يوم سعيد ✨' : 'مساء الخير ✨';
+    $('#welcomeSub').textContent = h < 12 ? 'Good morning — what can I do for you?' : h < 18 ? 'Good afternoon — what are we building today?' : 'Good evening — ask me anything.';
     $('#welcome').style.display = 'block';
-    // أزل الرسائل القديمة لكن أبقِ الترحيب
-    [...col.querySelectorAll('.msg')].forEach(el => el.remove());
     return;
   }
   $('#welcome').style.display = 'none';
-  [...col.querySelectorAll('.msg')].forEach(el => el.remove());
   c.messages.forEach((m, i) => col.insertAdjacentHTML('beforeend', msgHtml(m, i)));
   bindCopyButtons();
   scrollDown();
 }
 
-function scrollDown() {
-  const main = $('#chatMain');
-  main.scrollTop = main.scrollHeight;
-}
+function scrollDown() { const m = $('#chatMain'); m.scrollTop = m.scrollHeight; }
 
 function bindCopyButtons() {
   document.querySelectorAll('[data-copy]').forEach(btn =>
     btn.addEventListener('click', async () => {
       const c = currentChat(); if (!c) return;
       const text = c.messages[+btn.dataset.copy]?.content || '';
-      await copyText(text);
+      try { await navigator.clipboard.writeText(text); }
+      catch {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove();
+      }
+      showToast('Copied to clipboard');
     })
   );
 }
 
-async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); }
-  catch {
-    const ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); ta.remove();
+/* ===== Attachments ===== */
+function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/') && !/^text\/|pdf|json|javascript|csv|markdown/.test(f.type) && !/\.(pdf|txt|md|csv|json|py|js|ts|html|css|xml|log)$/i.test(f.name)) {
+      showToast('Unsupported file: ' + f.name); continue;
+    }
+    if (f.size > 10 * 1024 * 1024) { showToast('Too large (max 10MB): ' + f.name); continue; }
+    const reader = new FileReader();
+    reader.onload = () => pending.push({ name: f.name, mime: f.type || 'application/octet-stream', dataUrl: reader.result });
+    reader.readAsDataURL(f);
   }
-  showToast('✅ تم النسخ');
+  setTimeout(renderAttachments, 350);
+}
+function renderAttachments() {
+  const box = $('#attachments');
+  box.innerHTML = pending.map((a, i) => `
+    <div class="att">
+      ${a.mime.startsWith('image/') ? `<img src="${a.dataUrl}" alt="">` : `<div class="att-file"><i class="fa-regular fa-file-lines"></i><span>${escHtml(a.name)}</span></div>`}
+      <button class="rm" data-rm="${i}"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join('');
+  box.classList.toggle('has', pending.length > 0);
+  box.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+    pending.splice(+b.dataset.rm, 1); renderAttachments();
+  }));
 }
 
-/* ===== الإرسال ===== */
+/* ===== Send ===== */
 async function send() {
   const input = $('#input');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text && pending.length === 0) return;
   const c = ensureChat();
 
-  // عنوان المحادثة من أول رسالة
-  if (c.messages.length === 0) c.title = text.slice(0, 40);
+  const atts = pending.splice(0);
+  renderAttachments();
+  if (c.messages.length === 0 && text) c.title = text.slice(0, 42);
 
-  c.messages.push({ role: 'user', content: text });
+  c.messages.push({ role: 'user', content: text || '(see attachment)', attachments: atts });
   input.value = ''; autoGrow(); updateSend();
   renderMessages(); saveChats(); renderChats();
 
-  // مؤشر الكتابة
   const col = $('#chatCol');
   col.insertAdjacentHTML('beforeend', `
     <div class="msg fenix" id="typingMsg">
-      <div class="who"><span class="dot">🔥</span>Fenix</div>
+      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
       <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
@@ -429,124 +622,116 @@ async function send() {
     const res = await fetch(apiUrl('/api/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: c.messages.slice(0, -1) }),
+      body: JSON.stringify({ message: text, history: c.messages.slice(0, -1), attachments: atts, model: SET.model, style: SET.style }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'خطأ غير معروف');
+    if (!res.ok) throw new Error(data.error || 'Unknown error');
     c.messages.push({ role: 'assistant', content: data.reply });
   } catch (e) {
-    c.messages.push({ role: 'assistant', content: '⚠️ ' + e.message + '\n\nتأكد أن الخادم يعمل وأن عنوانه مضبوط (إن كنت داخل التطبيق المثبت).' });
+    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + e.message + (IS_NATIVE && !API_BASE ? '\n\nSet your API Server URL in Chats → API Server.' : '') });
   }
 
   saveChats(); renderMessages(); renderChats();
 }
 
-/* ===== الأدوات (Enhance + المكتبة) ===== */
-let TOOLS = [];
-async function loadTools() {
-  try {
-    TOOLS = await (await fetch(apiUrl('/api/library'))).json();
-  } catch { TOOLS = []; }
-  $('#toolsList').innerHTML = `
-    <button class="drawer-item" id="toolEnhance"><i class="fa-solid fa-wand-magic-sparkles"></i>✨ تحسين الأوامر</button>
-    ${TOOLS.map(t => `<button class="drawer-item" data-tool="${t.id}"><i class="fa-solid fa-bolt"></i>${escHtml(t.title)}</button>`).join('')}`;
-
-  $('#toolEnhance').addEventListener('click', () => { closeDrawers(); startTool('enhance'); });
-  document.querySelectorAll('[data-tool]').forEach(el =>
-    el.addEventListener('click', () => { closeDrawers(); startTool(el.dataset.tool); })
-  );
-}
-
-async function startTool(kind, prefill) {
-  ensureChat();
-  let promptText;
-  if (kind === 'enhance') {
-    promptText = prefill || prompt('اكتب الأمر البسيط الذي تريد تحسينه:');
-    if (!promptText) return;
-    await runToolCall('/api/enhance', { text: promptText }, '✨ الأمر المحسّن');
-  } else {
-    promptText = prefill || prompt('أدخل طلبك لهذه الأداة:');
-    if (!promptText) return;
-    await runToolCall(`/api/library/${kind}`, { text: promptText }, '🧰 نتيجة الأداة');
-  }
-}
-
-async function runToolCall(url, body, label) {
-  const c = ensureChat();
-  c.messages.push({ role: 'user', content: `[أداة] ${label}: ${body.text}` });
-  renderMessages(); saveChats();
-  const col = $('#chatCol');
-  col.insertAdjacentHTML('beforeend', `
-    <div class="msg fenix" id="typingMsg">
-      <div class="who"><span class="dot">🔥</span>Fenix</div>
-      <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
-    </div>`);
-  scrollDown();
-  try {
-    const res = await fetch(apiUrl(url), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'خطأ');
-    c.messages.push({ role: 'assistant', content: data.result });
-  } catch (e) {
-    c.messages.push({ role: 'assistant', content: '⚠️ ' + e.message });
-  }
-  saveChats(); renderMessages();
-}
-
-/* ===== Drawers ===== */
+/* ===== Drawers / sheets ===== */
 function openDrawer(id) { $('#' + id).classList.add('open'); $('#overlay').classList.add('show'); }
-function closeDrawers() {
-  document.querySelectorAll('.drawer').forEach(d => d.classList.remove('open'));
+function openSheet(id) { $('#' + id).classList.add('open'); $('#overlay').classList.add('show'); }
+function closeAll() {
+  document.querySelectorAll('.drawer, .sheet').forEach(d => d.classList.remove('open'));
   $('#overlay').classList.remove('show');
+  $('#attMenu').classList.remove('show');
 }
 $('#chatsBtn').addEventListener('click', () => openDrawer('chatsDrawer'));
-$('#toolsBtn').addEventListener('click', () => openDrawer('toolsDrawer'));
-$('#toolsBtn2').addEventListener('click', () => openDrawer('toolsDrawer'));
+$('#settingsBtn').addEventListener('click', () => { syncSettingsUI(); openSheet('settingsSheet'); });
 $('#newChatBtn2').addEventListener('click', newChat);
-$('#overlay').addEventListener('click', closeDrawers);
-document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeDrawers));
+$('#newChatBtn').addEventListener('click', newChat);
+$('#brandBtn').addEventListener('click', newChat);
+$('#themeBtn').addEventListener('click', toggleTheme);
+$('#themeBtn2').addEventListener('click', toggleTheme);
+$('#overlay').addEventListener('click', closeAll);
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeAll));
+
+/* ===== Settings UI ===== */
+function seg(id, key, cb) {
+  const el = $('#' + id);
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (key) {
+      SET[key] = b.dataset.v;
+      localStorage.setItem('fenix_' + key, b.dataset.v);
+    }
+    syncSettingsUI();
+    if (cb) cb();
+  }));
+}
+seg('modelSeg', 'model', () => showToast('Model: ' + MODEL_LABEL[SET.model]));
+seg('styleSeg', 'style');
+seg('themeSeg', null, null);
+$('#themeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.v)));
+function syncSettingsUI() {
+  $('#modelSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.model));
+  $('#styleSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.style));
+  $('#themeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === document.documentElement.dataset.theme));
+  $('#modelTag').textContent = MODEL_LABEL[SET.model];
+}
+
+/* ===== Attach menu ===== */
+const attMenu = $('#attMenu');
+function toggleAttMenu() {
+  const r = $('#attachBtn').getBoundingClientRect();
+  attMenu.style.left = Math.max(10, r.left - 4) + 'px';
+  attMenu.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+  attMenu.classList.toggle('show');
+}
+$('#attachBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleAttMenu(); });
+document.addEventListener('click', (e) => { if (!e.target.closest('#attMenu') && !e.target.closest('#attachBtn')) attMenu.classList.remove('show'); });
+$('#attPhoto').addEventListener('click', () => { attMenu.classList.remove('show'); $('#fileInput').click(); });
+$('#attCamera').addEventListener('click', () => { attMenu.classList.remove('show'); $('#cameraInput').click(); });
+$('#attFile').addEventListener('click', () => { attMenu.classList.remove('show'); $('#docInput').click(); });
+$('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+$('#cameraInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+$('#docInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
 
 /* ===== Composer ===== */
 const input = $('#input');
-function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 150) + 'px'; }
-function updateSend() { $('#sendBtn').disabled = !input.value.trim(); }
+function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
+function updateSend() { $('#sendBtn').disabled = !input.value.trim() && pending.length === 0; }
 input.addEventListener('input', () => { autoGrow(); updateSend(); });
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 $('#sendBtn').addEventListener('click', send);
-$('#newChatBtn').addEventListener('click', newChat);
 document.querySelectorAll('.sug').forEach(s => s.addEventListener('click', () => { input.value = s.dataset.q; updateSend(); send(); }));
 
 /* ===== Toast ===== */
 let toastTimer;
 function showToast(m) {
-  const t = $('#toast'); t.textContent = m; t.classList.add('show');
+  $('#toastMsg').textContent = m;
+  const t = $('#toast'); t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* ===== Server URL (للتطبيق المثبت) ===== */
+/* ===== Server URL (installed app) ===== */
 function refreshServerState() {
-  $('#serverState').textContent = API_BASE ? '— متصل بـ ' + API_BASE : '— لم يُضبط بعد';
+  $('#serverState').innerHTML = API_BASE
+    ? 'Connected to <b>' + escHtml(API_BASE) + '</b>'
+    : (IS_NATIVE ? 'Not set — required in the installed app.' : 'Using the built-in dev server.');
 }
-$('#serverLink').addEventListener('click', (e) => {
-  e.preventDefault();
-  const v = prompt('عنوان الخادم (مثال: https://your-server.freebuff.app):', API_BASE);
+$('#serverLink').addEventListener('click', () => {
+  const v = prompt('API server URL (e.g. https://your-server.freebuff.app):', API_BASE);
   if (v === null) return;
   localStorage.setItem('fenix_api_base', v.trim().replace(/\/+$/, ''));
-  showToast('✅ تم الحفظ — إعادة التحميل...');
-  setTimeout(() => location.reload(), 800);
+  showToast('Saved — reloading…');
+  setTimeout(() => location.reload(), 700);
 });
 
 /* ===== Init ===== */
-(async function init() {
-  if (IS_NATIVE && !API_BASE) showToast('⚠️ اضبط عنوان الخادم من: المحادثات ← ⚙️');
+(function init() {
+  syncSettingsUI();
   refreshServerState();
   if (!currentId && chats.length === 0) newChat();
-  else renderChats(), renderMessages();
-  loadTools();
+  else { renderChats(); renderMessages(); }
+  if (IS_NATIVE && !API_BASE) showToast('Set API Server URL first');
   if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();
 </script>
