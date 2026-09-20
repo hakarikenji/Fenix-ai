@@ -67,8 +67,41 @@ def iter_history_files():
         yield export
 
 
+def load_any_json(path: Path):
+    """Load a JSON array/object OR JSONL (one JSON object per line)."""
+    text = Path(path).read_text(encoding="utf-8").strip()
+    if not text:
+        return None
+    if text[0] in "[{":
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass  # fall through to JSONL
+    rows = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows or None
+
+
 def pairs_from_doc(doc) -> list[tuple[str, str]]:
-    """Accepts a list of chats or a single chat dict; returns cleaned pairs."""
+    """Accepts a list of chats, a single chat dict, or ready message rows; returns cleaned pairs."""
+    if isinstance(doc, list) and doc and isinstance(doc[0], dict) and "messages" in doc[0]:
+        # Already-formatted training rows (e.g. seed.jsonl): use as-is
+        out = []
+        for row in doc:
+            msgs = row.get("messages") or []
+            if len(msgs) >= 3 and msgs[0]["role"] == "system":
+                user = "\n".join(m["content"] for m in msgs[1:-1] if m["role"] == "user")
+                asst = "\n".join(m["content"] for m in msgs if m["role"] == "assistant")
+                if user.strip() and asst.strip():
+                    out.append((user.strip(), asst.strip()))
+        return out
     chats = doc if isinstance(doc, list) else [doc]
     out = []
     for chat in chats:
@@ -101,9 +134,11 @@ def main() -> None:
         files.append(Path(args.export))
     for f in files:
         try:
-            doc = json.loads(Path(f).read_text(encoding="utf-8"))
+            doc = load_any_json(Path(f))
         except Exception as e:
             print(f"  skip {f}: {e}")
+            continue
+        if doc is None:
             continue
         got = pairs_from_doc(doc)
         raw.extend(got)
