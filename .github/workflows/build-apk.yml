@@ -23,6 +23,17 @@ jobs:
 
       # No AI key here: the APK talks to the Fenix server, which holds
       # GEMINI_API_KEY in its own environment. Users never configure anything.
+      # The server URL comes from a repo VARIABLE named FENIX_SERVER (Settings →
+      # Secrets and variables → Actions → Variables) and wins over web/config.js.
+      - name: Inject server URL for the APK
+        run: |
+          if [ -n "${{ vars.FENIX_SERVER }}" ]; then
+            printf 'window.FENIX_SERVER = "%s";\n' "${{ vars.FENIX_SERVER }}" > web/config.js
+            echo "Injected FENIX_SERVER from repo variable"
+          else
+            echo "No FENIX_SERVER variable set — using web/config.js as committed"
+          fi
+
       - name: Sync Capacitor
         run: npx cap sync android
 

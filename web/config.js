@@ -4,13 +4,16 @@
    environment variable GEMINI_API_KEY (Freebuff: Settings → Environment,
    GitHub CI/deploy: repository secrets).
 
-   The ONLY thing you may set here is the production server URL, used by
-   the Android APK build to reach your Fenix server. Leave "" while
-   developing — the APK will then ask nothing and simply show that the
-   server is not linked yet. Web/PWA users never need this: the app talks
-   to its own origin automatically.
+   FENIX_SERVER is the URL of your Fenix server. It is used ONLY by the
+   Android APK (WebView) to reach the API. In a normal browser the app
+   always talks to its own origin and this value is ignored.
+
+   To point released APKs at a production server without editing this file,
+   add a repository *variable* named FENIX_SERVER in GitHub (Settings →
+   Secrets and variables → Actions → Variables) — the build injects it
+   automatically and it wins over the value below.
 
    Example:
-   window.PHOENIX_SERVER = "https://your-phoenix-server.example.com";
+   window.FENIX_SERVER = "https://your-fenix-server.example.com";
 */
-window.PHOENIX_SERVER = "";
+window.FENIX_SERVER = "https://8000-iawl27qtbmjaeoxrj3nl4.e2b.app";

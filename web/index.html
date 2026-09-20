@@ -770,10 +770,10 @@ const IS_NATIVE = typeof window.Capacitor !== 'undefined';
 /* ── Fenix server connection (developer-only setting; users never configure anything).
    The AI key lives ONLY on the server (env var GEMINI_API_KEY). The app just calls
    its own origin — or, in the APK, the one server URL the developer set in web/config.js. */
-const API_BASE = ((window.PHOENIX_SERVER || '') + '').replace(/\/+$/, '');
+const API_BASE = (((window.FENIX_SERVER || window.PHOENIX_SERVER) || '') + '').replace(/\/+$/, '');
 const apiUrl = (p) => API_BASE + p;
 
-const PHOENIX_SYSTEM = `You are "Fenix" — an AI assistant built by Hakari.
+const FENIX_SYSTEM = `You are "Fenix" — an AI assistant built by Hakari.
 Your engine is Google's Gemini model; your uniqueness is the system around it:
 personality, memory, evolution, research and honesty.
 
@@ -1115,7 +1115,13 @@ async function callAI(message, history, atts) {
       projectId: activeProjectId || undefined,
     }),
   });
-  const data = await res.json();
+  const raw = await res.text();
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (_) {
+    /* Server (or proxy) answered with non-JSON (e.g. an HTML error page) */
+    throw new Error('Server unreachable (HTTP ' + res.status + ') — try again in a moment');
+  }
   if (!res.ok) throw new Error(data.error || 'Unknown error');
   lastSources = data.sources || null;   /* live web sources when research ran */
   return data.reply;
@@ -1165,7 +1171,7 @@ async function send() {
     c.messages.push({ role: 'assistant', content: reply });
     maybeOfferFileSave(reply);
   } catch (e) {
-    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e.message || 'Network error') + (IS_NATIVE ? '\n\nCheck your internet connection and try again.' : '') });
+    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e.message || 'Network error') + (IS_NATIVE && !API_BASE ? '\n\nThis APK is not linked to a server yet. Update the app to the latest build.' : IS_NATIVE ? '\nCheck your internet connection and try again.' : '') });
   }
 
   saveChats(); renderMessages(); renderChats();
