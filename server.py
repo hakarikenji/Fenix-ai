@@ -30,7 +30,51 @@ import urllib.request
 
 research_engine.load_config()  # read SERPER_API_KEY from the server environment
 
+import urllib.request
+
 app = Flask(__name__, static_folder="web", static_url_path="")
+
+# ===================== Fenix Core — custom brain routing =====================
+# When CUSTOM_LLM_BASE_URL is set, Fenix answers from the fine-tuned open-weight
+# model (OpenAI-compatible endpoint, e.g. Ollama/llama.cpp/vLLM). ANY failure —
+# connection, timeout, bad response, empty text — falls back to Gemini
+# automatically, and the reply is tagged with the brain that actually produced
+# it so the UI never lies about who answered.
+CUSTOM_LLM_BASE_URL = os.environ.get("CUSTOM_LLM_BASE_URL", "").rstrip("/")
+CUSTOM_LLM_MODEL = os.environ.get("CUSTOM_LLM_MODEL", "fenix-core")
+CUSTOM_LLM_TIMEOUT = float(os.environ.get("CUSTOM_LLM_TIMEOUT", "120"))
+
+
+def custom_brain_reply(message: str, history: list, attachments: list, style: str, hints: str) -> str | None:
+    """Try the custom brain; return None on ANY failure (caller falls back)."""
+    if not CUSTOM_LLM_BASE_URL:
+        return None
+    msgs = [{"role": "system", "content":
+             ("You are Fenix, an AI assistant built by Hakari. "
+              "Answer in the user's language. Be honest about what you did and did not do.")
+             + ("\n" + hints if hints else "")}]
+    for m in history[-20:]:
+        role = "user" if m.get("role") == "user" else "assistant"
+        txt = str(m.get("content") or "").strip()
+        if txt and txt != "(see attachment)":
+            msgs.append({"role": role, "content": txt})
+    if message:
+        msgs.append({"role": "user", "content": message})
+    try:
+        body = json.dumps({"model": CUSTOM_LLM_MODEL, "messages": msgs,
+                           "temperature": 0.6, "max_tokens": 2048}).encode()
+        req = urllib.request.Request(CUSTOM_LLM_BASE_URL + "/chat/completions", data=body,
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=CUSTOM_LLM_TIMEOUT) as r:
+            out = json.load(r)
+        text = ((out.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip()
+        return text or None
+    except Exception:
+        return None  # honest fallback — the app never shows a half-dead answer
+
+
+def _brain_tag() -> str:
+    return CUSTOM_LLM_MODEL if CUSTOM_LLM_BASE_URL else "gemini"
 
 
 @app.after_request
@@ -187,16 +231,22 @@ def api_chat():
                     "Report verification status honestly; label code as Proposed until the user confirms it runs",
                     "User mentions testing/verification in project chats",
                 )
-            return jsonify({"reply": reply})
+            return jsonify({"reply": reply, "brain": "gemini-coder"})
+
+        # Fenix Core: try the private fine-tuned brain first (if configured).
+        core = custom_brain_reply(message, history, attachments, style, hints)
+        if core:
+            return jsonify({"reply": core, "brain": CUSTOM_LLM_MODEL})
 
         # Fenix Research: auto web search for time-sensitive questions
         # (only when SERPER_API_KEY is configured server-side; never faked).
         res = research_engine.maybe_research(message, gemini_key=KEY, tier=tier)
         if res:
-            return jsonify({"reply": res["answer"], "sources": res["sources"], "note": res["note"]})
+            return jsonify({"reply": res["answer"], "sources": res["sources"], "note": res["note"], "brain": "gemini-research"})
 
         return jsonify({
             "reply": gemini_chat(history, message, attachments, tier, style, memory_hint=hints),
+            "brain": "gemini",
         })
     except Exception as e:
         return jsonify({"error": f"Connection failed: {e}"}), 502
@@ -253,6 +303,8 @@ def api_embedded_config():
         "embedded": bool(KEY),
         "chains": EMBEDDED_MODEL_CHAINS,
         "research": research_engine.research_is_configured(),
+        "brain": _brain_tag(),
+        "custom_brain": bool(CUSTOM_LLM_BASE_URL),
     })
 
 

@@ -197,6 +197,15 @@
   }
   .code-copy:hover { background: rgba(255, 255, 255, .24); }
 
+  /* Which brain answered — never lie about the engine */
+  .brain-tag {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+    font-size: 10.5px; font-weight: 600; color: var(--text-3);
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .brain-tag i { color: var(--accent); font-size: 9px; }
+
   /* Sources card (Fenix Research) */
   .src-card {
     border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 14px;
@@ -1000,6 +1009,18 @@ function renderSources(sources) {
   scrollDown();
 }
 
+function renderBrainBadge() {
+  document.querySelectorAll('.brain-tag').forEach(el => el.remove());
+  if (!lastBrain) return;
+  const label = lastBrain === 'gemini' ? 'Gemini engine'
+    : lastBrain === 'gemini-research' ? 'Gemini engine + live research'
+    : lastBrain === 'gemini-coder' ? 'Gemini engine · Coder'
+    : 'Fenix Core · private brain';
+  const col = $('#chatCol');
+  col.insertAdjacentHTML('beforeend', `<div class="brain-tag"><i class="fa-solid fa-microchip"></i>${label}</div>`);
+  scrollDown();
+}
+
 function renderMessages() {
   const c = currentChat();
   const col = $('#chatCol');
@@ -1159,6 +1180,7 @@ $('#micBtn').addEventListener('click', toggleMic);
 let lastSources = null;   /* live web sources from Fenix Research (this reply) */
 let generating = false;   /* a reply is currently streaming */
 let stopGen = null;       /* abort controller for the active generation */
+let lastBrain = null;     /* 'fenix-core' | 'gemini' | ... — shown under the reply */
 
 /* Stream a reply token-by-token. onDelta(text, full) renders progressively.
    Resolves with the final text; rejects on connection errors. */
@@ -1227,6 +1249,7 @@ async function callAI(message, history, atts) {
   }
   if (!res.ok) throw new Error(data.error || 'Unknown error');
   lastSources = data.sources || null;   /* live web sources when research ran */
+  lastBrain = data.brain || null;       /* which brain actually answered */
   return data.reply;
 }
 
@@ -1303,7 +1326,9 @@ async function send() {
   stopGen = null;
   saveChats(); renderMessages(); renderChats();
   renderSources(lastSources);
+  renderBrainBadge();
   lastSources = null;
+  lastBrain = null;
 }
 
 /* Send button becomes a Stop button while a reply streams in */
