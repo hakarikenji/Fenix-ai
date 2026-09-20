@@ -79,8 +79,9 @@ def main() -> None:
     ds_train, ds_val = fmt(train_rows), fmt(val_rows)
     tok_fn = lambda ex: tok(ex["text"], truncation=True, max_length=MAX_SEQ_LEN)  # noqa: E731
 
+    COMPUTE_DTYPE = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16  # T4 has no bf16
     bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                             bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
+                             bnb_4bit_compute_dtype=COMPUTE_DTYPE, bnb_4bit_use_double_quant=True)
     model = AutoModelForCausalLM.from_pretrained(BASE_MODEL, quantization_config=bnb, device_map="auto")
     model = prepare_model_for_kbit_training(model)
     model = get_peft_model(model, LoraConfig(
@@ -110,7 +111,8 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
-        bf16=True,
+        bf16=torch.cuda.is_bf16_supported(),
+        fp16=not torch.cuda.is_bf16_supported(),
         optim="paged_adamw_8bit",
         report_to=[],
         seed=42,
