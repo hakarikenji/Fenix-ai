@@ -229,9 +229,67 @@ def gemini_chat(
     memory_hint: str = "",
 ) -> str:
     """Multimodal chat with full memory: history + new message/attachments."""
-    system = FENIX_SYSTEM_INSTRUCTION.replace("{style_hint}", STYLE_HINTS.get(style, STYLE_HINTS["concise"]))
-    system = system.replace("{memory_hint}", memory_hint or "")
+    system = gemini_chat_system(style, memory_hint)
     return _generate(system, _chat_contents(history, message, attachments), 0.7, tier)
+
+
+def gemini_chat_system(style: str = "concise", memory_hint: str = "") -> str:
+    """Composed chat system instruction (shared by SDK and streaming paths)."""
+    system = FENIX_SYSTEM_INSTRUCTION.replace("{style_hint}", STYLE_HINTS.get(style, STYLE_HINTS["concise"]))
+    return system.replace("{memory_hint}", memory_hint or "")
+
+
+def gemini_coder_system(style: str = "detailed", memory_hint: str = "", project_context: str | None = None) -> str:
+    """Composed Coder system instruction (shared by SDK and streaming paths)."""
+    system = CODER_SYSTEM_INSTRUCTION.replace(
+        "{style_hint}", CODER_STYLE_HINTS.get(style, CODER_STYLE_HINTS["detailed"])
+    )
+    system = system.replace("{memory_hint}", memory_hint or "")
+    if project_context:
+        system += (
+            "\n# Active project context\n"
+            "The user is working inside this project — honor it in every answer:\n"
+            f"{project_context.strip()}\n"
+        )
+    return system
+
+
+def chat_contents(history: list[dict], message: str, attachments: list[dict] | None = None) -> list[dict]:
+    """Plain-dict contents for the REST streaming path (same shape as SDK)."""
+    contents = []
+    for m in history or []:
+        parts: list[dict] = []
+        for att in (m.get("attachments") or []):
+            try:
+                raw, mime = _parse_data_url(att.get("dataUrl") or "")
+            except Exception:
+                continue
+            import base64 as _b64
+            parts.append({"inline_data": {"mime_type": mime, "data": _b64.b64encode(raw).decode()}})
+        text = str(m.get("content", "")).strip()
+        if text and text != "(see attachment)":
+            parts.insert(0, {"text": text})
+        if parts:
+            contents.append({"role": "user" if m.get("role") == "user" else "model", "parts": parts})
+    new_parts: list[dict] = []
+    for att in (attachments or []):
+        try:
+            raw, mime = _parse_data_url(att.get("dataUrl") or "")
+        except Exception:
+            continue
+        import base64 as _b64
+        new_parts.append({"inline_data": {"mime_type": mime, "data": _b64.b64encode(raw).decode()}})
+    if message:
+        new_parts.insert(0, {"text": message})
+    if not new_parts:
+        new_parts = [{"text": "(attachment)"}]
+    contents.append({"role": "user", "parts": new_parts})
+    return contents
+
+
+def coder_contents(history: list[dict], message: str, attachments: list[dict] | None = None) -> list[dict]:
+    """Coder mode uses the same wire format."""
+    return chat_contents(history, message, attachments)
 
 
 def gemini_enhance(contents: str, tier: str = "flash") -> str:

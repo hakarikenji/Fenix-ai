@@ -307,6 +307,12 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .35); }
     55% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
   }
+  .send-btn.stop { background: var(--danger); box-shadow: 0 4px 14px rgba(239, 68, 68, .3); }
+  .cursor {
+    display: inline-block; width: 7px; height: 15px; margin-left: 2px; vertical-align: -2px;
+    background: var(--accent); border-radius: 2px; animation: caret 1s steps(2) infinite;
+  }
+  @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
   .model-tag { font-size: 11.5px; font-weight: 600; color: var(--text-3); padding: 0 4px; }
   .model-tag.code { color: var(--accent); }
   .send-btn {
@@ -1151,7 +1157,58 @@ $('#micBtn').addEventListener('click', toggleMic);
    One single path: every AI call goes through the Fenix server, which holds
    GEMINI_API_KEY in its environment. No key ever reaches this client. */
 let lastSources = null;   /* live web sources from Fenix Research (this reply) */
+let generating = false;   /* a reply is currently streaming */
+let stopGen = null;       /* abort controller for the active generation */
 
+/* Stream a reply token-by-token. onDelta(text, full) renders progressively.
+   Resolves with the final text; rejects on connection errors. */
+function streamAI(message, history, atts, onDelta) {
+  const ctrl = new AbortController();
+  stopGen = ctrl;
+  return new Promise((resolve, reject) => {
+    fetch(apiUrl('/api/chat/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        message, history, attachments: atts, model: SET.model, style: SET.style,
+        projectId: activeProjectId || undefined,
+      }),
+      signal: ctrl.signal,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) {
+        let msg = 'Server unreachable (HTTP ' + res.status + ')';
+        try { const d = await res.json(); if (d.error) msg = d.error; } catch (_) {}
+        throw new Error(msg);
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '', full = '', stopped = false;
+      ctrl.signal.addEventListener('abort', () => { stopped = true; });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const events = buf.split('\n\n');
+        buf = events.pop();
+        for (const ev of events) {
+          const line = ev.split('\n').find(l => l.startsWith('data:'));
+          if (!line) continue;
+          let d; try { d = JSON.parse(line.slice(5).trim()); } catch (_) { continue; }
+          if (d.t === 'delta' && d.v) { full += d.v; onDelta(d.v, full); }
+          else if (d.t === 'error') { if (!full) reject(new Error(d.v || 'Stream error')); else stopped = true; }
+          else if (d.t === 'done') { resolve(full); return; }
+        }
+      }
+      if (full) resolve(full);
+      else reject(new Error('Empty response — try again'));
+    }).catch((e) => {
+      if (ctrl.signal.aborted) reject(Object.assign(new Error('stopped'), { stopped: true }));
+      else reject(e);
+    });
+  });
+}
+
+/* Non-streaming fallback (used if the stream endpoint is missing/old server) */
 async function callAI(message, history, atts) {
   const res = await fetch(apiUrl('/api/chat'), {
     method: 'POST',
@@ -1211,18 +1268,52 @@ async function send() {
       <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
+  setGenerating(true);
+
+  let reply = '';
+  let liveEl = null;
+  const renderLive = (full) => {
+    const tm = $('#typingMsg');
+    if (!tm) return;
+    if (!liveEl) {
+      tm.querySelector('.bubble').innerHTML = '<div class="live-md"></div>';
+      liveEl = tm.querySelector('.live-md');
+    }
+    liveEl.innerHTML = renderMd(full) + '<span class="cursor"></span>';
+    scrollDown();
+  };
 
   try {
-    const reply = await callAI(text, c.messages.slice(0, -1), atts);
+    reply = await streamAI(text, c.messages.slice(0, -1), atts, (delta, full) => renderLive(full));
     c.messages.push({ role: 'assistant', content: reply });
     maybeOfferFileSave(reply);
   } catch (e) {
-    c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e.message || 'Network error') + (IS_NATIVE && !API_BASE ? '\n\nThis APK is not linked to a server yet. Update the app to the latest build.' : IS_NATIVE ? '\nCheck your internet connection and try again.' : '') });
+    if (e.stopped || e.name === 'AbortError') {
+      if (reply || liveEl) {
+        /* Keep whatever streamed before the stop */
+        c.messages.push({ role: 'assistant', content: (reply || liveEl?.textContent || '') + '\n\n*— stopped by you —*' });
+      }
+      if (!reply && liveEl) reply = liveEl.textContent || '';
+    } else {
+      c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e.message || 'Network error') + (IS_NATIVE && !API_BASE ? '\n\nThis APK is not linked to a server yet. Update the app to the latest build.' : IS_NATIVE ? '\nCheck your internet connection and try again.' : '') });
+    }
   }
 
+  setGenerating(false);
+  stopGen = null;
   saveChats(); renderMessages(); renderChats();
   renderSources(lastSources);
   lastSources = null;
+}
+
+/* Send button becomes a Stop button while a reply streams in */
+function setGenerating(on) {
+  generating = on;
+  const btn = $('#sendBtn');
+  btn.classList.toggle('stop', on);
+  btn.innerHTML = on ? '<i class="fa-solid fa-square"></i>' : '<i class="fa-solid fa-arrow-up"></i>';
+  btn.title = on ? 'Stop' : 'Send';
+  btn.disabled = on ? false : !input.value.trim() && pending.length === 0;
 }
 
 /* ===== Drawers / sheets ===== */
@@ -1320,12 +1411,12 @@ $('#docInput').addEventListener('change', (e) => { addFiles(e.target.files); e.t
 /* ===== Composer ===== */
 const input = $('#input');
 function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
-function updateSend() { $('#sendBtn').disabled = !input.value.trim() && pending.length === 0; }
+function updateSend() { if (generating) return; $('#sendBtn').disabled = !input.value.trim() && pending.length === 0; }
 input.addEventListener('input', () => { autoGrow(); updateSend(); });
 input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!generating) send(); }
 });
-$('#sendBtn').addEventListener('click', send);
+$('#sendBtn').addEventListener('click', () => { if (generating && stopGen) { stopGen.abort(); return; } send(); });
 
 /* ===== Toast ===== */
 let toastTimer;

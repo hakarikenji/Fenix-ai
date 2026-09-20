@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
 
 # استيراد الأدوات المشتركة من مجلد api/
 sys.path.insert(0, str(Path(__file__).parent / "api"))
@@ -26,6 +26,7 @@ import store  # noqa: E402
 import memory as memory_store  # noqa: E402
 import evolution as evolution_store  # noqa: E402
 import research as research_engine  # noqa: E402
+import urllib.request
 
 research_engine.load_config()  # read SERPER_API_KEY from the server environment
 
@@ -44,6 +45,99 @@ def add_cors(response):
 @app.route("/api/<path:_any>", methods=["OPTIONS"])
 def api_preflight(_any):
     return Response(status=204)
+
+
+def _sse(data: dict) -> str:
+    return "data: " + json.dumps(data, ensure_ascii=False) + "\n\n"
+
+
+@app.route("/api/chat/stream", methods=["POST"])
+def api_chat_stream():
+    """Streaming chat: Server-Sent Events with real token-by-token output from
+    Gemini (streamGenerateContent with alt=sse), falling back through the model
+    chain. Events: {t:'delta', v:text} | {t:'done'} | {t:'error', v:message}.
+    The client can abort the HTTP request to stop generation at any moment."""
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []
+    attachments = data.get("attachments") or []
+    tier = data.get("model") if data.get("model") in ("pro", "flash") else "flash"
+    style = data.get("style") if data.get("style") in ("concise", "detailed") else "concise"
+    if not message and not attachments:
+        return jsonify({"error": "Type a message first"}), 400
+    history = history[-40:] if isinstance(history, list) else []
+
+    try:
+        token = store.bearer_token()
+        user = store.get_user(token)
+        hints = ""
+        if user:
+            hints = memory_store.memory_block(token) + evolution_store.evolution_block(token)
+        pid = data.get("projectId")
+        if pid:
+            if not user:
+                return jsonify({"error": "Sign in to work on projects"}), 401
+            proj = store.get_project(token, pid)
+            if not proj:
+                return jsonify({"error": "Project not found"}), 404
+            if data.get("save") and data.get("files"):
+                store.save_files(token, pid, data["files"])
+                proj = store.get_project(token, pid) or proj
+            from common import gemini_coder_system, coder_contents  # noqa
+            system = gemini_coder_system(
+                style, hints, store.project_context(proj))
+            contents = coder_contents(history, message, attachments)
+            temperature, chain = 0.25, EMBEDDED_MODEL_CHAINS["pro"]
+        else:
+            from common import gemini_chat_system, chat_contents
+            system = gemini_chat_system(style, hints)
+            contents = chat_contents(history, message, attachments)
+            temperature, chain = 0.7, EMBEDDED_MODEL_CHAINS.get(tier, EMBEDDED_MODEL_CHAINS["flash"])
+    except Exception as e:
+        return jsonify({"error": f"Connection failed: {e}"}), 502
+
+    @stream_with_context
+    def gen():
+        body = json.dumps({
+            "contents": contents,
+            "systemInstruction": {"parts": [{"text": system}]},
+            "generationConfig": {"temperature": temperature},
+        }).encode()
+        last_err = None
+        for model in chain:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={KEY}"
+            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+            try:
+                got_any = False
+                with urllib.request.urlopen(req, timeout=180) as up:
+                    for raw in up:
+                        line = raw.decode("utf-8", errors="ignore").strip()
+                        if not line.startswith("data:"):
+                            continue
+                        try:
+                            chunk = json.loads(line[5:].strip())
+                        except Exception:
+                            continue
+                        parts = (chunk.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+                        text = "".join(p.get("text", "") for p in parts)
+                        if text:
+                            got_any = True
+                            yield _sse({"t": "delta", "v": text})
+                if got_any:
+                    yield _sse({"t": "done"})
+                    return
+                last_err = RuntimeError("Empty response from " + model)
+            except Exception as e:
+                last_err = e
+                # Only fall through when nothing was streamed yet.
+                if got_any:
+                    yield _sse({"t": "done"})
+                    return
+        yield _sse({"t": "error", "v": str(last_err) or "All models unavailable"})
+
+    return Response(gen(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"
+    })
 
 
 @app.route("/api/chat", methods=["POST"])
