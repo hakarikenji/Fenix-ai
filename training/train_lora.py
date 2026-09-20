@@ -69,6 +69,8 @@ def main() -> None:
     print(f"train={len(train_rows)}  val={len(val_rows)}  base={BASE_MODEL}")
 
     tok = AutoTokenizer.from_pretrained(BASE_MODEL)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token  # Qwen has no pad token — required for batching
 
     def fmt(rows: list[dict]) -> Dataset:
         texts = [tok.apply_chat_template(r["messages"], tokenize=False, add_generation_prompt=False) for r in rows]
@@ -87,7 +89,13 @@ def main() -> None:
     model.print_trainable_parameters()
 
     out_dir = Path(args.out) / stamp
-    args_tf = TrainingArguments(
+
+    # Version-proof TrainingArguments: transformers >=5 removed/renamed some
+    # legacy kwargs (e.g. warmup_ratio). Build the full dict, then keep only
+    # kwargs this installed version actually supports.
+    import inspect
+
+    desired = dict(
         output_dir=str(out_dir),
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch,
@@ -97,7 +105,6 @@ def main() -> None:
         lr_scheduler_type="cosine",
         warmup_ratio=0.03,
         logging_steps=5,
-        eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=None,
         load_best_model_at_end=True,
@@ -107,13 +114,27 @@ def main() -> None:
         optim="paged_adamw_8bit",
         report_to=[],
         seed=42,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
+    sig = inspect.signature(TrainingArguments.__init__).parameters
+    filtered = {k: v for k, v in desired.items() if k in sig}
+    if "eval_strategy" in sig:
+        filtered["eval_strategy"] = "epoch"
+    elif "evaluation_strategy" in sig:
+        filtered["evaluation_strategy"] = "epoch"
+    dropped = sorted(set(desired) - set(filtered))
+    if dropped:
+        print(f"ℹ️ transformers compatibility: dropping unsupported args {dropped}")
+    args_tf = TrainingArguments(**filtered)
+
+    callbacks = []
+    if filtered.get("load_best_model_at_end") and "EarlyStoppingCallback" in globals():
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=2)]
     trainer = Trainer(
         model=model, args=args_tf,
         train_dataset=ds_train.map(tok_fn, batched=False, remove_columns=["text"]),
         eval_dataset=ds_val.map(tok_fn, batched=False, remove_columns=["text"]),
         data_collator=DataCollatorForSeq2Seq(tok, padding=True),
+        callbacks=callbacks,
     )
     result = trainer.train()
 
