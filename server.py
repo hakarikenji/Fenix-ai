@@ -43,6 +43,9 @@ app = Flask(__name__, static_folder="web", static_url_path="")
 CUSTOM_LLM_BASE_URL = os.environ.get("CUSTOM_LLM_BASE_URL", "").rstrip("/")
 CUSTOM_LLM_MODEL = os.environ.get("CUSTOM_LLM_MODEL", "fenix-core")
 CUSTOM_LLM_TIMEOUT = float(os.environ.get("CUSTOM_LLM_TIMEOUT", "120"))
+# Optional shared secret for YOUR brain (Bearer token sent on every call).
+# The brain server validates it; Gemini is untouched and keeps its own key.
+CUSTOM_LLM_API_KEY = os.environ.get("CUSTOM_LLM_API_KEY", "")
 
 
 def custom_brain_reply(message: str, history: list, attachments: list, style: str, hints: str) -> str | None:
@@ -63,8 +66,11 @@ def custom_brain_reply(message: str, history: list, attachments: list, style: st
     try:
         body = json.dumps({"model": CUSTOM_LLM_MODEL, "messages": msgs,
                            "temperature": 0.6, "max_tokens": 2048}).encode()
+        headers = {"Content-Type": "application/json"}
+        if CUSTOM_LLM_API_KEY:
+            headers["Authorization"] = "Bearer " + CUSTOM_LLM_API_KEY
         req = urllib.request.Request(CUSTOM_LLM_BASE_URL + "/chat/completions", data=body,
-                                     headers={"Content-Type": "application/json"})
+                                     headers=headers)
         with urllib.request.urlopen(req, timeout=CUSTOM_LLM_TIMEOUT) as r:
             out = json.load(r)
         text = ((out.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip()
