@@ -28,7 +28,8 @@
     --accent-soft: #e9faf6;
     --accent-soft-2: #e7f6fb;
     --accent-ring: rgba(13, 168, 158, .16);
-    --user-bubble: #edf4f7;
+    --user-bubble: linear-gradient(135deg, #12b3d8, #0793b8);
+    --ai-bubble: #f1f6f8;
     --code-bg: #0d1b2a;
     --shadow: 0 1px 2px rgba(11, 42, 53, .05), 0 10px 30px rgba(11, 42, 53, .07);
     --shadow-lg: 0 18px 50px rgba(11, 42, 53, .14);
@@ -48,7 +49,8 @@
     --accent-soft: rgba(47, 216, 199, .12);
     --accent-soft-2: rgba(56, 207, 236, .10);
     --accent-ring: rgba(47, 216, 199, .24);
-    --user-bubble: #142939;
+    --user-bubble: linear-gradient(135deg, #0d84a8, #095f7d);
+    --ai-bubble: #12222f;
     --code-bg: #04101c;
     --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 30px rgba(0, 0, 0, .4);
     --shadow-lg: 0 18px 50px rgba(0, 0, 0, .55);
@@ -160,14 +162,23 @@
   .msg .who .dot { width: 24px; height: 24px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; color: #fff; }
   .msg.user .who .dot { background: linear-gradient(135deg, #9db3c4, #7b95a9); }
   .msg.phoenix .who .dot { background: var(--accent-grad); box-shadow: 0 3px 9px var(--accent-ring); }
-  .msg .bubble { font-size: 15.5px; line-height: 1.75; }
+  .msg .bubble { font-size: 15.5px; line-height: 1.75; unicode-bidi: plaintext; text-align: start; }
+  .msg.user { align-items: flex-end; }
+  .msg.user .who { flex-direction: row-reverse; }
   .msg.user .bubble {
-    background: var(--user-bubble); border-radius: 20px 20px 20px 7px;
-    padding: 12px 16px; align-self: flex-start; max-width: 88%;
+    background: var(--user-bubble); color: #fff;
+    border-radius: 20px 7px 20px 20px;
+    padding: 12px 16px; align-self: flex-end; max-width: 88%;
     overflow-wrap: anywhere; white-space: pre-wrap;
+    box-shadow: 0 2px 10px rgba(7, 147, 184, .28);
   }
-  .msg.phoenix .bubble { padding: 2px 4px 2px 0; overflow-wrap: anywhere; }
+  .msg.phoenix .bubble {
+    background: var(--ai-bubble); border: 1px solid var(--line);
+    border-radius: 7px 20px 20px 20px; padding: 12px 16px; align-self: flex-start; max-width: 92%; overflow-wrap: anywhere;
+  }
 
+  .bubble code { unicode-bidi: isolate; direction: ltr; }
+  .bubble pre { direction: ltr; text-align: left; }
   .bubble p { margin: 9px 0; } .bubble p:first-child { margin-top: 0; } .bubble p:last-child { margin-bottom: 0; }
   .bubble h1, .bubble h2, .bubble h3 { margin: 16px 0 8px; line-height: 1.35; }
   .bubble h1 { font-size: 19px; } .bubble h2 { font-size: 17px; } .bubble h3 { font-size: 15.5px; }
@@ -264,11 +275,11 @@
   .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
 
   /* ===== Composer ===== */
-  .composer-wrap { flex: none; padding: 6px 14px calc(12px + env(safe-area-inset-bottom)); }
+  .composer-wrap { flex: none; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); }
   .composer {
     max-width: 780px; margin: 0 auto;
     background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
-    box-shadow: var(--shadow-lg); padding: 12px 14px 10px;
+    box-shadow: var(--shadow-lg); padding: 14px 16px 12px;
     transition: border-color .2s, box-shadow .2s;
   }
   .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring), var(--shadow-lg); }
@@ -299,11 +310,11 @@
     max-height: 160px; min-height: 26px;
   }
   #input::placeholder { color: var(--text-3); }
-  .composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 7px; }
-  .comp-left { display: flex; align-items: center; gap: 5px; }
+  .composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .comp-left { display: flex; align-items: center; gap: 10px; }
   .comp-btn {
-    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line);
-    background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 14px;
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 15px;
     display: grid; place-items: center; transition: all .15s;
   }
   .comp-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
@@ -322,11 +333,11 @@
     background: var(--accent); border-radius: 2px; animation: caret 1s steps(2) infinite;
   }
   @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-  .model-tag { font-size: 11.5px; font-weight: 600; color: var(--text-3); padding: 0 4px; }
+  .model-tag { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 0 6px; }
   .model-tag.code { color: var(--accent); }
   .send-btn {
-    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
-    background: var(--accent-grad); color: #fff; font-size: 15px; display: grid; place-items: center;
+    width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 16px; display: grid; place-items: center;
     transition: opacity .15s, transform .15s, box-shadow .15s; box-shadow: 0 4px 14px var(--accent-ring);
   }
   .send-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
@@ -795,6 +806,12 @@ const IS_NATIVE = typeof window.Capacitor !== 'undefined';
    its own origin — or, in the APK, the one server URL the developer set in web/config.js. */
 const API_BASE = (((window.FENIX_SERVER || window.PHOENIX_SERVER) || '') + '').replace(/\/+$/, '');
 const apiUrl = (p) => API_BASE + p;
+/* Server reachability: the web app talks to its own origin (API_BASE = ''),
+   while the APK needs the developer-configured server URL. Guests can still
+   chat — this only gates cloud features (projects, memory, evolution).
+   NOTE: this was previously called but never defined → the New Project
+   button died with a silent ReferenceError. Now fixed. */
+const canUseServer = () => !IS_NATIVE || !!API_BASE;
 
 const FENIX_SYSTEM = `You are "Fenix" — an AI assistant built by Hakari.
 Your engine is Google's Gemini model; your uniqueness is the system around it:
@@ -985,11 +1002,11 @@ function msgHtml(m, idx) {
       : `<div style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); color:var(--accent); border-radius:9px; padding:5px 10px; font-size:12px; font-weight:600; margin:3px 2px"><i class="fa-regular fa-file"></i>${escHtml(a.name)}</div>`
     ).join('');
     return `<div class="msg user"><div class="who"><span class="dot"><i class="fa-solid fa-user"></i></span>You</div>
-      ${atts ? `<div style="align-self:flex-start">${atts}</div>` : ''}
-      <div class="bubble">${escHtml(m.content)}</div></div>`;
+      ${atts ? `<div style="align-self:flex-end">${atts}</div>` : ''}
+      <div class="bubble" dir="auto">${escHtml(m.content)}</div></div>`;
   }
   return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-feather-pointed"></i></span>Fenix</div>
-    <div class="bubble">${renderMd(m.content)}</div>
+    <div class="bubble" dir="auto">${renderMd(m.content)}</div>
     <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
 }
 
@@ -1288,7 +1305,7 @@ async function send() {
   col.insertAdjacentHTML('beforeend', `
     <div class="msg phoenix" id="typingMsg">
       <div class="who"><span class="dot"><i class="fa-solid fa-feather-pointed"></i></span>Fenix</div>
-      <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+      <div class="bubble" dir="auto"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
   setGenerating(true);
@@ -1299,7 +1316,7 @@ async function send() {
     const tm = $('#typingMsg');
     if (!tm) return;
     if (!liveEl) {
-      tm.querySelector('.bubble').innerHTML = '<div class="live-md"></div>';
+      tm.querySelector('.bubble').innerHTML = '<div class="live-md" dir="auto"></div>';
       liveEl = tm.querySelector('.live-md');
     }
     liveEl.innerHTML = renderMd(full) + '<span class="cursor"></span>';
@@ -1504,6 +1521,7 @@ async function selectProject(pid) {
   }
   /* Projects and regular chats have separate histories */
   currentId = null; saveChats();
+  pending = []; renderAttachments();
   renderProjects(); renderMessages(); syncModelTag(); closeAll();
   if (pid) showToast('⚡ Coder mode: ' + (activeProject ? activeProject.name : 'project'));
   $('#input').focus();
@@ -1532,6 +1550,11 @@ $('#projCreateBtn').addEventListener('click', async () => {
     closeAll();
     await loadProjects();
     await selectProject(data.id);
+    /* Fresh session: default brain, clean input, brand-new chat state */
+    SET.model = 'flash';
+    localStorage.setItem('fenix_model', SET.model);
+    syncSettingsUI();
+    $('#input').value = ''; autoGrow(); updateSend();
     showToast('🚀 Project created — Coder mode on');
   } catch (e) { showProjErr(e.message); }
   btn.disabled = false;
