@@ -1,5 +1,6 @@
-# Fenix Brain on Modal — مجاني $30/شهر، بدون بطاقة، deploy بأمر واحد من أي كمبيوتر.
+# Fenix Brain on Modal — مجاني $30/شهر، بدون بطاقة، deploy بأمر واحد.
 # يحمّل Qwen3-4B + عقل Fenix المدرَّب (adapter من Hugging Face) ويقدّم API متوافق مع OpenAI.
+# Cache حجمي دائم: ما يعيد تحميل النموذج مع كل بداية باردة.
 import os
 import urllib.request
 import zipfile
@@ -9,11 +10,14 @@ import modal
 
 app = modal.App("fenix-brain")
 
+hf_cache = modal.Volume.from_name("fenix-hf-cache", create_if_missing=True)
+
 image = modal.Image.debian_slim(python_version="3.11").pip_install(
     "torch==2.*",
     "transformers>=4.51",
     "peft>=0.11",
     "accelerate",
+    "huggingface_hub",
     "fastapi[standard]",
 )
 
@@ -23,7 +27,15 @@ ADAPTER_URL = os.environ.get(
 )
 
 
-@app.cls(image=image, cpu=8, memory=16384, timeout=900, scaledown_window=600)
+@app.cls(
+    image=image,
+    cpu=8,
+    memory=16384,
+    timeout=900,
+    scaledown_window=900,
+    volumes={"/root/.cache/huggingface": hf_cache},
+    env={"HF_HOME": "/root/.cache/huggingface"},
+)
 class FenixBrain:
     @modal.enter()
     def load(self):
@@ -70,11 +82,26 @@ class FenixBrain:
         return self.tok.decode(out[0][ids["input_ids"].shape[1]:], skip_special_tokens=True).strip()
 
 
-@app.function(image=image)
-@modal.fastapi_endpoint(method="POST", label="fenix-brain")
-def chat(data: dict):
-    msgs = (data or {}).get("messages") or [{"role": "user", "content": "hi"}]
-    max_new = int((data or {}).get("max_tokens") or 512)
-    temp = float((data or {}).get("temperature") or 0.6)
-    text = FenixBrain().reply.remote(msgs, max_new, temp)
-    return {"choices": [{"message": {"role": "assistant", "content": text}}]}
+@app.function(image=image, timeout=1200)
+@modal.asgi_app(label="fenix-brain")
+def web():
+    from fastapi import FastAPI, Request
+
+    webapp = FastAPI()
+
+    @webapp.get("/")
+    async def health():
+        return {"status": "ok", "brain": "fenix-core"}
+
+    @webapp.post("/v1/chat/completions")
+    @webapp.post("/chat/completions")
+    async def completions(request: Request):
+        data = await request.json()
+        data = data or {}
+        msgs = data.get("messages") or [{"role": "user", "content": "hi"}]
+        max_new = int(data.get("max_tokens") or 512)
+        temp = float(data.get("temperature") or 0.6)
+        text = FenixBrain().reply.remote(msgs, max_new, temp)
+        return {"choices": [{"message": {"role": "assistant", "content": text}}]}
+
+    return webapp
