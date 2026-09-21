@@ -61,6 +61,39 @@ def main() -> None:
         DataCollatorForSeq2Seq, EarlyStoppingCallback, Trainer, TrainingArguments,
     )
 
+    class CETrainer(Trainer):
+        """Computes the causal-LM loss ourselves — version-proof.
+
+        transformers changed the model-internal loss path across versions and
+        some combos (Qwen3 + 4-bit + PEFT included) return only logits, making
+        the stock Trainer raise:
+            ValueError: The model did not return a loss from the inputs ...
+        By overriding compute_loss we no longer depend on the model's internal
+        loss at all: shift logits, mask pads with -100, plain CrossEntropy —
+        identical math on every version. Normalization matches the stock
+        Trainer exactly (sum/num_items_in_batch for gradient accumulation).
+        """
+
+        def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+            labels = inputs.pop("labels", None)
+            if labels is None:
+                raise ValueError("No labels in batch — the data collator must create them.")
+            outputs = model(**inputs)
+            logits = outputs.logits if hasattr(outputs, "logits") else outputs[0]
+
+            shift_logits = logits[:, :-1, :].contiguous().float()  # fp32 CE — safe under fp16/bf16
+            shift_labels = labels[:, 1:].contiguous()
+            flat_logits = shift_logits.view(-1, shift_logits.size(-1))
+            flat_labels = shift_labels.reshape(-1)
+
+            if num_items_in_batch is not None:  # stock Trainer normalization for gradient accumulation
+                loss = torch.nn.functional.cross_entropy(
+                    flat_logits, flat_labels, ignore_index=-100, reduction="sum"
+                ) / num_items_in_batch
+            else:
+                loss = torch.nn.functional.cross_entropy(flat_logits, flat_labels, ignore_index=-100)
+            return (loss, outputs) if return_outputs else loss
+
     data_dir, stamp = Path(args.data_dir), time.strftime("%Y%m%d-%H%M%S")
     train_rows = load_jsonl(data_dir / "train.jsonl")
     val_rows = load_jsonl(data_dir / "val.jsonl")
@@ -77,7 +110,11 @@ def main() -> None:
         return Dataset.from_dict({"text": texts})
 
     ds_train, ds_val = fmt(train_rows), fmt(val_rows)
-    tok_fn = lambda ex: tok(ex["text"], truncation=True, max_length=MAX_SEQ_LEN)  # noqa: E731
+
+    def tok_fn(ex: dict) -> dict:
+        out = tok(ex["text"], truncation=True, max_length=MAX_SEQ_LEN)
+        out["labels"] = list(out["input_ids"])  # causal LM: labels = inputs; collator pads them with -100
+        return out
 
     COMPUTE_DTYPE = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16  # T4 has no bf16
     bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
@@ -87,6 +124,7 @@ def main() -> None:
     model = get_peft_model(model, LoraConfig(
         r=LORA_R, lora_alpha=LORA_ALPHA, lora_dropout=LORA_DROPOUT,
         target_modules=TARGET_MODULES, task_type="CAUSAL_LM", bias="none"))
+    model.config.use_cache = False  # required with gradient checkpointing
     model.print_trainable_parameters()
 
     out_dir = Path(args.out) / stamp
@@ -129,9 +167,9 @@ def main() -> None:
     args_tf = TrainingArguments(**filtered)
 
     callbacks = []
-    if filtered.get("load_best_model_at_end") and "EarlyStoppingCallback" in globals():
+    if filtered.get("load_best_model_at_end"):
         callbacks = [EarlyStoppingCallback(early_stopping_patience=2)]
-    trainer = Trainer(
+    trainer = CETrainer(
         model=model, args=args_tf,
         train_dataset=ds_train.map(tok_fn, batched=False, remove_columns=["text"]),
         eval_dataset=ds_val.map(tok_fn, batched=False, remove_columns=["text"]),
