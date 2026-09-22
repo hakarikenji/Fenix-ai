@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0aa39a">
+<meta name="theme-color" content="#f97316">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -12,55 +12,59 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="/config.js"></script>
 <style>
   :root {
-    --bg: #f5fafb;
-    --bg-soft: #ecf4f6;
+    --bg: #fbf7f1;
+    --bg-soft: #f5ede3;
     --surface: #ffffff;
-    --text: #0b1a23;
-    --text-2: #53707f;
-    --text-3: #8aa3b1;
-    --line: #e1edf1;
-    --accent: #0aa39a;
-    --accent-2: #0a9ecb;
-    --accent-grad: linear-gradient(135deg, #10b5a5, #0b93cf);
-    --accent-soft: #e9faf6;
-    --accent-soft-2: #e7f6fb;
-    --accent-ring: rgba(13, 168, 158, .16);
-    --user-bubble: linear-gradient(135deg, #12b3d8, #0793b8);
-    --ai-bubble: #f1f6f8;
-    --code-bg: #0d1b2a;
+    --text: #22150e;
+    --text-2: #6b5a4c;
+    --text-3: #a3927f;
+    --line: #eee1d2;
+    --accent: #f97316;
+    --accent-2: #ef4460;
+    --accent-grad: linear-gradient(135deg, #ff8c1a, #ef3d5e);
+    --accent-soft: #fff3e9;
+    --accent-soft-2: #ffeef1;
+    --accent-ring: rgba(244, 114, 32, .18);
+    --user-bubble: linear-gradient(135deg, #ff7a18, #e83d5c);
+    --ai-bubble: #faf5ee;
+    --code-bg: #241512;
     --shadow: 0 1px 2px rgba(11, 42, 53, .05), 0 10px 30px rgba(11, 42, 53, .07);
     --shadow-lg: 0 18px 50px rgba(11, 42, 53, .14);
     --danger: #ef4444;
-    --header-bg: rgba(250, 253, 254, .78);
+    --header-bg: rgba(253, 250, 246, .8);
   }
   [data-theme="dark"] {
-    --bg: #071019;
-    --bg-soft: #0c1a26;
-    --surface: #0f1f2d;
-    --text: #e6f1f4;
-    --text-2: #94abb9;
-    --text-3: #617c8c;
-    --line: #1b3141;
-    --accent: #2fd8c7;
-    --accent-2: #38cfec;
-    --accent-soft: rgba(47, 216, 199, .12);
-    --accent-soft-2: rgba(56, 207, 236, .10);
-    --accent-ring: rgba(47, 216, 199, .24);
-    --user-bubble: linear-gradient(135deg, #0d84a8, #095f7d);
-    --ai-bubble: #12222f;
-    --code-bg: #04101c;
+    --bg: #0e0a07;
+    --bg-soft: #171009;
+    --surface: #1c130d;
+    --text: #f4ede4;
+    --text-2: #b3a291;
+    --text-3: #7d6c5d;
+    --line: #2e2117;
+    --accent: #ff8c42;
+    --accent-2: #ff4d6d;
+    --accent-grad: linear-gradient(135deg, #ffa04d, #ff4d6d);
+    --accent-soft: rgba(255, 140, 66, .13);
+    --accent-soft-2: rgba(255, 77, 109, .11);
+    --accent-ring: rgba(255, 140, 66, .26);
+    --user-bubble: linear-gradient(135deg, #b3400f, #9f1239);
+    --ai-bubble: #241812;
+    --code-bg: #120b07;
     --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 30px rgba(0, 0, 0, .4);
     --shadow-lg: 0 18px 50px rgba(0, 0, 0, .55);
     --danger: #f87171;
-    --header-bg: rgba(7, 16, 25, .72);
+    --header-bg: rgba(14, 10, 7, .75);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+    font-family: "Cairo", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     background:
       radial-gradient(640px 400px at 6% -6%, var(--accent-soft), transparent 62%),
@@ -73,6 +77,12 @@
   }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .hide { display: none !important; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(560px 420px at 88% -8%, rgba(255, 106, 0, .10), transparent 62%),
+      radial-gradient(520px 400px at 2% 106%, rgba(239, 68, 90, .08), transparent 62%);
+  }
 
   /* ===== View transitions (app-level animation) ===== */
   #appView { animation: viewIn .38s cubic-bezier(.22, 1, .36, 1); }
@@ -546,7 +556,7 @@
 <!-- ==================== AUTH OVERLAY (email sign-in) ==================== -->
 <div id="authScreen" class="hide">
   <div class="auth-card">
-    <div class="auth-logo"><i class="fa-solid fa-feather-pointed"></i></div>
+    <div class="auth-logo"><i class="fa-solid fa-fire"></i></div>
     <h2 id="authTitle">Welcome to Fenix</h2>
     <p class="auth-sub" id="authSub">Sign in with your email to unlock cloud projects that follow you across devices.</p>
     <div class="auth-err" id="authErr"></div>
@@ -584,7 +594,7 @@
 
 <header>
   <button class="h-brand" id="brandBtn" title="New chat">
-    <div class="h-logo"><i class="fa-solid fa-feather-pointed"></i></div>
+    <div class="h-logo"><i class="fa-solid fa-fire"></i></div>
     <div>
       <span class="h-name">Fenix <span>AI</span></span>
       <div class="h-sub" id="modeSub" style="display:none"><i class="fa-solid fa-code"></i> <span id="modeName"></span></div>
@@ -601,7 +611,7 @@
 <main id="chatMain">
   <div class="chat-col" id="chatCol">
     <div class="welcome" id="welcome">
-      <div class="w-mark"><i class="fa-solid fa-feather-pointed"></i></div>
+      <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
       <div class="w-code"><i class="fa-solid fa-less-than"></i><i class="fa-solid fa-greater-than"></i><i class="fa-solid fa-slash"></i></div>
       <h1 id="welcomeTitle">Hey, I'm <em>Fenix</em></h1>
       <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
@@ -895,7 +905,7 @@ function applyTheme(t) {
   localStorage.setItem('fenix_theme', t);
   $('#themeIcon').className = t === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = t === 'dark' ? '#071019' : '#0aa39a';
+  if (meta) meta.content = t === 'dark' ? '#0e0a07' : '#f97316';
 }
 applyTheme(localStorage.getItem('fenix_theme') || 'light');
 function toggleTheme() {
@@ -1005,7 +1015,7 @@ function msgHtml(m, idx) {
       ${atts ? `<div style="align-self:flex-end">${atts}</div>` : ''}
       <div class="bubble" dir="auto">${escHtml(m.content)}</div></div>`;
   }
-  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-feather-pointed"></i></span>Fenix</div>
+  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
     <div class="bubble" dir="auto">${renderMd(m.content)}</div>
     <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
 }
@@ -1304,7 +1314,7 @@ async function send() {
   const col = $('#chatCol');
   col.insertAdjacentHTML('beforeend', `
     <div class="msg phoenix" id="typingMsg">
-      <div class="who"><span class="dot"><i class="fa-solid fa-feather-pointed"></i></span>Fenix</div>
+      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
       <div class="bubble" dir="auto"><div class="typing"><span></span><span></span><span></span></div></div>
     </div>`);
   scrollDown();
