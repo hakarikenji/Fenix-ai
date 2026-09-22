@@ -325,13 +325,15 @@
       mood: $("f-mood").value,
       language: $("f-lang").value,
       topic: topic
-    }).then(function (r) {
-      var out = $("lyrics-out");
-      out.textContent = r.lyrics;
-      out.classList.remove("hidden");
-      show($("btn-copy-lyrics"), true);
-      toast("الكلمات جاهزة 🔥 (العقل: " + r.brain + ")");
-    }).catch(function (e) { toast(e.message, true); })
+    })      .then(function (r) {
+        var lyrics = (r && r.lyrics) ? r.lyrics : "";
+        if (!lyrics) { toast((r && r.error) || "كل العقول مشغولة — جرّب بعد دقائق", true); return; }
+        var out = $("lyrics-out");
+        out.textContent = lyrics;
+        out.classList.remove("hidden");
+        show($("btn-copy-lyrics"), true);
+        toast("الكلمات جاهزة 🔥 (العقل: " + r.brain + ")");
+      }).catch(function (e) { toast(e.message, true); })
       .finally(function () { setBusy(false); });
   });
   $("btn-copy-lyrics").addEventListener("click", function () {
@@ -372,7 +374,7 @@
       .then(function (r) {
         state.audioUrl = API + r.url;
         $("audio").src = API + r.url;
-        $("track-time").textContent = "توليد في " + r.seconds + " ثانية";
+        $("track-time").textContent = r.seconds ? ("توليد في " + r.seconds + " ثانية") : "";
         show($("player"), true);
         show($("gen-status"), false);
         $("audio").play().catch(function () {});
@@ -410,9 +412,11 @@
     setBusy(true);
     api("/api/chat", { message: text, history: state.chatHistory })
       .then(function (r) {
-        addMsg(r.reply, "bot");
+        var reply = (r && r.reply) ? r.reply : "";
+        if (!reply) { toast((r && r.error) || "العقل ما رد — جرّب مرة ثانية", true); return; }
+        addMsg(reply, "bot");
         state.chatHistory.push({ role: "user", content: text });
-        state.chatHistory.push({ role: "assistant", content: r.reply });
+        state.chatHistory.push({ role: "assistant", content: reply });
       })
       .catch(function (e) { toast(e.message, true); })
       .finally(function () { setBusy(false); });
