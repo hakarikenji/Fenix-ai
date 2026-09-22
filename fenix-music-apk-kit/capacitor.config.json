@@ -1,0 +1,11 @@
+{
+  "appId": "com.fenix.music",
+  "appName": "Fenix Music",
+  "webDir": "web",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
