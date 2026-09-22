@@ -1,0 +1,17 @@
+{
+  "name": "fenix-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fenix Video — AI video generator (Fenix 🦅)",
+  "scripts": {
+    "cap:sync": "cap sync android",
+    "apk": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/android": "^8.5.2"
+  }
+}

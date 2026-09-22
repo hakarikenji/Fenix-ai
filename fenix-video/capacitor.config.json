@@ -1,0 +1,11 @@
+{
+  "appId": "com.fenix.video",
+  "appName": "Fenix Video",
+  "webDir": "web",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
