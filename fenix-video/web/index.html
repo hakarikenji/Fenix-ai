@@ -3,106 +3,283 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Fenix Video — مولّد الفيديو بالذكاء الاصطناعي</title>
+<title>Fenix Video — استوديو الفيديو بالذكاء الاصطناعي</title>
+<meta name="description" content="Fenix Video — حوّل فكرتك إلى فيديو قصير كامل: سيناريو بالعقل، صور AI، تعليق صوتي، ورندر بجهازك. مجاني 100%.">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#070a10">
+<meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <style>
   :root {
-    --bg: #070a10;
-    --panel: rgba(255,255,255,.045);
-    --panel-border: rgba(255,255,255,.09);
+    --bg: #05070d;
+    --panel: rgba(255,255,255,.05);
+    --panel-2: rgba(255,255,255,.03);
+    --panel-border: rgba(255,255,255,.1);
     --c1: #2563eb;      /* سينمائي أزرق */
-    --c2: #d946ef;      /* بنفسجي كهربائي */
-    --c3: #38bdf8;
-    --text: #f2f4f8;
-    --muted: #9aa4b5;
+    --c2: #a855f7;      /* بنفسجي كهربائي */
+    --c3: #38bdf8;      /* سماوي */
+    --text: #f3f5fa;
+    --muted: #97a1b6;
     --ok: #3ddc97;
     --err: #ff5d5d;
+    --radius: 20px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
-    background: radial-gradient(1000px 480px at 85% -10%, rgba(37,99,235,.18), transparent 60%),
-                radial-gradient(900px 480px at 8% 110%, rgba(217,70,239,.13), transparent 60%),
-                var(--bg);
-    color: var(--text); min-height: 100dvh;
+    font-family: "Cairo", "Segoe UI", Tahoma, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
-  .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 70px; }
-  header { display: flex; align-items: center; gap: 14px; padding: 6px 2px 16px; }
+
+  /* ===== الخلفية السينمائية الحية ===== */
+  .orb { position: fixed; border-radius: 50%; filter: blur(95px); z-index: -2; pointer-events: none; }
+  .orb1 { width: 480px; height: 480px; top: -140px; right: -120px; background: rgba(37,99,235,.32); animation: drift1 22s ease-in-out infinite alternate; }
+  .orb2 { width: 420px; height: 420px; bottom: -160px; left: -120px; background: rgba(168,85,247,.26); animation: drift2 26s ease-in-out infinite alternate; }
+  .orb3 { width: 300px; height: 300px; top: 38%; left: 30%; background: rgba(56,189,248,.12); animation: drift1 30s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(-70px, 60px) scale(1.15); } }
+  @keyframes drift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(80px, -70px) scale(1.12); } }
+  body::after { /* فينييت سينمائي */
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,.5) 100%);
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 22px 16px 80px; }
+
+  /* ===== الهيدر ===== */
+  header { display: flex; align-items: center; gap: 14px; padding: 8px 2px 20px; }
   .logo {
-    width: 52px; height: 52px; border-radius: 16px; flex: none;
-    background: linear-gradient(135deg, var(--c1), var(--c2));
-    display: grid; place-items: center; font-size: 26px;
-    box-shadow: 0 8px 28px rgba(80,80,255,.3);
+    width: 58px; height: 58px; border-radius: 18px; flex: none;
+    background: linear-gradient(135deg, var(--c1) 0%, var(--c2) 100%);
+    display: grid; place-items: center; font-size: 28px;
+    box-shadow: 0 10px 34px rgba(109,74,255,.45), inset 0 1px 0 rgba(255,255,255,.35);
+    animation: logoPulse 3.4s ease-in-out infinite;
   }
-  .titles h1 { font-size: 22px; }
-  .titles h1 em { font-style: normal; background: linear-gradient(90deg, var(--c3), var(--c2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .titles p { color: var(--muted); font-size: 13px; margin-top: 2px; }
-  .pill { font-size: 12px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-border); color: var(--muted); }
-  .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 18px; padding: 18px; margin-top: 16px; }
-  .card h2 { font-size: 16px; margin-bottom: 4px; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
-  label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 6px; }
-  input, textarea, select {
-    width: 100%; background: rgba(0,0,0,.35); color: var(--text);
-    border: 1px solid var(--panel-border); border-radius: 12px;
-    padding: 11px 13px; font-size: 14.5px; font-family: inherit; outline: none;
+  @keyframes logoPulse {
+    0%, 100% { box-shadow: 0 10px 34px rgba(109,74,255,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+    50% { box-shadow: 0 10px 48px rgba(140,80,255,.7), inset 0 1px 0 rgba(255,255,255,.35); }
   }
-  input:focus, textarea:focus, select:focus { border-color: rgba(56,189,248,.55); }
-  textarea { resize: vertical; min-height: 64px; }
+  .titles h1 { font-size: 25px; font-weight: 900; letter-spacing: -.3px; }
+  .titles h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--c3), var(--c2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .titles p { color: var(--muted); font-size: 13px; margin-top: 3px; font-weight: 500; }
+  .pill {
+    margin-inline-start: auto; font-size: 12px; padding: 8px 14px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--muted);
+    backdrop-filter: blur(10px); font-weight: 600; white-space: nowrap;
+  }
+
+  /* ===== الكاردات الزجاجية ===== */
+  .card {
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-top: 18px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 14px 44px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+    animation: rise .55s cubic-bezier(.2,.7,.3,1) backwards;
+  }
+  .card:nth-of-type(1) { animation-delay: .03s; }
+  .card:nth-of-type(2) { animation-delay: .1s; }
+  .card:nth-of-type(3) { animation-delay: .17s; }
+  .card:nth-of-type(4) { animation-delay: .24s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+  .card h2 { font-size: 17px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .card h2 .ico {
+    width: 34px; height: 34px; border-radius: 11px; flex: none;
+    background: linear-gradient(135deg, rgba(37,99,235,.35), rgba(168,85,247,.35));
+    border: 1px solid rgba(255,255,255,.14);
+    display: grid; place-items: center; font-size: 16px;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.7; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 4px 11px; border-radius: 999px;
+    background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.35);
+    color: var(--c3); font-weight: 700;
+  }
+
+  /* ===== الحقول ===== */
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 6px; font-weight: 600; }
+  input[type=text], input[type=number], textarea, select {
+    width: 100%; background: rgba(0,0,0,.42); color: var(--text);
+    border: 1px solid var(--panel-border); border-radius: 13px;
+    padding: 12px 14px; font-size: 14.5px; font-family: inherit; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: rgba(56,189,248,.6);
+    box-shadow: 0 0 0 3px rgba(56,189,248,.14);
+  }
+  textarea { resize: vertical; min-height: 84px; line-height: 1.8; }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2397a1b6' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 14px center;
+    padding-left: 36px;
+  }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: start; }
+  .count { font-size: 11px; color: var(--muted); text-align: left; margin-top: 5px; }
+
+  /* ===== شرائح الأفكار ===== */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip {
+    font-size: 12px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    background: rgba(255,255,255,.04); border: 1px solid var(--panel-border);
+    color: var(--muted); font-family: inherit; font-weight: 600; transition: all .18s;
+  }
+  .chip:hover { border-color: rgba(56,189,248,.5); color: var(--c3); transform: translateY(-1px); }
+
+  /* ===== الأزرار ===== */
   button {
-    cursor: pointer; border: none; border-radius: 12px; font-family: inherit;
-    font-size: 14.5px; font-weight: 600; padding: 12px 20px; color: #fff;
-    transition: transform .12s, opacity .15s;
+    cursor: pointer; border: none; border-radius: 13px; font-family: inherit;
+    font-size: 14.5px; font-weight: 700; padding: 13px 22px; color: #fff;
+    transition: transform .14s, box-shadow .2s, opacity .15s;
   }
   button:active { transform: scale(.97); }
-  button:disabled { opacity: .55; cursor: not-allowed; }
-  .btn-main { background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 6px 22px rgba(90,80,255,.35); }
-  .btn-ghost { background: var(--panel); border: 1px solid var(--panel-border); color: var(--text); font-weight: 500; }
-  .badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.3); color: var(--c3); font-weight: 600; }
-  .hidden { display: none !important; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-main {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, var(--c1), var(--c2));
+    box-shadow: 0 8px 26px rgba(100,80,255,.4), inset 0 1px 0 rgba(255,255,255,.25);
+    font-size: 15.5px; padding: 14px 30px;
+  }
+  .btn-main::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 46%;
+    right: -60%; transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+    transition: right .55s ease;
+  }
+  .btn-main:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(110,80,255,.55); }
+  .btn-main:hover:not(:disabled)::after { right: 120%; }
+  .btn-ghost {
+    background: rgba(255,255,255,.05); border: 1px solid var(--panel-border);
+    color: var(--text); font-weight: 600;
+  }
+  .btn-ghost:hover { border-color: rgba(56,189,248,.45); }
+  .btn-mini {
+    font-size: 12px; padding: 7px 10px; border-radius: 10px; width: 100%; margin-top: 8px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--panel-border); color: var(--muted); font-weight: 600;
+  }
+  .btn-mini:hover { color: var(--c3); border-color: rgba(56,189,248,.45); }
+  .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+  .cta-note { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .cta-note b { color: var(--ok); }
 
-  /* المشاهد */
-  .scene { display: grid; grid-template-columns: 132px 1fr; gap: 12px; padding: 12px; border: 1px solid var(--panel-border); border-radius: 14px; margin-top: 10px; background: rgba(0,0,0,.25); }
-  .scene img { width: 132px; height: 132px; object-fit: cover; border-radius: 10px; background: rgba(255,255,255,.05); }
-  .scene .vo { font-size: 14.5px; line-height: 1.7; unicode-bidi: plaintext; text-align: start; margin-top: 6px; }
-  .scene .meta { color: var(--muted); font-size: 12px; }
-  .scene .img-status { color: var(--muted); font-size: 12px; }
-  @media (max-width: 480px) { .scene { grid-template-columns: 96px 1fr; } .scene img { width: 96px; height: 96px; } }
+  /* ===== المفاتيح (Switches) ===== */
+  .switches { display: flex; flex-direction: column; gap: 12px; justify-content: center; min-height: 100%; padding-top: 6px; }
+  .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; margin: 0; }
+  .switch input { display: none; }
+  .switch .track { width: 40px; height: 22px; border-radius: 99px; background: rgba(255,255,255,.13); position: relative; transition: background .2s; flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .switch input:checked + .track { background: linear-gradient(90deg, var(--c1), var(--c2)); }
+  .switch input:checked + .track::after { transform: translateX(-18px); }
 
-  /* الرندر */
-  #render-canvas { width: 100%; border-radius: 14px; border: 1px solid var(--panel-border); background: #000; }
-  .progress { height: 8px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-top: 10px; }
-  .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--c1), var(--c2)); transition: width .2s; }
-  video#result { width: 100%; border-radius: 14px; margin-top: 12px; border: 1px solid var(--panel-border); }
+  /* ===== المشاهد ===== */
+  .scene {
+    display: grid; grid-template-columns: 132px 1fr; gap: 14px;
+    padding: 14px; border: 1px solid var(--panel-border); border-radius: 16px;
+    margin-top: 12px; background: rgba(0,0,0,.28);
+    transition: border-color .2s;
+  }
+  .scene:hover { border-color: rgba(56,189,248,.3); }
+  .thumb { display: flex; flex-direction: column; }
+  .thumb img {
+    width: 132px; height: 132px; object-fit: cover; border-radius: 12px;
+    background: linear-gradient(110deg, rgba(255,255,255,.05) 30%, rgba(255,255,255,.11) 50%, rgba(255,255,255,.05) 70%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .scene .img-status { color: var(--muted); font-size: 11.5px; margin-top: 7px; text-align: center; }
+  .scene .body { min-width: 0; }
+  .scene .meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .scene .vo { font-size: 14.5px; line-height: 1.8; unicode-bidi: plaintext; text-align: start; margin-top: 7px; }
+  .scene input[type=number] { width: 92px; margin-top: 10px; padding: 8px 10px; font-size: 13px; }
+  @media (max-width: 480px) {
+    .scene { grid-template-columns: 96px 1fr; gap: 11px; }
+    .thumb img { width: 96px; height: 96px; }
+  }
 
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: #141a24; border: 1px solid var(--panel-border); padding: 12px 20px; border-radius: 14px; font-size: 14px; opacity: 0; transition: all .3s; z-index: 50; max-width: 92vw; unicode-bidi: plaintext; }
+  /* ===== الرندر ===== */
+  #render-canvas { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--panel-border); background: #000; display: block; }
+  .progress { height: 9px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-top: 12px; }
+  .progress > div {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--c1), var(--c3), var(--c2));
+    box-shadow: 0 0 14px rgba(80,140,255,.7);
+    transition: width .2s;
+  }
+  video#result { width: 100%; border-radius: 14px; margin-top: 14px; border: 1px solid var(--panel-border); }
+  #download-link { display: inline-block; margin-top: 12px; text-decoration: none; text-align: center; }
+  .tip { color: var(--muted); font-size: 12px; margin-top: 10px; line-height: 1.7; }
+
+  /* ===== توست ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(90px);
+    background: rgba(16,21,32,.92); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(14px);
+    padding: 13px 22px; border-radius: 15px; font-size: 14px; font-weight: 600;
+    opacity: 0; transition: all .35s cubic-bezier(.2,.7,.3,1); z-index: 50;
+    max-width: 92vw; unicode-bidi: plaintext;
+    box-shadow: 0 14px 40px rgba(0,0,0,.5);
+  }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast.err { border-color: rgba(255,93,93,.5); color: #ffb3b3; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; unicode-bidi: plaintext; }
+  .toast.err { border-color: rgba(255,93,93,.55); color: #ffb3b3; }
+
+  /* ===== فوتر ===== */
+  footer {
+    text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 42px;
+    padding-top: 24px; border-top: 1px solid rgba(255,255,255,.07); line-height: 2;
+    unicode-bidi: plaintext;
+  }
+  footer .fbrand { font-weight: 800; color: var(--text); }
+  footer .fdim { opacity: .75; }
+
+  @media (max-width: 640px) {
+    .row3 { grid-template-columns: 1fr; }
+    .card { padding: 17px; }
+    .titles h1 { font-size: 21px; }
+    .logo { width: 50px; height: 50px; font-size: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
 <div class="wrap">
 
   <header>
     <div class="logo">🎬</div>
     <div class="titles">
       <h1>Fenix <em>Video</em></h1>
-      <p>فكرتك → فيديو قصير كامل — مجاني 100% · Fenix 🦅</p>
+      <p>فكرتك → فيديو قصير كامل — سيناريو وصور وتعليق صوتي ورندر بجهازك</p>
     </div>
     <div class="pill" id="status-pill">جاري الاتصال…</div>
   </header>
 
   <!-- ==================== الفكرة ==================== -->
   <section class="card">
-    <h2>💡 فكرتك</h2>
-    <p class="sub">اكتب أي فكرة — العقل يكتب السيناريو، ويولّد الصور، وأنت ترندر الفيديو بجهازك</p>
+    <h2><span class="ico">💡</span> فكرتك</h2>
+    <p class="sub">اكتب أي فكرة — العقل يكتب السيناريو مشهد-بمشهد، يولّد الصور، وأنت ترندر الفيديو بجهازك بدون أي تكلفة</p>
+
     <div class="row">
       <div>
         <label for="f-lang">لغة التعليق الصوتي</label>
@@ -127,21 +304,60 @@
         </select>
       </div>
     </div>
+
     <label for="f-topic">الفكرة / الموضوع</label>
     <textarea id="f-topic" placeholder="مثال: قصة صعود فرق موسيقى من الحومة إلى المسرح…"></textarea>
-    <div style="margin-top:12px">
+    <div class="count" id="topic-count">0 حرف</div>
+
+    <div class="chips">
+      <button type="button" class="chip" data-idea="قصة صعود فرقة موسيقى من الحومة إلى المسرح">🎵 فرقة من الحومة للمسرح</button>
+      <button type="button" class="chip" data-idea="يوم كامل في حياة مقهى صغير عند المغرب — من الفجر إلى الليل">☕ يوم في مقهى مغربي</button>
+      <button type="button" class="chip" data-idea="إعلان قصير مشوق لتطبيق جديد يغير حياة الناس">📱 إعلان تطبيق</button>
+    </div>
+
+    <div class="cta-row">
       <button class="btn-main" id="btn-script">🎬 اكتب السيناريو</button>
+      <span class="cta-note"><b>مجاني 100%</b> · بدون تسجيل · بدون بطاقة</span>
+    </div>
+  </section>
+
+  <!-- ==================== الإعدادات ==================== -->
+  <section class="card">
+    <h2><span class="ico">⚙️</span> إعدادات الفيديو</h2>
+    <p class="sub">اختر نسبة العرض المناسبة لمنصة النشر وجودة الصور، وتحكم في الصوت والترجمة والعلامة</p>
+    <div class="row3">
+      <div>
+        <label for="set-ratio">نسبة العرض</label>
+        <select id="set-ratio">
+          <option value="9:16" selected>عمودي 9:16 — ريلز / تيك توك</option>
+          <option value="1:1">مربع 1:1 — إنستغرام</option>
+          <option value="16:9">عريض 16:9 — يوتيوب</option>
+        </select>
+      </div>
+      <div>
+        <label for="set-quality">جودة الصور</label>
+        <select id="set-quality">
+          <option value="512">سريعة — 512px</option>
+          <option value="768" selected>متوازنة — 768px</option>
+          <option value="1024">فائقة — 1024px</option>
+        </select>
+      </div>
+      <div class="switches">
+        <label class="switch"><input type="checkbox" id="set-voice" checked><span class="track"></span>تعليق صوتي</label>
+        <label class="switch"><input type="checkbox" id="set-captions" checked><span class="track"></span>ترجمة على الفيديو</label>
+        <label class="switch"><input type="checkbox" id="set-watermark" checked><span class="track"></span>علامة مائية Fenix</label>
+      </div>
     </div>
   </section>
 
   <!-- ==================== المشاهد ==================== -->
   <section class="card hidden" id="scenes-card">
-    <h2>🎞️ المشاهد <span class="badge" id="scenes-brain"></span></h2>
-    <p class="sub">كل مشهد بصورته المولّدة — عدّل المدة إن أردت ثم ارندر</p>
+    <h2><span class="ico">🎞️</span> المشاهد <span class="badge" id="scenes-brain"></span></h2>
+    <p class="sub" id="scenes-title"></p>
     <div id="scenes-list"></div>
-    <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+    <div class="cta-row">
       <button class="btn-main" id="btn-render">🎥 ارندر الفيديو</button>
-      <label class="btn-ghost" style="display:inline-flex;align-items:center;cursor:pointer">
+      <label class="btn-ghost" style="display:inline-flex;align-items:center;cursor:pointer;padding:12px 18px;font-size:13.5px">
         🎵 موسيقى (اختياري) <input type="file" id="music-file" accept="audio/*" style="display:none">
       </label>
       <span class="pill hidden" id="music-name"></span>
@@ -150,16 +366,20 @@
 
   <!-- ==================== الرندر ==================== -->
   <section class="card hidden" id="render-card">
-    <h2>🎥 الرندر (بجهازك — مجاني)</h2>
-    <p class="sub">يجري الآن: رسم المشاهد + التعليق الصوتي + الموسيقى → ملف فيديو</p>
-    <canvas id="render-canvas" width="768" height="768"></canvas>
+    <h2><span class="ico">🎥</span> الرندر — بجهازك، مجاني</h2>
+    <p class="sub">يجري الآن: رسم المشاهد + التعليق الصوتي + الموسيقى → ملف فيديو جاهز</p>
+    <canvas id="render-canvas" width="720" height="1280"></canvas>
     <div class="progress"><div id="render-bar"></div></div>
-    <p class="sub" id="render-status" style="margin-top:8px">…</p>
+    <p class="sub" id="render-status" style="margin-top:10px">…</p>
     <video id="result" class="hidden" controls playsinline></video>
-    <a id="download-link" class="btn-ghost hidden" style="display:inline-block;margin-top:10px;text-decoration:none;padding:12px 20px" download="fenix-video.webm">⬇️ حمّل الفيديو WebM</a>
+    <a id="download-link" class="btn-ghost hidden" download="fenix-video.webm">⬇️ حمّل الفيديو WebM</a>
+    <p class="tip">💡 صيغة WebM تعمل على كل المنصات — وللرفع على يوتيوب/إنستغرام مباشرة بدون تحويل.</p>
   </section>
 
-  <footer>Fenix Video · منظومة Fenix 🦅 — كل تطبيق مستقل بعقله الخاص</footer>
+  <footer>
+    <span class="fbrand">Fenix Video</span> · منظومة <span class="fbrand">Fenix 🦅</span><br>
+    <span class="fdim">Fenix AI · Fenix Music · Fenix Video — كل تطبيق مستقل بعقله الخاص، والكل يرتبط بعقل Fenix Core</span>
+  </footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -171,6 +391,29 @@
   var $ = function (id) { return document.getElementById(id); };
   var API = (window.FENIX_SERVER || "");
   var state = { scenes: [], title: "", images: {}, voices: {}, music: null, rendering: false };
+  var CFG = { ratio: "9:16", quality: 768, captions: true, voice: true, watermark: true };
+  var RATIO_DIMS = { "9:16": [720, 1280], "1:1": [768, 768], "16:9": [1280, 720] };
+
+  // ---------- الإعدادات ----------
+  $("set-ratio").addEventListener("change", function () { CFG.ratio = this.value; });
+  $("set-quality").addEventListener("change", function () { CFG.quality = parseInt(this.value, 10) || 768; });
+  $("set-voice").addEventListener("change", function () { CFG.voice = this.checked; });
+  $("set-captions").addEventListener("change", function () { CFG.captions = this.checked; });
+  $("set-watermark").addEventListener("change", function () { CFG.watermark = this.checked; });
+
+  // ---------- شرائح الأفكار ----------
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (ch) {
+    ch.addEventListener("click", function () {
+      $("f-topic").value = ch.getAttribute("data-idea") || "";
+      updateCount();
+      $("f-topic").focus();
+    });
+  });
+
+  var topicEl = $("f-topic");
+  function updateCount() { $("topic-count").textContent = topicEl.value.length + " حرف"; }
+  topicEl.addEventListener("input", updateCount);
+  updateCount();
 
   function toast(text, isErr) {
     var t = $("toast");
@@ -192,7 +435,7 @@
     });
   }
 
-  // ---------- status ----------
+  // ---------- حالة العقول ----------
   api("/api/config").then(function (c) {
     var b = c.brains || {};
     var parts = [];
@@ -202,7 +445,7 @@
     $("status-pill").textContent = parts.join(" · ") || "لا عقول مفعّلة";
   }).catch(function () { $("status-pill").textContent = "الخادم غير متصل"; });
 
-  // ---------- script ----------
+  // ---------- السيناريو ----------
   $("btn-script").addEventListener("click", function () {
     if (state.rendering) return;
     var topic = $("f-topic").value.trim();
@@ -215,11 +458,17 @@
         $("scenes-card").classList.remove("hidden");
         $("scenes-card").scrollIntoView({ behavior: "smooth" });
         $("scenes-brain").textContent = "العقل: " + r.brain;
+        $("scenes-title").textContent = "«" + r.title + "» — عدّل مدة أي مشهد أو بدّل صورته، ثم ارندر";
         toast("السيناريو جاهز: " + r.scenes.length + " مشاهد 🎬");
       })
       .catch(function (e) { toast(e.message, true); })
       .finally(function () { btn.disabled = false; btn.textContent = "🎬 اكتب السيناريو"; });
   });
+
+  function imgUrl(prompt, seed) {
+    var s = Math.min(1024, Math.max(512, CFG.quality));
+    return API + "/api/scene-image?w=" + s + "&h=" + s + "&seed=" + seed + "&prompt=" + encodeURIComponent(prompt);
+  }
 
   function renderScenes() {
     var list = $("scenes-list");
@@ -227,34 +476,43 @@
     state.scenes.forEach(function (sc, i) {
       var div = document.createElement("div");
       div.className = "scene";
+
+      var thumb = document.createElement("div"); thumb.className = "thumb";
       var img = document.createElement("img");
       img.alt = "مشهد " + sc.n;
+      img.src = imgUrl(sc.visual, String(1000 + i * 137));
       var status = document.createElement("div");
       status.className = "img-status";
       status.textContent = "⏳ جاري توليد الصورة…";
-      var right = document.createElement("div");
+      img.onload = function () { status.textContent = "✓ الصورة جاهزة"; status.style.color = "var(--ok)"; state.images[i] = img; };
+      img.onerror = function () { status.textContent = "✗ فشلت — جرّب صورة أخرى"; status.style.color = "var(--err)"; };
+      var regen = document.createElement("button");
+      regen.type = "button"; regen.className = "btn-mini"; regen.textContent = "🔄 صورة أخرى";
+      regen.addEventListener("click", function () {
+        delete state.images[i];
+        status.textContent = "⏳ توليد صورة جديدة…"; status.style.color = "";
+        img.src = imgUrl(sc.visual, String(Math.floor(Math.random() * 99999)));
+      });
+      thumb.appendChild(img); thumb.appendChild(regen); thumb.appendChild(status);
+
+      var body = document.createElement("div"); body.className = "body";
       var meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = "مشهد " + sc.n + " · " + sc.secs + " ث";
+      meta.textContent = "مشهد " + sc.n + " · " + sc.secs + " ثانية";
       var vo = document.createElement("div");
-      vo.className = "vo";
-      vo.dir = "auto";
+      vo.className = "vo"; vo.dir = "auto";
       vo.textContent = sc.vo || "(بدون تعليق)";
-      right.appendChild(meta); right.appendChild(vo);
       var secs = document.createElement("input");
       secs.type = "number"; secs.min = 4; secs.max = 8; secs.value = sc.secs;
-      secs.style.marginTop = "8px"; secs.style.width = "90px";
+      secs.setAttribute("aria-label", "مدة المشهد بالثواني");
       secs.addEventListener("change", function () {
         sc.secs = Math.max(4, Math.min(8, parseInt(secs.value, 10) || 6));
+        meta.textContent = "مشهد " + sc.n + " · " + sc.secs + " ثانية";
       });
-      right.appendChild(secs);
-      div.appendChild(img); div.appendChild(status); div.appendChild(right);
+      body.appendChild(meta); body.appendChild(vo); body.appendChild(secs);
+
+      div.appendChild(thumb); div.appendChild(body);
       list.appendChild(div);
-      // الصورة — مجاني بدون مفتاح عبر الخادم
-      var seed = String(1000 + i * 137);
-      img.src = API + "/api/scene-image?w=768&h=768&seed=" + seed + "&prompt=" + encodeURIComponent(sc.visual);
-      img.onload = function () { status.textContent = "✓ الصورة جاهزة"; status.style.color = "var(--ok)"; state.images[i] = img; };
-      img.onerror = function () { status.textContent = "✗ فشلت الصورة — أعد المحاولة"; status.style.color = "var(--err)"; };
     });
   }
 
@@ -262,7 +520,7 @@
   function speakScene(i) {
     return new Promise(function (resolve) {
       var sc = state.scenes[i];
-      if (!sc.vo || !("speechSynthesis" in window)) return resolve();
+      if (!sc.vo || !CFG.voice || !("speechSynthesis" in window)) return resolve();
       try {
         var u = new SpeechSynthesisUtterance(sc.vo);
         u.lang = ({ "العربية": "ar", "English": "en", "Français": "fr", "Español": "es", "日本語": "ja", "Русский": "ru" })[$("f-lang").value] || "en";
@@ -274,7 +532,7 @@
     });
   }
 
-  // ---------- render (Canvas + MediaRecorder) ----------
+  // ---------- الرندر (Canvas + MediaRecorder) ----------
   $("music-file").addEventListener("change", function (e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
@@ -287,7 +545,7 @@
   $("btn-render").addEventListener("click", function () {
     if (state.rendering) return;
     var ready = state.scenes.filter(function (_, i) { return state.images[i]; }).length;
-    if (!ready) { toast("ما في أي صورة جاهزة — انتظر التوليد أو أعد المحاولة", true); return; }
+    if (!ready) { toast("ما في أي صورة جاهزة — انتظر التوليد أو بدّل الصورة", true); return; }
     startRender();
   });
 
@@ -296,6 +554,8 @@
     var btn = $("btn-render");
     btn.disabled = true;
     var canvas = $("render-canvas"), ctx = canvas.getContext("2d");
+    var dims = RATIO_DIMS[CFG.ratio] || [768, 768];
+    canvas.width = dims[0]; canvas.height = dims[1];   // قبل captureStream
     var stream = canvas.captureStream(30);
     var audioCtx = null, dest = null;
     try {
@@ -307,7 +567,6 @@
     audioEl.crossOrigin = "anonymous";
     if (state.music) { audioEl.src = state.music; audioEl.loop = true; audioEl.volume = 0.35; }
 
-    // صوت التعليق: نعيد تشغيل TTS أثناء التسجيل (نظامي عبر مصدر الصوت)
     if (audioCtx && audioEl.src) {
       try {
         var src = audioCtx.createMediaElementSource(audioEl);
@@ -334,40 +593,53 @@
       try { audioCtx && audioCtx.close(); } catch (e) {}
     };
 
-    // رسم شعار البداية
-    function drawTitle(sec) {
+    function drawTitle() {
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-      ctx.font = "600 44px Segoe UI, sans-serif";
-      ctx.fillText(state.title.slice(0, 28), canvas.width / 2, canvas.height / 2);
+      var rg = ctx.createRadialGradient(canvas.width / 2, canvas.height * 0.44, 20, canvas.width / 2, canvas.height * 0.44, canvas.width * 0.95);
+      rg.addColorStop(0, "rgba(37,99,235,.4)"); rg.addColorStop(0.55, "rgba(168,85,247,.16)"); rg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#fff";
+      ctx.font = "800 " + Math.round(canvas.width / 15) + "px Cairo, Segoe UI, sans-serif";
+      ctx.fillText(state.title.slice(0, 30), canvas.width / 2, canvas.height / 2);
       ctx.fillStyle = "rgba(255,255,255,.55)";
-      ctx.font = "300 22px Segoe UI, sans-serif";
-      ctx.fillText("Fenix Video 🦅", canvas.width / 2, canvas.height / 2 + 44);
+      ctx.font = "600 " + Math.round(canvas.width / 30) + "px Cairo, Segoe UI, sans-serif";
+      ctx.fillText("Fenix Video 🦅", canvas.width / 2, canvas.height / 2 + Math.round(canvas.width / 10));
     }
+
     function drawScene(i, t) {
       var img = state.images[i];
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      if (img && img.complete) {
-        // Ken Burns zoom بطيء
+      if (img && img.complete && img.naturalWidth) {
+        // Ken Burns zoom + قص cover حسب نسبة الفيديو
         var z = 1 + 0.06 * (t / state.scenes[i].secs);
-        var w = canvas.width * z, h = canvas.height * z;
-        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+        var iw = img.naturalWidth, ih = img.naturalHeight;
+        var base = Math.max(canvas.width / iw, canvas.height / ih);
+        var dw = iw * base * z, dh = ih * base * z;
+        ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
       }
-      // تظليل سفلي + نص التعليق
-      var g = ctx.createLinearGradient(0, canvas.height * .6, 0, canvas.height);
-      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.75)");
-      ctx.fillStyle = g; ctx.fillRect(0, canvas.height * .6, canvas.width, canvas.height * .4);
+      var g = ctx.createLinearGradient(0, canvas.height * .62, 0, canvas.height);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.78)");
+      ctx.fillStyle = g; ctx.fillRect(0, canvas.height * .62, canvas.width, canvas.height * .38);
       var vo = state.scenes[i].vo || "";
-      if (vo) {
+      if (vo && CFG.captions) {
         ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-        ctx.font = "500 26px Segoe UI, sans-serif";
-        wrapText(ctx, vo, canvas.width / 2, canvas.height - 44, canvas.width - 80, 34);
+        var fs = Math.round(canvas.width / 27);
+        ctx.font = "600 " + fs + "px Cairo, Segoe UI, sans-serif";
+        wrapText(ctx, vo, canvas.width / 2, canvas.height - Math.round(fs * 1.8), canvas.width - 80, Math.round(fs * 1.35));
       }
-      // عدّاد المشاهد
-      ctx.fillStyle = "rgba(255,255,255,.35)";
-      ctx.font = "300 16px Segoe UI"; ctx.textAlign = "right";
-      ctx.fillText((i + 1) + " / " + state.scenes.length, canvas.width - 18, 30);
+      if (CFG.watermark) {
+        ctx.fillStyle = "rgba(255,255,255,.42)";
+        ctx.font = "700 " + Math.round(canvas.width / 46) + "px Cairo, Segoe UI, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("Fenix Video 🦅", 18, 36);
+      }
+      ctx.fillStyle = "rgba(255,255,255,.38)";
+      ctx.font = "500 " + Math.round(canvas.width / 42) + "px Cairo, Segoe UI, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText((i + 1) + " / " + state.scenes.length, canvas.width - 18, 36);
     }
+
     function wrapText(c, text, x, y, maxW, lh) {
       var words = text.split(" "), line = "", lines = [];
       for (var i = 0; i < words.length; i++) {
@@ -382,15 +654,13 @@
     rec.start(250);
     if (state.music) audioEl.play().catch(function () {});
     var total = state.scenes.reduce(function (a, s) { return a + s.secs; }, 0);
-    var done = 0;
 
     function playScene(i) {
       if (i >= state.scenes.length) {
-        // نهاية: 1 ثانية شعار
         var t0 = performance.now();
         (function endLoop() {
           var el = (performance.now() - t0) / 1000;
-          drawTitle(el);
+          drawTitle();
           if (el < 1.2) requestAnimationFrame(endLoop); else rec.stop();
         })();
         return;
@@ -401,18 +671,17 @@
       (function loop() {
         var t = (performance.now() - t0) / 1000;
         drawScene(i, t);
-        done = state.scenes.slice(0, i).reduce(function (a, s) { return a + s.secs; }, 0) + t;
+        var done = state.scenes.slice(0, i).reduce(function (a, s) { return a + s.secs; }, 0) + t;
         $("render-bar").style.width = Math.min(100, (done / total) * 100).toFixed(1) + "%";
         $("render-status").textContent = "🎥 مشهد " + (i + 1) + " / " + state.scenes.length + " — " + t.toFixed(1) + "s / " + sc.secs + "s";
         if (t < sc.secs) requestAnimationFrame(loop);
         else playScene(i + 1);
       })();
     }
-    // 1.2 ثانية عنوان ثم المشاهد
     var tt0 = performance.now();
     (function introLoop() {
       var el = (performance.now() - tt0) / 1000;
-      drawTitle(el);
+      drawTitle();
       if (el < 1.2) requestAnimationFrame(introLoop);
       else playScene(0);
     })();
