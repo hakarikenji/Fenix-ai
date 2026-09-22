@@ -22,12 +22,20 @@ curl -X POST <الرابط> -H "Content-Type: application/json" \
 
 ## الربط بخادم Fenix
 
+العقل منشور وحي على هذا الرابط (مباشر، بدون إعداد):
+
+```
+https://yasinnait30--fenix-brain.modal.run
+```
+
 على الخادم (بيئة النشر):
 
 ```
-CUSTOM_LLM_BASE_URL=<الرابط>
+CUSTOM_LLM_BASE_URL=https://yasinnait30--fenix-brain.modal.run
 CUSTOM_LLM_MODEL=fenix-core
 ```
+
+> سيرفر Fenix Music (مستودع Fenix-music-) موصول بنفس العقل **افتراضياً** — ما يحتاج شي.
 
 أي فشل → خادم Fenix يرجع تلقائياً لـ Gemini.
 

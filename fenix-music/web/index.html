@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fenix Music — استوديو الأغاني بالذكاء الاصطناعي</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0710">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0a0710;
+    --panel: rgba(255,255,255,.045);
+    --panel-border: rgba(255,255,255,.09);
+    --fire1: #ff6a00;
+    --fire2: #ff3d6e;
+    --fire3: #ffb347;
+    --text: #f4f1ea;
+    --muted: #a89fb0;
+    --ok: #3ddc97;
+    --warn: #ffb347;
+    --err: #ff5d5d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1100px 500px at 85% -10%, rgba(255,106,0,.16), transparent 60%),
+                radial-gradient(900px 500px at 10% 110%, rgba(255,61,110,.12), transparent 60%),
+                var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 14px; padding: 6px 2px 18px; }
+  .logo {
+    width: 52px; height: 52px; border-radius: 16px; flex: none;
+    background: linear-gradient(135deg, var(--fire1), var(--fire2));
+    display: grid; place-items: center; font-size: 28px;
+    box-shadow: 0 8px 28px rgba(255,80,30,.35);
+  }
+  .titles { flex: 1; min-width: 0; }
+  .titles h1 { font-size: 22px; letter-spacing: .2px; }
+  .titles h1 em { font-style: normal; background: linear-gradient(90deg, var(--fire3), var(--fire2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .titles p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--muted);
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .status-pill.ok .dot { background: var(--ok); }
+
+  /* ---------- generic ---------- */
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 18px; padding: 18px; margin-top: 16px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 6px; }
+  input, textarea, select {
+    width: 100%; background: rgba(0,0,0,.35); color: var(--text);
+    border: 1px solid var(--panel-border); border-radius: 12px;
+    padding: 11px 13px; font-size: 14.5px; font-family: inherit; outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: rgba(255,106,0,.55); }
+  textarea { resize: vertical; min-height: 64px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  button {
+    cursor: pointer; border: none; border-radius: 12px;
+    font-family: inherit; font-size: 14.5px; font-weight: 600;
+    padding: 12px 20px; color: #fff; transition: transform .12s, opacity .15s, box-shadow .15s;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-fire {
+    background: linear-gradient(135deg, var(--fire1), var(--fire2));
+    box-shadow: 0 6px 22px rgba(255,80,30,.35);
+  }
+  .btn-ghost { background: var(--panel); border: 1px solid var(--panel-border); color: var(--text); font-weight: 500; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .tab {
+    padding: 9px 16px; border-radius: 999px; font-size: 13.5px; cursor: pointer;
+    background: transparent; border: 1px solid var(--panel-border); color: var(--muted); font-weight: 500;
+  }
+  .tab.active { background: linear-gradient(135deg, var(--fire1), var(--fire2)); border-color: transparent; color: #fff; }
+
+  .badge {
+    display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(255,106,0,.15); border: 1px solid rgba(255,106,0,.3);
+    color: var(--fire3); font-weight: 600;
+  }
+
+  /* ---------- lyrics ---------- */
+  .lyrics {
+    white-space: pre-wrap; unicode-bidi: plaintext; text-align: start;
+    background: rgba(0,0,0,.35); border: 1px solid var(--panel-border);
+    border-radius: 14px; padding: 16px; font-size: 15px; line-height: 1.9; margin-top: 12px;
+  }
+  .lyrics.hidden, .hidden { display: none; }
+
+  /* ---------- chat (radio host) ---------- */
+  .chat-log { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding: 4px 2px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.7; unicode-bidi: plaintext; overflow-wrap: anywhere; }
+  .msg.user { align-self: flex-start; background: linear-gradient(135deg, var(--fire1), var(--fire2)); border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-end; background: rgba(255,255,255,.07); border: 1px solid var(--panel-border); border-bottom-left-radius: 4px; }
+  .chat-input-row { display: flex; gap: 10px; margin-top: 12px; }
+  .chat-input-row input { flex: 1; }
+
+  /* ---------- player ---------- */
+  .player { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+  .player audio { width: 100%; border-radius: 12px; }
+  .track-meta { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 13px; }
+  .spinner {
+    width: 18px; height: 18px; border-radius: 50%; flex: none;
+    border: 2.5px solid rgba(255,255,255,.2); border-top-color: var(--fire3);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gen-status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1c1420; color: var(--text); border: 1px solid var(--panel-border);
+    padding: 12px 20px; border-radius: 14px; font-size: 14px; opacity: 0;
+    transition: all .3s; z-index: 50; max-width: 90vw; unicode-bidi: plaintext;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { border-color: rgba(255,93,93,.5); color: #ffb3b3; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 34px; unicode-bidi: plaintext; }
+  footer a { color: var(--fire3); text-decoration: none; }
+  @media (max-width: 520px) { .msg { max-width: 92%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">🔥</div>
+    <div class="titles">
+      <h1>Fenix <em>Music</em></h1>
+      <p>استوديو الفونك والأغاني — من عائلة Fenix · by Hakari</p>
+    </div>
+    <div class="status-pill" id="status-pill"><span class="dot"></span><span id="status-text">جاري الاتصال…</span></div>
+  </header>
+
+  <!-- ==================== Studio (lyrics + generation) ==================== -->
+  <section class="card">
+    <div class="tabs" id="studio-tabs">
+      <button class="tab active" data-tab="lyrics">✍️ كلمات</button>
+      <button class="tab" data-tab="sound">🎧 صوت</button>
+    </div>
+
+    <div id="panel-lyrics">
+      <h2>✍️ كلمات أغنية أصلية</h2>
+      <p class="sub">فونك، راب، أي نوع — بنية كاملة Intro/Verse/Chorus/Bridge/Outro بالعربي أو الإنجليزي</p>
+      <div class="row">
+        <div>
+          <label for="f-genre">النوع</label>
+          <select id="f-genre">
+            <option value="phonk">Phonk</option>
+            <option value="drift phonk">Drift Phonk</option>
+            <option value="rap">Rap</option>
+            <option value="arabic rap">Rap عربي</option>
+            <option value="trap">Trap</option>
+            <option value="pop">Pop</option>
+            <option value="lofi">Lo-fi</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-mood">المزاج</label>
+          <select id="f-mood">
+            <option value="dark aggressive">Dark / Aggressive</option>
+            <option value="energetic">Energetic</option>
+            <option value="sad emotional">Sad / Emotional</option>
+            <option value="chill nostalgic">Chill / Nostalgic</option>
+            <option value="epic cinematic">Epic / Cinematic</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-lang">لغة الكلمات</label>
+          <select id="f-lang">
+            <option value="Multilingual mix">🌍 ميكس عالمي — أساس عربي + هوكات EN/FR/ES/JA/RU</option>
+            <option value="English">English</option>
+            <option value="French">Français</option>
+            <option value="Spanish">Español</option>
+            <option value="Japanese">日本語</option>
+            <option value="Russian">Русский</option>
+            <option value="Arabic">العربية</option>
+          </select>
+        </div>
+      </div>
+      <label for="f-topic">الفكرة / الموضوع</label>
+      <textarea id="f-topic" placeholder="مثال: الليل، السرعة، مدينة تحت المطر، قصة صعود من الصفر…"></textarea>
+      <div style="margin-top:14px">
+        <button class="btn-fire" id="btn-lyrics">اكتب الكلمات 🔥</button>
+        <button class="btn-ghost hidden" id="btn-copy-lyrics">نسخ</button>
+      </div>
+      <div class="lyrics hidden" id="lyrics-out"></div>
+    </div>
+
+    <div id="panel-sound" class="hidden">
+      <h2>🎧 توليد الصوت الحقيقي (MusicGen على GPU)</h2>
+      <p class="sub">اكتب وصف البيت، أو ولّده تلقائياً من إعداداتك، ثم اضغط توليد — يرجع لك WAV جاهز</p>
+      <div class="row">
+        <div>
+          <label for="s-bpm">BPM: <span id="s-bpm-val">140</span></label>
+          <input type="range" id="s-bpm" min="60" max="200" value="140" style="padding:0;accent-color:var(--fire1)">
+        </div>
+        <div>
+          <label for="s-duration">المدة: <span id="s-duration-val">20</span> ثانية</label>
+          <input type="range" id="s-duration" min="5" max="30" value="20" style="padding:0;accent-color:var(--fire1)">
+          <input type="hidden" id="s-seed">
+        </div>
+      </div>
+      <label for="s-prompt">وصف البيت</label>
+      <textarea id="s-prompt" placeholder="مثال: dark aggressive drift phonk, heavy 808 bass, cowbell melody…"></textarea>
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+        <button class="btn-ghost" id="btn-auto-prompt">⚡ ولّد الوصف تلقائياً</button>
+        <button class="btn-fire" id="btn-generate">🎵 توليد الموسيقى</button>
+      </div>
+      <div class="gen-status hidden" id="gen-status"><div class="spinner"></div><span id="gen-status-text">جاري التوليد…</span></div>
+      <div class="player hidden" id="player">
+        <div class="track-meta"><span id="track-name">🎶 مسارك الجديد</span><span id="track-time"></span></div>
+        <audio id="audio" controls preload="metadata"></audio>
+        <button class="btn-ghost" id="btn-download" style="align-self:flex-start">⬇️ تحميل WAV</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Radio chat ==================== -->
+  <section class="card">
+    <h2>💬 مذيع راديو Fenix</h2>
+    <p class="sub">يساعدك تختار النمط والمزاج، ويفهم ذوقك الموسيقي</p>
+    <div class="chat-log" id="chat-log">
+      <div class="msg bot" dir="auto">أهلين! أنا مذيع Fenix Music 🎙️ قل لي وش تسمع في بالك — فونك غامق؟ أغنية حزينة؟ نبدأ؟</div>
+    </div>
+    <div class="chat-input-row">
+      <input id="chat-input" placeholder="اكتب رسالتك…" dir="auto">
+      <button class="btn-fire" id="btn-chat-send">إرسال</button>
+    </div>
+  </section>
+
+  <footer>Fenix Music · استوديو Hakari — Fenix AI · Fenix Music · قادم: Video 🎬 · App Builder 🛠️</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { audioUrl: null, chatHistory: [], config: null, busy: false };
+
+  // ---------- helpers ----------
+  function toast(text, isErr) {
+    var t = $("toast");
+    t.textContent = text;
+    t.className = "toast show" + (isErr ? " err" : "");
+    clearTimeout(t._h);
+    t._h = setTimeout(function () { t.className = "toast"; }, 3200);
+  }
+  function setBusy(b) {
+    state.busy = b;
+    ["btn-lyrics", "btn-auto-prompt", "btn-generate", "btn-chat-send"].forEach(function (id) { $(id).disabled = b; });
+  }
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+        return j;
+      });
+    });
+  }
+  function show(el, showIt) { el.classList.toggle("hidden", !showIt); }
+
+  // ---------- status ----------
+  api("/api/config").then(function (c) {
+    state.config = c;
+    var parts = [];
+    if (c.custom_brain) parts.push("عقل خاص ✓");
+    if (c.gemini) parts.push("Gemini ✓");
+    parts.push(c.generator ? "MusicGen ✓" : "MusicGen ✗");
+    $("status-text").textContent = parts.join(" · ");
+    $("status-pill").classList.add("ok");
+  }).catch(function () {
+    $("status-text").textContent = "الخادم غير متصل";
+  });
+
+  // ---------- studio tabs ----------
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
+      tab.classList.add("active");
+      show($("panel-lyrics"), tab.dataset.tab === "lyrics");
+      show($("panel-sound"), tab.dataset.tab === "sound");
+    });
+  });
+
+  // ---------- lyrics ----------
+  $("btn-lyrics").addEventListener("click", function () {
+    if (state.busy) return;
+    var topic = $("f-topic").value.trim();
+    setBusy(true);
+    $("lyrics-out").classList.add("hidden");
+    api("/api/lyrics", {
+      genre: $("f-genre").value,
+      mood: $("f-mood").value,
+      language: $("f-lang").value,
+      topic: topic
+    }).then(function (r) {
+      var out = $("lyrics-out");
+      out.textContent = r.lyrics;
+      out.classList.remove("hidden");
+      show($("btn-copy-lyrics"), true);
+      toast("الكلمات جاهزة 🔥 (العقل: " + r.brain + ")");
+    }).catch(function (e) { toast(e.message, true); })
+      .finally(function () { setBusy(false); });
+  });
+  $("btn-copy-lyrics").addEventListener("click", function () {
+    var text = $("lyrics-out").textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { toast("تم النسخ ✓"); });
+  });
+
+  // ---------- audio prompt ----------
+  var bpmEl = $("s-bpm"), durEl = $("s-duration");
+  bpmEl.addEventListener("input", function () { $("s-bpm-val").textContent = bpmEl.value; });
+  durEl.addEventListener("input", function () { $("s-duration-val").textContent = durEl.value; });
+
+  $("btn-auto-prompt").addEventListener("click", function () {
+    if (state.busy) return;
+    setBusy(true);
+    api("/api/audio-prompt", {
+      genre: $("f-genre").value,
+      mood: $("f-mood").value,
+      bpm: bpmEl.value,
+      duration: durEl.value
+    }).then(function (r) {
+      $("s-prompt").value = r.prompt;
+      toast("الوصف جاهز ⚡ (العقل: " + r.brain + ")");
+    }).catch(function (e) { toast(e.message, true); })
+      .finally(function () { setBusy(false); });
+  });
+
+  // ---------- music generation ----------
+  $("btn-generate").addEventListener("click", function () {
+    if (state.busy) return;
+    var prompt = $("s-prompt").value.trim();
+    if (!prompt) { toast("اكتب وصف البيت أولاً (أو ولّده تلقائياً)"); return; }
+    setBusy(true);
+    show($("gen-status"), true);
+    show($("player"), false);
+    $("gen-status-text").textContent = "جاري التوليد… أول مرة ممكن تاخذ دقايق (تحميل النموذج على GPU)";
+    api("/api/generate", { prompt: prompt, duration: durEl.value, seed: $("s-seed").value || undefined })
+      .then(function (r) {
+        state.audioUrl = r.url;
+        $("audio").src = r.url;
+        $("track-time").textContent = "توليد في " + r.seconds + " ثانية";
+        show($("player"), true);
+        show($("gen-status"), false);
+        $("audio").play().catch(function () {});
+        toast("مسارك جاهز 🎧");
+      })
+      .catch(function (e) {
+        show($("gen-status"), false);
+        toast(e.message, true);
+      })
+      .finally(function () { setBusy(false); });
+  });
+  $("btn-download").addEventListener("click", function () {
+    if (!state.audioUrl) return;
+    var a = document.createElement("a");
+    a.href = state.audioUrl; a.download = "fenix-music-" + Date.now() + ".wav";
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // ---------- radio chat ----------
+  function addMsg(text, who) {
+    var log = $("chat-log");
+    var div = document.createElement("div");
+    div.className = "msg " + who;
+    div.dir = "auto";
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+  function sendChat() {
+    var input = $("chat-input");
+    var text = input.value.trim();
+    if (!text || state.busy) return;
+    input.value = "";
+    addMsg(text, "user");
+    setBusy(true);
+    api("/api/chat", { message: text, history: state.chatHistory })
+      .then(function (r) {
+        addMsg(r.reply, "bot");
+        state.chatHistory.push({ role: "user", content: text });
+        state.chatHistory.push({ role: "assistant", content: r.reply });
+      })
+      .catch(function (e) { toast(e.message, true); })
+      .finally(function () { setBusy(false); });
+  }
+  $("btn-chat-send").addEventListener("click", sendChat);
+  $("chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendChat(); });
+})();
+</script>
+</body>
+</html>

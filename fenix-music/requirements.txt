@@ -1,0 +1,3 @@
+# Fenix Music server deps
+flask>=3.0.0
+Pillow>=10.0.0

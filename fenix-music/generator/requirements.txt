@@ -1,0 +1,6 @@
+# Fenix Music generator deps (Modal worker — no Flask here)
+# Modal installs this into the GPU function image.
+transformers>=4.51
+torch>=2.3
+audiocraft>=1.3.0
+scipy>=1.11
