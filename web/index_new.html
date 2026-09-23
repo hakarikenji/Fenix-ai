@@ -1,0 +1,2812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fenix — AI Ecosystem</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="/config.js"></script>
+<style>
+  :root {
+    --bg: #070b18;
+    --bg-2: #0a0f22;
+    --surface: #10162e;
+    --surface-2: #141b38;
+    --text: #eef1fa;
+    --text-2: #9aa4c7;
+    --text-3: #5f6a92;
+    --line: #1e2648;
+    --line-2: #2a3360;
+    --accent: #8b5cf6;
+    --accent-2: #6d28d9;
+    --gold: #d4af37;
+    --gold-2: #f0d378;
+    --accent-grad: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    --gold-grad: linear-gradient(135deg, #f0d378, #b8912c);
+    --accent-soft: rgba(139, 92, 246, .13);
+    --gold-soft: rgba(212, 175, 55, .12);
+    --accent-ring: rgba(139, 92, 246, .30);
+    --gold-ring: rgba(212, 175, 55, .28);
+    --user-bubble: linear-gradient(135deg, #4c1d95, #6d28d9);
+    --ai-bubble: #121937;
+    --code-bg: #0b0f22;
+    --ok: #34d399;
+    --danger: #f87171;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .35);
+    --shadow-lg: 0 18px 50px rgba(0, 0, 0, .55);
+    --header-bg: rgba(7, 11, 24, .82);
+    --panel: rgba(16, 22, 46, .72);
+  }
+  [data-theme="light"] {
+    --bg: #f2f3f9;
+    --bg-2: #eaecf6;
+    --surface: #ffffff;
+    --surface-2: #f6f7fc;
+    --text: #171d33;
+    --text-2: #4d5578;
+    --text-3: #8b93b5;
+    --line: #dfe2f0;
+    --line-2: #ccd1e8;
+    --accent-soft: rgba(109, 40, 217, .08);
+    --gold-soft: rgba(184, 145, 44, .10);
+    --accent-ring: rgba(109, 40, 217, .18);
+    --user-bubble: linear-gradient(135deg, #5b21b6, #7c3aed);
+    --ai-bubble: #f4f5fb;
+    --code-bg: #171d33;
+    --shadow: 0 1px 2px rgba(23, 29, 51, .06), 0 10px 30px rgba(23, 29, 51, .08);
+    --shadow-lg: 0 18px 50px rgba(23, 29, 51, .16);
+    --header-bg: rgba(242, 243, 249, .85);
+    --panel: rgba(255, 255, 255, .8);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Inter", "Cairo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh; overflow: hidden;
+    transition: background .25s, color .25s;
+  }
+  body[dir="rtl"] { font-family: "Cairo", "Inter", system-ui, sans-serif; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hide { display: none !important; }
+  button, input, select, textarea { font-family: inherit; }
+
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(900px 520px at 85% -10%, rgba(109, 40, 217, .16), transparent 60%),
+      radial-gradient(760px 480px at -10% 108%, rgba(139, 92, 246, .10), transparent 62%),
+      radial-gradient(560px 380px at 55% 45%, rgba(212, 175, 55, .05), transparent 65%);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+    background-image: radial-gradient(rgba(154, 164, 199, .14) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(720px 540px at 70% 8%, #000, transparent 75%);
+    -webkit-mask-image: radial-gradient(720px 540px at 70% 8%, #000, transparent 75%);
+  }
+
+  #appView { display: flex; height: 100dvh; animation: viewIn .38s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes viewIn { from { opacity: 0; transform: scale(.99); } to { opacity: 1; transform: none; } }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    width: 250px; flex: none; display: flex; flex-direction: column;
+    background: var(--surface); border-right: 1px solid var(--line);
+    padding: 14px 10px calc(12px + env(safe-area-inset-bottom)); z-index: 30;
+    transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+  }
+  body[dir="rtl"] .sidebar { border-right: none; border-left: 1px solid var(--line); }
+  .side-brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px 16px; }
+  .side-logo {
+    width: 38px; height: 38px; border-radius: 13px; background: var(--accent-grad);
+    display: grid; place-items: center; color: #fff; font-size: 16px; flex: none;
+    box-shadow: 0 6px 18px var(--accent-ring), inset 0 1px 0 rgba(255, 255, 255, .35);
+  }
+  .side-name { font-size: 17px; font-weight: 800; letter-spacing: -.2px; line-height: 1.1; }
+  .side-name span { background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .side-sub { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--text-3); text-transform: uppercase; margin-top: 2px; }
+  .nav-sec { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); padding: 12px 10px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    background: none; border: none; border-radius: 12px; cursor: pointer;
+    padding: 10.5px 11px; font-size: 13.5px; font-weight: 600; color: var(--text-2);
+    text-align: left; transition: background .15s, color .15s; margin-bottom: 2px;
+  }
+  body[dir="rtl"] .nav-item { text-align: right; }
+  .nav-item i { width: 20px; text-align: center; font-size: 13.5px; color: var(--text-3); transition: color .15s; flex: none; }
+  .nav-item:hover { background: var(--surface-2); color: var(--text); }
+  .nav-item:hover i { color: var(--accent); }
+  .nav-item.active { background: var(--accent-soft); color: var(--text); font-weight: 700; }
+  .nav-item.active i { color: var(--accent); }
+  .nav-item .product-dot { margin-left: auto; font-size: 9px; padding: 2.5px 7px; border-radius: 999px; font-weight: 800; letter-spacing: .4px; flex: none; }
+  body[dir="rtl"] .nav-item .product-dot { margin-left: 0; margin-right: auto; }
+  .dot-core { background: var(--accent-soft); color: var(--accent); }
+  .dot-gold { background: var(--gold-soft); color: var(--gold); }
+  .side-foot { margin-top: auto; padding: 10px 8px 0; border-top: 1px solid var(--line); }
+  .side-user { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; cursor: pointer; padding: 6px 2px; text-align: left; }
+  body[dir="rtl"] .side-user { text-align: right; }
+  .side-user:hover .acct-name { color: var(--accent); }
+  .acct-avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    background: var(--accent-grad); color: #fff; font-weight: 800; font-size: 12.5px;
+    display: grid; place-items: center; box-shadow: 0 4px 14px var(--accent-ring), inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  .acct-name { font-weight: 700; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .acct-mail { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .side-state { font-size: 10.5px; color: var(--text-3); margin-top: 8px; line-height: 1.55; }
+  .side-state b { color: var(--accent); font-weight: 600; }
+
+  .mtop { display: none; }
+  .mbnav { display: none; }
+  @media (max-width: 900px) {
+    .sidebar { position: fixed; inset: 0 auto 0 0; transform: translateX(-105%); box-shadow: var(--shadow-lg); }
+    body[dir="rtl"] .sidebar { inset: 0 0 0 auto; transform: translateX(105%); }
+    .sidebar.open { transform: translateX(0); }
+    .mtop {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top));
+      border-bottom: 1px solid var(--line); background: var(--header-bg);
+      backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      flex: none; z-index: 25;
+    }
+    .mtop .h-name { font-size: 16.5px; }
+    .mbnav {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: var(--surface); border-top: 1px solid var(--line);
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); z-index: 30; flex: none;
+    }
+    .mbnav button {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: none; border: none; color: var(--text-3); font-size: 10px; font-weight: 700;
+      padding: 7px 0; border-radius: 12px; cursor: pointer;
+    }
+    .mbnav button i { font-size: 17px; }
+    .mbnav button.active { color: var(--accent); }
+    .mbnav button.gold-tab.active { color: var(--gold); }
+  }
+  .h-name { font-size: 17px; font-weight: 800; letter-spacing: -.2px; color: var(--text); }
+  .h-name span { background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 12px; border: none; background: transparent;
+    color: var(--text-2); font-size: 16px; cursor: pointer; display: grid; place-items: center;
+    transition: background .15s, color .15s, transform .15s;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+  .icon-btn:active { transform: scale(.92); }
+
+  .main-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  .view { display: none; animation: rise .35s cubic-bezier(.22, 1, .36, 1); }
+  .view.on { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ===== Chat ===== */
+  .chat-col { max-width: 780px; margin: 0 auto; padding: 22px 16px 30px; }
+  .welcome { text-align: center; padding-top: 9vh; }
+  .w-mark {
+    width: 68px; height: 68px; margin: 0 auto; border-radius: 24px;
+    background: var(--accent-grad); display: grid; place-items: center;
+    color: #fff; font-size: 28px;
+    box-shadow: 0 16px 44px var(--accent-ring), inset 0 1px 0 rgba(255, 255, 255, .4);
+    animation: floaty 4s ease-in-out infinite;
+  }
+  @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .welcome h1 { font-size: 27px; font-weight: 800; letter-spacing: -.4px; margin-top: 16px; }
+  .welcome h1 em { font-style: normal; background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .welcome p { color: var(--text-2); font-size: 14.5px; margin-top: 7px; min-height: 20px; }
+  .suggests { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; max-width: 580px; margin: 30px auto 0; }
+  .sug {
+    display: flex; align-items: center; gap: 11px; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+    padding: 15px 16px; cursor: pointer; transition: all .18s; font-size: 13.5px; font-weight: 500;
+    line-height: 1.45; color: var(--text); box-shadow: var(--shadow);
+    animation: rise .5s cubic-bezier(.22, 1, .36, 1) backwards;
+  }
+  body[dir="rtl"] .sug { text-align: right; }
+  .sug:nth-child(1) { animation-delay: .05s; } .sug:nth-child(2) { animation-delay: .12s; }
+  .sug:nth-child(3) { animation-delay: .19s; } .sug:nth-child(4) { animation-delay: .26s; }
+  .sug:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .sug .sug-ic {
+    width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center;
+    font-size: 14px; background: var(--accent-soft); color: var(--accent);
+  }
+  @media (max-width: 480px) { .suggests { grid-template-columns: 1fr; } }
+
+  .msg { display: flex; flex-direction: column; margin-bottom: 26px; animation: rise .3s cubic-bezier(.22, 1, .36, 1); }
+  .msg .who { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
+  .msg .who .dot { width: 24px; height: 24px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; color: #fff; }
+  .msg.user .who .dot { background: linear-gradient(135deg, #475569, #334155); }
+  .msg.phoenix .who .dot { background: var(--accent-grad); box-shadow: 0 3px 9px var(--accent-ring); }
+  .msg .bubble { font-size: 15.5px; line-height: 1.75; unicode-bidi: plaintext; text-align: start; }
+  .msg.user { align-items: flex-end; }
+  .msg.user .who { flex-direction: row-reverse; }
+  .msg.user .bubble {
+    background: var(--user-bubble); color: #fff;
+    border-radius: 20px 7px 20px 20px;
+    padding: 12px 16px; align-self: flex-end; max-width: 88%;
+    overflow-wrap: anywhere; white-space: pre-wrap;
+    box-shadow: 0 2px 10px var(--accent-ring);
+  }
+  .msg.phoenix .bubble {
+    background: var(--ai-bubble); border: 1px solid var(--line);
+    border-radius: 7px 20px 20px 20px; padding: 12px 16px; align-self: flex-start; max-width: 92%; overflow-wrap: anywhere;
+  }
+  .bubble code { unicode-bidi: isolate; direction: ltr; }
+  .bubble pre { direction: ltr; text-align: left; }
+  .bubble p { margin: 9px 0; } .bubble p:first-child { margin-top: 0; } .bubble p:last-child { margin-bottom: 0; }
+  .bubble h1, .bubble h2, .bubble h3 { margin: 16px 0 8px; line-height: 1.35; }
+  .bubble h1 { font-size: 19px; } .bubble h2 { font-size: 17px; } .bubble h3 { font-size: 15.5px; }
+  .bubble ul, .bubble ol { margin: 9px 0; padding-left: 24px; }
+  .bubble li { margin: 4px 0; }
+  .bubble code {
+    background: var(--accent-soft); color: var(--accent); border-radius: 6px;
+    padding: 2px 6px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .bubble pre {
+    background: var(--code-bg); color: #e2e8f0; border-radius: 16px;
+    padding: 15px; overflow-x: auto; margin: 11px 0; direction: ltr; text-align: left;
+    border: 1px solid var(--line-2); position: relative;
+  }
+  .bubble pre code { background: none; color: inherit; padding: 0; font-size: 13px; }
+  .bubble table { border-collapse: collapse; margin: 11px 0; width: 100%; font-size: 13.5px; }
+  .bubble th, .bubble td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; }
+  .bubble th { background: var(--surface-2); font-weight: 700; }
+  .bubble blockquote { border-left: 3px solid var(--accent); padding-left: 13px; color: var(--text-2); margin: 9px 0; }
+  .bubble a { color: var(--accent); }
+  .code-copy {
+    position: absolute; top: 8px; right: 8px; border: none; cursor: pointer;
+    background: rgba(255, 255, 255, .12); color: #e2e8f0; font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 8px; transition: background .15s;
+  }
+  .code-copy:hover { background: rgba(255, 255, 255, .24); }
+  .brain-tag {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+    font-size: 10.5px; font-weight: 600; color: var(--text-3);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .brain-tag i { color: var(--gold); font-size: 9px; }
+  .src-card {
+    border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 14px;
+    background: var(--surface-2); padding: 10px 13px; margin-top: 8px; font-size: 12.5px;
+    animation: rise .3s cubic-bezier(.22, 1, .36, 1);
+  }
+  .src-card b { font-size: 12px; color: var(--gold); display: flex; align-items: center; gap: 7px; }
+  .src-card a {
+    display: flex; align-items: center; gap: 7px; color: var(--text-2);
+    text-decoration: none; padding: 4px 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .src-card a:hover { color: var(--accent); }
+  .src-card a i { font-size: 10px; flex: none; }
+  .typing { display: inline-flex; gap: 5px; padding: 10px 2px; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+  .copy-msg {
+    border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px;
+    padding: 5px 9px; margin-top: 6px; border-radius: 8px;
+    opacity: 0; transition: opacity .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .msg.phoenix:hover .copy-msg, .msg.phoenix:active .copy-msg { opacity: 1; }
+  .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
+  .cursor {
+    display: inline-block; width: 7px; height: 15px; margin-left: 2px; vertical-align: -2px;
+    background: var(--gold); border-radius: 2px; animation: caret 1s steps(2) infinite;
+  }
+  @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  .composer-wrap { flex: none; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); }
+  .composer {
+    max-width: 780px; margin: 0 auto;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+    box-shadow: var(--shadow-lg); padding: 14px 16px 12px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring), var(--shadow-lg); }
+  #attachments { display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
+  #attachments.has { display: flex; }
+  .att {
+    position: relative; width: 58px; height: 58px; border-radius: 13px; overflow: hidden;
+    border: 1px solid var(--line); background: var(--surface-2); animation: pop .22s cubic-bezier(.22, 1, .36, 1);
+  }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+  .att img { width: 100%; height: 100%; object-fit: cover; }
+  .att .att-file { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px; text-align: center; }
+  .att .att-file i { color: var(--accent); font-size: 15px; }
+  .att .att-file span { font-size: 8.5px; font-weight: 600; color: var(--text-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att .rm {
+    position: absolute; top: 3px; right: 3px; width: 19px; height: 19px; border-radius: 50%;
+    border: none; background: rgba(15, 23, 42, .75); color: #fff; font-size: 9px; cursor: pointer; display: grid; place-items: center;
+  }
+  #input {
+    width: 100%; border: none; background: none; resize: none; outline: none;
+    font-size: 15.5px; line-height: 1.55; color: var(--text); max-height: 160px; min-height: 26px;
+  }
+  #input::placeholder { color: var(--text-3); }
+  .composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .comp-left { display: flex; align-items: center; gap: 10px; }
+  .comp-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 15px;
+    display: grid; place-items: center; transition: all .15s;
+  }
+  .comp-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .comp-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .comp-btn.rec { color: var(--danger); border-color: var(--danger); background: rgba(239, 68, 68, .08); animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .35); } 55% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); } }
+  .model-tag { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 0 6px; }
+  .model-tag.code { color: var(--gold); }
+  .send-btn {
+    width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 16px; display: grid; place-items: center;
+    transition: opacity .15s, transform .15s, box-shadow .15s; box-shadow: 0 4px 14px var(--accent-ring);
+  }
+  .send-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+  .send-btn:not(:disabled):hover { transform: scale(1.07); }
+  .send-btn.stop { background: var(--danger); box-shadow: 0 4px 14px rgba(239, 68, 68, .3); }
+  .disclaimer { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 9px; }
+
+  .att-menu {
+    position: fixed; z-index: 60; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 210px; display: none;
+  }
+  .att-menu.show { display: block; animation: rise .18s ease; }
+  .att-menu button {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: none; border: none; border-radius: 11px; cursor: pointer;
+    padding: 11px 13px; font-size: 14px; font-weight: 500; color: var(--text);
+    text-align: left; transition: background .13s;
+  }
+  .att-menu button:hover { background: var(--accent-soft); }
+  .att-menu button i { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 13px; }
+  .att-menu button small { display: block; font-size: 11px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+
+  /* ===== Studios ===== */
+  .studio { max-width: 1080px; margin: 0 auto; padding: 22px 18px 40px; }
+  .studio-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .studio-mark { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; color: #fff; font-size: 19px; flex: none; }
+  .mk-music { background: var(--accent-grad); box-shadow: 0 8px 22px var(--accent-ring); }
+  .mk-video { background: var(--gold-grad); box-shadow: 0 8px 22px var(--gold-ring); }
+  .mk-build { background: linear-gradient(135deg, #0ea5e9, #6366f1); box-shadow: 0 8px 22px rgba(14, 165, 233, .3); }
+  .mk-home { background: var(--accent-grad); box-shadow: 0 8px 22px var(--accent-ring); }
+  .mk-models { background: var(--gold-grad); box-shadow: 0 8px 22px var(--gold-ring); }
+  .studio-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+  .studio-head h1 em { font-style: normal; color: var(--gold); }
+  .studio-head .st-sub { color: var(--text-2); font-size: 13.5px; margin-top: 2px; line-height: 1.5; }
+  .brain-pill {
+    margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 700; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px;
+  }
+  body[dir="rtl"] .brain-pill { margin-left: 0; margin-right: auto; }
+  .brain-pill i { color: var(--ok); font-size: 9px; }
+  .brain-pill.off i { color: var(--danger); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+    padding: 18px; margin-top: 14px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .card h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 9px; margin-bottom: 4px; flex-wrap: wrap; }
+  .card h2 .ico {
+    width: 28px; height: 28px; border-radius: 9px; background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 12.5px; flex: none;
+  }
+  .card .sub { color: var(--text-2); font-size: 12.5px; line-height: 1.6; margin-bottom: 13px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .fld label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .fld input, .fld select, .fld textarea {
+    width: 100%; background: var(--bg-2); color: var(--text);
+    border: 1.5px solid var(--line); border-radius: 13px; padding: 11px 13px;
+    font-size: 14px; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .fld input:focus, .fld select:focus, .fld textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+  .fld textarea { resize: vertical; min-height: 84px; line-height: 1.6; }
+  .fld input[type="range"] { padding: 0; accent-color: var(--accent); border: none; box-shadow: none; height: 34px; }
+  .range-val { font-size: 12px; font-weight: 800; color: var(--gold); }
+  .seg { display: flex; flex-wrap: wrap; gap: 7px; }
+  .seg button {
+    border: 1.5px solid var(--line); background: var(--bg-2); color: var(--text-2);
+    border-radius: 12px; padding: 8.5px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all .15s; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .seg button i { font-size: 11px; }
+  .seg button:hover { border-color: var(--line-2); color: var(--text); }
+  .seg button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13px; color: var(--text-2); font-weight: 600; }
+  .switch input { display: none; }
+  .switch .track { width: 40px; height: 22px; border-radius: 99px; background: var(--line-2); position: relative; transition: background .2s; flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .switch input:checked + .track { background: var(--accent-grad); }
+  .switch input:checked + .track::after { transform: translateX(-18px); }
+  .btn-main {
+    position: relative; overflow: hidden; border: none; border-radius: 14px; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 14.5px; font-weight: 700; padding: 13px 24px;
+    box-shadow: 0 8px 24px var(--accent-ring), inset 0 1px 0 rgba(255,255,255,.25);
+    display: inline-flex; align-items: center; gap: 9px; transition: transform .15s, box-shadow .2s, opacity .15s;
+  }
+  .btn-main:hover:not(:disabled) { transform: translateY(-2px); }
+  .btn-main:disabled { opacity: .5; cursor: default; }
+  .btn-gold { background: var(--gold-grad); color: #241a04; box-shadow: 0 8px 24px var(--gold-ring), inset 0 1px 0 rgba(255,255,255,.4); }
+  .btn-ghost {
+    border: 1.5px solid var(--line); background: var(--bg-2); color: var(--text);
+    border-radius: 13px; font-weight: 700; font-size: 13px; padding: 11px 16px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: border-color .15s, color .15s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .cta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 15px; }
+  .cta-note { font-size: 12px; color: var(--text-3); font-weight: 600; }
+  .cta-note b { color: var(--ok); }
+  .state-note {
+    display: none; border-radius: 13px; padding: 11px 14px; font-size: 12.5px; line-height: 1.6;
+    margin-top: 12px; border: 1px solid var(--line);
+  }
+  .state-note.show { display: block; animation: rise .25s ease; }
+  .state-note.err { background: rgba(248, 113, 113, .07); border-color: rgba(248, 113, 113, .3); color: var(--danger); }
+  .state-note.ok { background: rgba(52, 211, 153, .07); border-color: rgba(52, 211, 153, .3); color: var(--ok); }
+  .state-note.warn { background: var(--gold-soft); border-color: var(--gold-ring); color: var(--gold-2); }
+  .state-note b { font-weight: 800; }
+  .out-card {
+    background: var(--bg-2); border: 1.5px solid var(--line); border-radius: 15px;
+    padding: 14px 16px; font-size: 14px; line-height: 1.8; white-space: pre-wrap;
+    unicode-bidi: plaintext; text-align: start; overflow-wrap: anywhere; margin-top: 12px;
+  }
+  .out-card .who-brain { font-size: 10.5px; font-weight: 700; color: var(--gold); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px; }
+  .badge {
+    font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+    background: var(--gold-soft); color: var(--gold); border-radius: 999px; padding: 3.5px 10px;
+  }
+  .track {
+    display: flex; align-items: center; gap: 13px; padding: 12px 14px; margin-top: 10px;
+    background: var(--bg-2); border: 1.5px solid var(--line); border-radius: 16px; transition: border-color .15s;
+    flex-wrap: wrap;
+  }
+  .track:hover { border-color: var(--line-2); }
+  .track .t-ic {
+    width: 44px; height: 44px; border-radius: 13px; flex: none; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); font-size: 16px;
+  }
+  .track .t-body { flex: 1; min-width: 200px; }
+  .track .t-title { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track .t-meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track audio { width: 100%; height: 34px; margin-top: 6px; }
+  .track .t-ops { display: flex; gap: 4px; flex: none; }
+  .track .t-ops button { border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 13px; padding: 7px; border-radius: 9px; }
+  .track .t-ops button:hover { background: var(--accent-soft); color: var(--accent); }
+  .track .t-ops button.del:hover { background: rgba(248, 113, 113, .1); color: var(--danger); }
+  .pipeline { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 2px; }
+  .pipe-step {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700;
+    color: var(--text-3); background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; transition: all .2s;
+  }
+  .pipe-step i { font-size: 9px; }
+  .pipe-step.done { color: var(--ok); border-color: rgba(52, 211, 153, .4); background: rgba(52, 211, 153, .06); }
+  .pipe-step.active { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); animation: pulseGold 1.4s ease-in-out infinite; }
+  @keyframes pulseGold { 0%, 100% { box-shadow: 0 0 0 0 var(--gold-ring); } 55% { box-shadow: 0 0 0 7px transparent; } }
+  .scene {
+    display: grid; grid-template-columns: 132px 1fr; gap: 14px;
+    padding: 14px; border: 1.5px solid var(--line); border-radius: 16px;
+    margin-top: 12px; background: var(--bg-2); transition: border-color .2s;
+  }
+  .scene:hover { border-color: var(--line-2); }
+  .scene .thumb { display: flex; flex-direction: column; }
+  .scene .thumb img {
+    width: 132px; height: 132px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line-2);
+    background: linear-gradient(110deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .scene .img-status { color: var(--text-3); font-size: 11px; margin-top: 6px; text-align: center; }
+  .scene .body { min-width: 0; }
+  .scene .meta { color: var(--text-2); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .scene .vo { font-size: 14px; line-height: 1.75; unicode-bidi: plaintext; text-align: start; margin-top: 7px; }
+  .scene .scene-ops { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .scene input[type="number"] { width: 86px; padding: 7px 10px; font-size: 13px; background: var(--bg-2); color: var(--text); border: 1.5px solid var(--line); border-radius: 10px; outline: none; }
+  @media (max-width: 560px) { .scene { grid-template-columns: 96px 1fr; gap: 11px; } .scene .thumb img { width: 96px; height: 96px; } }
+  #render-canvas { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); background: #000; display: block; }
+  .progress { height: 9px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 12px; }
+  .progress > div { height: 100%; width: 0%; background: var(--gold-grad); box-shadow: 0 0 14px var(--gold-ring); transition: width .2s; }
+  video#result { width: 100%; border-radius: 14px; margin-top: 14px; border: 1px solid var(--line); }
+
+  /* ===== Home / Models / Library ===== */
+  .prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 16px; }
+  @media (max-width: 640px) { .prod-grid { grid-template-columns: 1fr; } }
+  .prod-card {
+    border: 1.5px solid var(--line); background: var(--panel); border-radius: 20px; padding: 19px;
+    cursor: pointer; text-align: left; transition: all .2s; backdrop-filter: blur(14px); color: var(--text);
+    animation: rise .45s cubic-bezier(.22, 1, .36, 1) backwards;
+  }
+  body[dir="rtl"] .prod-card { text-align: right; }
+  .prod-card:nth-child(1) { animation-delay: .04s; } .prod-card:nth-child(2) { animation-delay: .1s; }
+  .prod-card:nth-child(3) { animation-delay: .16s; } .prod-card:nth-child(4) { animation-delay: .22s; }
+  .prod-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: var(--shadow-lg); }
+  .prod-card .pc-mark { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #fff; font-size: 17px; margin-bottom: 12px; }
+  .prod-card h3 { font-size: 15.5px; font-weight: 800; }
+  .prod-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.6; margin-top: 5px; }
+  .prod-card .pc-go { margin-top: 12px; font-size: 12px; font-weight: 700; color: var(--accent); display: inline-flex; align-items: center; gap: 6px; }
+  .model-row {
+    display: flex; align-items: center; gap: 13px; padding: 13px 15px; margin-top: 10px;
+    background: var(--bg-2); border: 1.5px solid var(--line); border-radius: 16px; flex-wrap: wrap;
+  }
+  .model-row .mr-ic { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; font-size: 15px; color: #fff; }
+  .model-row .mr-body { flex: 1; min-width: 220px; }
+  .model-row .mr-name { font-weight: 800; font-size: 14px; }
+  .model-row .mr-desc { font-size: 12px; color: var(--text-2); margin-top: 2px; line-height: 1.5; }
+  .state-chip { flex: none; font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; border-radius: 999px; padding: 5px 11px; }
+  .st-live { background: rgba(52, 211, 153, .1); color: var(--ok); border: 1px solid rgba(52, 211, 153, .35); }
+  .st-wait { background: var(--gold-soft); color: var(--gold); border: 1px solid var(--gold-ring); }
+  .st-off { background: rgba(248, 113, 113, .08); color: var(--danger); border: 1px solid rgba(248, 113, 113, .3); }
+  .lib-item { padding: 14px 16px; margin-top: 10px; background: var(--bg-2); border: 1.5px solid var(--line); border-radius: 16px; }
+  .lib-item b { font-size: 14px; }
+  .lib-item p { font-size: 12.5px; color: var(--text-2); margin-top: 4px; line-height: 1.6; }
+
+  /* ===== Drawers & sheets ===== */
+  .overlay { position: fixed; inset: 0; background: rgba(3, 6, 16, .6); z-index: 40; display: none; backdrop-filter: blur(6px); }
+  .overlay.show { display: block; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .drawer {
+    position: fixed; top: 0; bottom: 0; width: min(84vw, 330px); z-index: 50;
+    background: var(--surface); box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+  }
+  .drawer.left { left: 0; transform: translateX(-105%); border-radius: 0 26px 26px 0; }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { padding: 18px 16px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .drawer-head b { font-size: 15.5px; font-weight: 800; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 4px 10px; }
+  .drawer-item {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    background: none; border: none; border-radius: 14px; cursor: pointer;
+    padding: 12px 12px; font-size: 13.5px; font-weight: 500; color: var(--text);
+    text-align: left; transition: background .15s; margin-bottom: 2px;
+  }
+  body[dir="rtl"] .drawer-item { text-align: right; }
+  .drawer-item:hover { background: var(--surface-2); }
+  .drawer-item.active { background: var(--accent-soft); color: var(--text); font-weight: 700; }
+  .drawer-item i { color: var(--text-3); font-size: 13px; flex: none; }
+  .drawer-item.active i { color: var(--accent); }
+  .drawer-item .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drawer-item .meta { font-size: 10.5px; color: var(--text-3); font-weight: 400; }
+  .drawer-item .del { margin-left: auto; opacity: 0; border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px; padding: 5px; border-radius: 7px; }
+  .drawer-item:hover .del { opacity: 1; }
+  .drawer-item .del:hover { color: var(--danger); background: rgba(248, 113, 113, .1); }
+  .new-chat {
+    margin: 4px 12px 10px; padding: 13px; border-radius: 16px; border: none; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    box-shadow: 0 6px 18px var(--accent-ring); transition: transform .15s;
+  }
+  .new-chat:hover { transform: translateY(-1px); }
+  .drawer-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  .foot-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+  .foot-row .fl { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text); background: none; border: none; cursor: pointer; padding: 6px 0; }
+  .foot-row .fl i { color: var(--text-3); width: 18px; }
+  .foot-row .fl:hover { color: var(--accent); }
+  .foot-row .fl:hover i { color: var(--accent); }
+  .save-note { font-size: 11px; color: var(--text-3); padding: 8px 10px 2px; line-height: 1.6; }
+  .save-note b { color: var(--gold); }
+  .file-chip {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: none; border: none; border-radius: 10px; cursor: pointer;
+    padding: 8px 10px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; color: var(--text-2); text-align: left; transition: background .13s;
+  }
+  .file-chip:hover { background: var(--surface-2); color: var(--text); }
+  .file-chip i { color: var(--accent); font-size: 11px; }
+  .file-chip .del { margin-left: auto; opacity: 0; border: none; background: none; color: var(--text-3); cursor: pointer; padding: 3px 6px; border-radius: 6px; }
+  .file-chip:hover .del { opacity: 1; }
+  .file-chip .del:hover { color: var(--danger); }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+    background: var(--surface); border-radius: 30px 30px 0 0;
+    box-shadow: var(--shadow-lg); transform: translateY(105%);
+    transition: transform .32s cubic-bezier(.32, .72, 0, 1);
+    max-height: 86dvh; display: flex; flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-grab { width: 40px; height: 4.5px; border-radius: 3px; background: var(--line-2); margin: 10px auto 2px; flex: none; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 12px; }
+  .sheet-head b { font-size: 17px; font-weight: 800; }
+  .sheet-body { overflow-y: auto; padding: 2px 20px 26px; }
+  .set-group { margin-bottom: 22px; }
+  .set-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-3); margin-bottom: 9px; }
+  .seg-pill { display: flex; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 4px; gap: 4px; }
+  .seg-pill button {
+    flex: 1; border: none; background: none; border-radius: 12px; padding: 10px 6px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; gap: 7px; transition: all .15s;
+  }
+  .seg-pill button.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .about-card {
+    border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px;
+    background: var(--bg-2); font-size: 13px; color: var(--text-2); line-height: 1.7;
+  }
+  .about-card b { color: var(--text); }
+  .ver-tag { font-size: 11px; color: var(--text-3); }
+  .mem-item, .evo-item, .log-item {
+    border: 1px solid var(--line); border-radius: 15px; padding: 11px 13px; margin-bottom: 9px;
+    background: var(--bg-2); animation: rise .25s ease;
+  }
+  .mem-item .mt, .evo-item .mt { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.55; }
+  .mem-item .tag, .evo-item .tag {
+    flex: none; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+    background: var(--accent-soft); color: var(--accent); border-radius: 7px; padding: 3px 8px; margin-top: 1px;
+  }
+  .mem-item .ops, .evo-item .ops { display: flex; gap: 4px; margin-top: 8px; }
+  .mem-item .ops button, .evo-item .ops button {
+    border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 11.5px;
+    padding: 4px 9px; border-radius: 7px;
+  }
+  .mem-item .ops button:hover, .evo-item .ops button:hover { background: var(--accent-soft); color: var(--accent); }
+  .mem-item .ops button.del:hover, .evo-item .ops button.del:hover { background: rgba(248, 113, 113, .1); color: var(--danger); }
+  .log-item { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+  .log-item b { color: var(--text); }
+  .log-item .ld { font-size: 10.5px; color: var(--text-3); }
+  .evo-item .ev-meta { font-size: 10.5px; color: var(--text-3); margin-top: 4px; }
+  .evo-item .ev-meta .on { color: var(--accent); font-weight: 700; }
+  .ghost-btn {
+    width: 100%; border: 1px solid var(--line); background: var(--bg-2);
+    color: var(--text); border-radius: 15px; padding: 12px; cursor: pointer;
+    font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s;
+  }
+  .ghost-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .danger-btn {
+    width: 100%; border: 1px solid rgba(248, 113, 113, .3); background: rgba(248, 113, 113, .06);
+    color: var(--danger); border-radius: 13px; padding: 12px; cursor: pointer;
+    font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s;
+  }
+  .danger-btn:hover { background: rgba(248, 113, 113, .12); }
+  .acct-row { display: flex; align-items: center; gap: 12px; padding: 6px 0 14px; }
+  .acct-row .acct-avatar { width: 46px; height: 46px; font-size: 17px; }
+
+  /* ===== Auth ===== */
+  #authScreen {
+    position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(700px 420px at 12% -8%, rgba(109, 40, 217, .2), transparent 60%),
+      radial-gradient(600px 380px at 108% 12%, rgba(212, 175, 55, .1), transparent 60%),
+      var(--bg);
+    padding: 20px; overflow-y: auto;
+  }
+  .auth-card {
+    width: 100%; max-width: 400px; background: var(--surface);
+    border: 1px solid var(--line-2); border-radius: 28px; padding: 30px 26px 26px;
+    box-shadow: var(--shadow-lg); animation: cardIn .5s cubic-bezier(.22, 1, .36, 1);
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: none; } }
+  .auth-logo {
+    width: 60px; height: 60px; margin: 0 auto; border-radius: 19px;
+    background: var(--accent-grad); display: grid; place-items: center; color: #fff; font-size: 25px;
+    box-shadow: 0 12px 34px var(--accent-ring); animation: floaty 4s ease-in-out infinite;
+  }
+  .auth-card h2 { text-align: center; font-size: 21px; font-weight: 800; margin-top: 16px; letter-spacing: -.3px; }
+  .auth-card .auth-sub { text-align: center; color: var(--text-2); font-size: 13.5px; margin: 6px 0 20px; line-height: 1.6; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+  .field input {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 15px; background: var(--bg-2);
+    padding: 12.5px 14px; font-size: 14.5px; color: var(--text); outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+  .auth-btn {
+    width: 100%; border: none; border-radius: 16px; padding: 13.5px; cursor: pointer;
+    background: var(--accent-grad); color: #fff; font-size: 14.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 6px;
+    box-shadow: 0 8px 22px var(--accent-ring); transition: transform .15s, opacity .15s;
+  }
+  .auth-btn:hover { transform: translateY(-1px); }
+  .auth-btn:disabled { opacity: .55; cursor: default; transform: none; }
+  .auth-err {
+    display: none; background: rgba(248, 113, 113, .08); border: 1px solid rgba(248, 113, 113, .25);
+    color: var(--danger); border-radius: 11px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px;
+  }
+  .auth-err.show { display: block; animation: shake .35s; }
+  @keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .auth-switch { text-align: center; font-size: 13px; color: var(--text-2); margin-top: 16px; }
+  .auth-switch button { background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; font-size: 13px; }
+  .auth-skip { text-align: center; margin-top: 14px; }
+  .auth-skip button { background: none; border: none; color: var(--text-3); font-size: 12.5px; cursor: pointer; }
+  .auth-skip button:hover { color: var(--text-2); }
+  .auth-feats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+  @media (max-width: 480px) { .auth-feats { grid-template-columns: 1fr; } }
+  .auth-feat {
+    display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-2);
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px;
+  }
+  .auth-feat i { color: var(--gold); font-size: 12px; }
+
+  #toast {
+    position: fixed; bottom: 116px; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: #10162e; border: 1px solid var(--line-2); color: #fff; padding: 11px 22px; border-radius: 16px;
+    font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all .3s; z-index: 99;
+    box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 8px; max-width: 92vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast i { color: var(--gold); }
+
+  main::-webkit-scrollbar, .drawer-body::-webkit-scrollbar, .sheet-body::-webkit-scrollbar { width: 5px; }
+  main::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="hide">
+  <div class="auth-card">
+    <div class="auth-logo"><i class="fa-solid fa-fire"></i></div>
+    <h2 id="authTitle">Welcome to Fenix</h2>
+    <p class="auth-sub" id="authSub">Sign in with your email to unlock cloud projects that follow you across devices.</p>
+    <div class="auth-err" id="authErr"></div>
+    <form id="authForm">
+      <div class="field" id="nameField">
+        <label for="authName">Name</label>
+        <input id="authName" type="text" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="authPass">Password</label>
+        <input id="authPass" type="password" placeholder="At least 6 characters" autocomplete="current-password" required minlength="6">
+      </div>
+      <button class="auth-btn" id="authSubmit" type="submit"><i class="fa-solid fa-right-to-bracket" id="authSubmitIcon"></i><span id="authSubmitLbl">Sign in</span></button>
+    </form>
+    <div class="auth-switch">
+      <span id="authSwitchText">New here?</span>
+      <button id="authSwitchBtn" type="button">Create an account</button>
+    </div>
+    <div class="auth-skip"><button id="authSkipBtn" type="button">Continue without an account →</button></div>
+    <div class="auth-feats">
+      <div class="auth-feat"><i class="fa-solid fa-layer-group"></i><span>All 4 products, one account</span></div>
+      <div class="auth-feat"><i class="fa-solid fa-code"></i><span>Fenix Builder mode</span></div>
+      <div class="auth-feat"><i class="fa-solid fa-microphone"></i><span>Voice input</span></div>
+      <div class="auth-feat"><i class="fa-solid fa-shield-halved"></i><span>Local-first privacy</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="appView">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand">
+      <div class="side-logo"><i class="fa-solid fa-fire"></i></div>
+      <div>
+        <div class="side-name">Fenix <span>AI</span></div>
+        <div class="side-sub">Product Ecosystem</div>
+      </div>
+    </div>
+    <div class="nav-sec">Products</div>
+    <button class="nav-item active" data-nav="chat"><i class="fa-solid fa-comment"></i><span>Fenix Chat</span><span class="product-dot dot-core">CORE</span></button>
+    <button class="nav-item" data-nav="music"><i class="fa-solid fa-music"></i><span>Fenix Music</span><span class="product-dot dot-gold">BETA</span></button>
+    <button class="nav-item" data-nav="video"><i class="fa-solid fa-clapperboard"></i><span>Fenix Video</span><span class="product-dot dot-gold">BETA</span></button>
+    <button class="nav-item" data-nav="builder"><i class="fa-solid fa-cube"></i><span>Fenix Builder</span><span class="product-dot dot-core">CODER</span></button>
+    <div class="nav-sec">Workspace</div>
+    <button class="nav-item" data-nav="home"><i class="fa-solid fa-house"></i><span>Home</span></button>
+    <button class="nav-item" data-nav="library"><i class="fa-solid fa-layer-group"></i><span>Library</span></button>
+    <button class="nav-item" data-nav="models"><i class="fa-solid fa-microchip"></i><span>Models</span></button>
+    <button class="nav-item" id="chatsBtn"><i class="fa-regular fa-clock"></i><span>History</span></button>
+    <button class="nav-item" id="settingsBtn"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+    <div class="side-foot">
+      <button class="side-user" id="acctBtnSide">
+        <span class="acct-avatar" id="sideAvatar">?</span>
+        <span style="min-width:0">
+          <span class="acct-name" id="sideName">Guest</span>
+          <span class="acct-mail" id="sideMail">Sign in to sync</span>
+        </span>
+      </button>
+      <div class="side-state" id="serverState"></div>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="mtop">
+      <button class="icon-btn" id="sideToggle" title="Menu"><i class="fa-solid fa-bars"></i></button>
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="side-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px"><i class="fa-solid fa-fire"></i></div>
+        <span class="h-name">Fenix <span id="mtopProduct">AI</span></span>
+      </div>
+      <div style="display:flex;gap:2px">
+        <button class="icon-btn" id="langBtn" title="Language / اللغة" style="font-size:12px;font-weight:800">ع</button>
+        <button class="icon-btn" id="themeBtn" title="Theme"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+      </div>
+    </div>
+
+    <main id="mainScroll">
+
+      <section class="view on" id="view-chat">
+        <div class="chat-col" id="chatCol">
+          <div class="welcome" id="welcome">
+            <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
+            <h1 id="welcomeTitle">Hey, I'm <em>Fenix</em></h1>
+            <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
+            <div class="suggests" id="suggests"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-music">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark mk-music"><i class="fa-solid fa-music"></i></div>
+            <div>
+              <h1>Fenix <em>Music</em></h1>
+              <div class="st-sub">Full AI music creation workspace — lyrics, styles, structure and generation.</div>
+            </div>
+            <span class="brain-pill" id="music-pill"><i></i>—</span>
+          </div>
+
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-sliders"></i></span>Creation setup</h2>
+            <p class="sub">Describe the song, pick style and structure — the Music Brain writes lyrics and the audio prompt.</p>
+            <div class="grid-2">
+              <div class="fld">
+                <label for="mu-genre">Genre</label>
+                <select id="mu-genre">
+                  <option value="phonk">Phonk</option>
+                  <option value="trap">Trap</option>
+                  <option value="hip-hop">Hip-Hop</option>
+                  <option value="pop">Pop</option>
+                  <option value="rock">Rock</option>
+                  <option value="electronic">Electronic</option>
+                  <option value="ambient">Ambient</option>
+                  <option value="cinematic">Cinematic</option>
+                  <option value="lo-fi">Lo-fi</option>
+                  <option value="r&amp;b">R&amp;B</option>
+                  <option value="orchestral">Orchestral</option>
+                  <option value="anime-inspired">Anime-inspired</option>
+                  <option value="game soundtrack">Game soundtrack</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </div>
+              <div class="fld" id="mu-genre-custom-wrap" style="display:none">
+                <label for="mu-genre-custom">Custom genre</label>
+                <input id="mu-genre-custom" type="text" placeholder="e.g. moroccan desert trap" maxlength="40">
+              </div>
+              <div class="fld">
+                <label for="mu-mood">Mood</label>
+                <select id="mu-mood">
+                  <option value="dark aggressive">Dark aggressive</option>
+                  <option value="energetic">Energetic</option>
+                  <option value="melancholic">Melancholic</option>
+                  <option value="uplifting">Uplifting</option>
+                  <option value="romantic">Romantic</option>
+                  <option value="epic">Epic</option>
+                  <option value="chill">Chill</option>
+                  <option value="mysterious">Mysterious</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="mu-lang">Lyrics language</label>
+                <select id="mu-lang">
+                  <option>English</option><option>Arabic</option><option>Français</option>
+                  <option>Español</option><option>日本語</option><option>Русский</option><option>Deutsch</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="mu-vocal">Vocal style</label>
+                <select id="mu-vocal">
+                  <option value="male vocals">Male vocals</option>
+                  <option value="female vocals">Female vocals</option>
+                  <option value="choir">Choir</option>
+                  <option value="rap flow">Rap flow</option>
+                  <option value="instrumental only">Instrumental only</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="mu-bpm">Tempo / BPM: <span class="range-val" id="mu-bpm-val">140</span></label>
+                <input type="range" id="mu-bpm" min="60" max="200" step="1" value="140">
+              </div>
+              <div class="fld">
+                <label for="mu-energy">Energy: <span class="range-val" id="mu-energy-val">Medium</span></label>
+                <input type="range" id="mu-energy" min="1" max="5" step="1" value="3">
+              </div>
+              <div class="fld">
+                <label for="mu-duration">Target duration: <span class="range-val" id="mu-duration-val">20s</span></label>
+                <input type="range" id="mu-duration" min="5" max="30" step="1" value="20">
+              </div>
+            </div>
+            <div class="fld" style="margin-top:12px">
+              <label>Song structure (in order)</label>
+              <div class="seg" id="mu-structure">
+                <button type="button" data-v="Intro" class="on">Intro</button>
+                <button type="button" data-v="Verse" class="on">Verse</button>
+                <button type="button" data-v="Pre-Chorus">Pre-Chorus</button>
+                <button type="button" data-v="Chorus" class="on">Chorus</button>
+                <button type="button" data-v="Bridge">Bridge</button>
+                <button type="button" data-v="Drop">Drop</button>
+                <button type="button" data-v="Outro" class="on">Outro</button>
+              </div>
+            </div>
+            <div class="fld" style="margin-top:12px">
+              <label for="mu-topic">Song idea / topic</label>
+              <textarea id="mu-topic" placeholder="e.g. rising from a small neighborhood to the world stage — phonk anthem" maxlength="300"></textarea>
+            </div>
+            <div class="fld" style="margin-top:12px">
+              <label for="mu-lyrics-custom">Custom lyrics (optional — overrides AI lyrics)</label>
+              <textarea id="mu-lyrics-custom" placeholder="[Verse]&#10;write your own lines here…" style="min-height:110px"></textarea>
+            </div>
+            <div class="cta-row">
+              <button class="btn-main" id="mu-btn-lyrics"><i class="fa-solid fa-feather"></i>Write lyrics</button>
+              <button class="btn-ghost" id="mu-btn-prompt"><i class="fa-solid fa-wave-square"></i>Build audio prompt</button>
+              <button class="btn-main btn-gold" id="mu-btn-generate"><i class="fa-solid fa-bolt"></i>Generate music</button>
+              <button class="btn-ghost" id="mu-btn-regen" title="Generate again with a new variation seed"><i class="fa-solid fa-rotate"></i>Variation</button>
+            </div>
+            <div class="state-note" id="mu-state"></div>
+            <div class="out-card hide" id="mu-out"></div>
+            <div class="fld" style="margin-top:12px">
+              <label for="mu-prompt-out">Audio prompt (the Music Brain's sound design — editable before generating)</label>
+              <textarea id="mu-prompt-out" placeholder="Build the audio prompt, or write your own sound description here…" style="min-height:90px"></textarea>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-radio"></i></span>Radio host</h2>
+            <p class="sub">Ask the Music Brain anything — production tips, genre advice, song feedback.</p>
+            <div class="grid-2" style="grid-template-columns:1fr auto;align-items:end">
+              <div class="fld">
+                <label for="mu-chat-in">Ask the music brain</label>
+                <input id="mu-chat-in" type="text" placeholder="e.g. what BPM fits dark phonk?" maxlength="300">
+              </div>
+              <button class="btn-ghost" id="mu-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+            <div class="out-card hide" id="mu-chat-out"></div>
+          </div>
+
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-compact-disc"></i></span>Track library <span class="badge" id="mu-count">0</span></h2>
+            <p class="sub">Generated tracks, saved on this device — favorite, rename, download or delete.</p>
+            <div id="mu-tracks"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-video">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark mk-video"><i class="fa-solid fa-clapperboard"></i></div>
+            <div>
+              <h1>Fenix <em>Video</em></h1>
+              <div class="st-sub">AI video studio — idea → script → storyboard → images → narration → render on your device.</div>
+            </div>
+            <span class="brain-pill" id="video-pill"><i></i>—</span>
+          </div>
+
+          <div class="pipeline" id="video-pipeline">
+            <span class="pipe-step" data-step="idea"><i class="fa-solid fa-lightbulb"></i>Idea</span>
+            <span class="pipe-step" data-step="script"><i class="fa-solid fa-scroll"></i>Script</span>
+            <span class="pipe-step" data-step="scenes"><i class="fa-solid fa-images"></i>Storyboard</span>
+            <span class="pipe-step" data-step="assets"><i class="fa-solid fa-photo-film"></i>Assets</span>
+            <span class="pipe-step" data-step="voice"><i class="fa-solid fa-microphone-lines"></i>Voice</span>
+            <span class="pipe-step" data-step="render"><i class="fa-solid fa-film"></i>Render</span>
+          </div>
+
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-lightbulb"></i></span>Project &amp; idea</h2>
+            <p class="sub">Define the video — the Video Brain writes the scene-by-scene script JSON.</p>
+            <div class="grid-3">
+              <div class="fld">
+                <label for="vd-name">Project name</label>
+                <input id="vd-name" type="text" placeholder="My first short film" maxlength="60">
+              </div>
+              <div class="fld">
+                <label for="vd-lang">Narration language</label>
+                <select id="vd-lang">
+                  <option>English</option><option>العربية</option><option>Français</option>
+                  <option>Español</option><option>日本語</option><option>Русский</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="vd-style">Visual style</label>
+                <select id="vd-style">
+                  <option value="cinematic, moody, neon">Cinematic · moody neon</option>
+                  <option value="golden hour, warm, nostalgic">Golden hour · warm</option>
+                  <option value="dark aggressive, rain, street">Dark street · rain</option>
+                  <option value="futuristic, sci-fi, volumetric">Sci-fi · volumetric</option>
+                  <option value="anime style, vivid">Anime · vivid</option>
+                  <option value="documentary, natural light">Documentary · natural</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="vd-ratio">Aspect ratio</label>
+                <select id="vd-ratio">
+                  <option value="9:16" selected>9:16 — Reels / TikTok</option>
+                  <option value="1:1">1:1 — Square</option>
+                  <option value="16:9">16:9 — YouTube</option>
+                  <option value="4:5">4:5 — Portrait feed</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="vd-quality">Image quality</label>
+                <select id="vd-quality">
+                  <option value="512">Fast — 512px</option>
+                  <option value="768" selected>Balanced — 768px</option>
+                  <option value="1024">Ultra — 1024px</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="vd-duration">Target duration</label>
+                <select id="vd-duration">
+                  <option value="15">~15s — quick cut</option>
+                  <option value="25" selected>~25s — standard</option>
+                  <option value="40">~40s — full story</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label for="vd-camera">Camera style</label>
+                <select id="vd-camera">
+                  <option value="slow dolly-in, cinematic">Slow dolly-in</option>
+                  <option value="handheld, raw energy" selected>Handheld energy</option>
+                  <option value="aerial drone sweep">Aerial drone sweep</option>
+                  <option value="static tripod, composed">Static tripod</option>
+                  <option value="dynamic tracking shot">Dynamic tracking</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label>Render options</label>
+                <div style="display:flex;flex-direction:column;gap:9px;padding-top:6px">
+                  <label class="switch"><input type="checkbox" id="vd-voice" checked><span class="track"></span>Voice-over</label>
+                  <label class="switch"><input type="checkbox" id="vd-captions" checked><span class="track"></span>Captions</label>
+                  <label class="switch"><input type="checkbox" id="vd-watermark" checked><span class="track"></span>Fenix watermark</label>
+                </div>
+              </div>
+            </div>
+            <div class="fld" style="margin-top:12px">
+              <label for="vd-topic">Video idea</label>
+              <textarea id="vd-topic" placeholder="e.g. the story of a music band rising from the neighborhood to the stage…" maxlength="400"></textarea>
+            </div>
+            <div class="cta-row">
+              <button class="btn-main" id="vd-btn-script"><i class="fa-solid fa-scroll"></i>Write script</button>
+              <button class="btn-ghost hide" id="vd-btn-rewrite"><i class="fa-solid fa-rotate"></i>Regenerate</button>
+              <span class="cta-note"><b>100% free</b> · scene images free · render on your device</span>
+            </div>
+            <div class="state-note" id="vd-state"></div>
+          </div>
+
+          <div class="card hide" id="vd-scenes-card">
+            <h2><span class="ico"><i class="fa-solid fa-images"></i></span>Storyboard <span class="badge" id="vd-brain"></span></h2>
+            <p class="sub" id="vd-scenes-title"></p>
+            <div id="vd-scenes"></div>
+            <div class="cta-row">
+              <button class="btn-main btn-gold" id="vd-btn-render"><i class="fa-solid fa-film"></i>Render video</button>
+              <div class="fld" style="min-width:190px">
+                <label for="vd-music-src">Background music</label>
+                <select id="vd-music-src">
+                  <option value="none" selected>None</option>
+                  <option value="fenix">Fenix Music brain (free AI bed)</option>
+                  <option value="upload">Upload my own file…</option>
+                </select>
+              </div>
+              <label class="btn-ghost hide" id="vd-music-upload-wrap" style="cursor:pointer">
+                <i class="fa-solid fa-music"></i>Choose file
+                <input type="file" id="vd-music-file" accept="audio/*" style="display:none">
+              </label>
+              <span class="badge hide" id="vd-music-name"></span>
+            </div>
+          </div>
+
+          <div class="card hide" id="vd-render-card">
+            <h2><span class="ico"><i class="fa-solid fa-film"></i></span>Render — on your device, free</h2>
+            <p class="sub">Drawing scenes + narration + music → ready video file.</p>
+            <canvas id="render-canvas" width="720" height="1280"></canvas>
+            <div class="progress"><div id="vd-bar"></div></div>
+            <p class="sub" id="vd-render-status" style="margin-top:10px">…</p>
+            <video id="result" class="hide" controls playsinline></video>
+            <button class="btn-ghost hide" id="vd-download" style="margin-top:12px"><i class="fa-solid fa-download"></i>Download WebM</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-builder">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark mk-build"><i class="fa-solid fa-cube"></i></div>
+            <div>
+              <h1>Fenix <em>Builder</em></h1>
+              <div class="st-sub">Cloud projects + elite Coder mode — describe a feature, get complete runnable code with full project context.</div>
+            </div>
+            <span class="brain-pill" id="builder-pill"><i></i>—</span>
+          </div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-folder-tree"></i></span>Projects</h2>
+            <p class="sub">Projects save your app's code in the cloud and power <b>Fenix Coder</b> — the AI sees every file on every message.</p>
+            <div class="cta-row" style="margin-top:0">
+              <button class="btn-main" id="bd-new"><i class="fa-solid fa-folder-plus"></i>New project</button>
+              <button class="btn-ghost" id="bd-open"><i class="fa-solid fa-list"></i>Open projects</button>
+              <button class="btn-ghost" id="bd-chat"><i class="fa-solid fa-comment-dots"></i>Open Coder chat</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-bolt"></i></span>Active project</h2>
+            <div id="bd-active" class="sub">No project selected — create or open one above.</div>
+            <div id="bd-files"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-home">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark mk-home"><i class="fa-solid fa-fire"></i></div>
+            <div>
+              <h1>Welcome to the <em>Fenix ecosystem</em></h1>
+              <div class="st-sub">One account. Four AI products. Brains that never lie about who answered.</div>
+            </div>
+          </div>
+          <div class="prod-grid">
+            <button class="prod-card" data-go="chat">
+              <div class="pc-mark" style="background:var(--accent-grad)"><i class="fa-solid fa-comment"></i></div>
+              <h3>Fenix Chat</h3>
+              <p>Core assistant — memory, research, voice, documents, multimodal analysis.</p>
+              <span class="pc-go">Open <i class="fa-solid fa-arrow-right"></i></span>
+            </button>
+            <button class="prod-card" data-go="music">
+              <div class="pc-mark" style="background:var(--gold-grad);color:#241a04"><i class="fa-solid fa-music"></i></div>
+              <h3>Fenix Music</h3>
+              <p>Full music creation workspace — lyrics, styles, structure, generation pipeline.</p>
+              <span class="pc-go">Open <i class="fa-solid fa-arrow-right"></i></span>
+            </button>
+            <button class="prod-card" data-go="video">
+              <div class="pc-mark" style="background:var(--gold-grad);color:#241a04"><i class="fa-solid fa-clapperboard"></i></div>
+              <h3>Fenix Video</h3>
+              <p>AI video studio — script, storyboard, scene images, narration, on-device render.</p>
+              <span class="pc-go">Open <i class="fa-solid fa-arrow-right"></i></span>
+            </button>
+            <button class="prod-card" data-go="builder">
+              <div class="pc-mark" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)"><i class="fa-solid fa-cube"></i></div>
+              <h3>Fenix Builder</h3>
+              <p>Cloud projects with elite Coder mode — complete runnable code, verified honestly.</p>
+              <span class="pc-go">Open <i class="fa-solid fa-arrow-right"></i></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-models">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark mk-models"><i class="fa-solid fa-microchip"></i></div>
+            <div>
+              <h1>Fenix <em>Brains</em></h1>
+              <div class="st-sub">The real model architecture — every product routes through its specialized brain with honest fallback.</div>
+            </div>
+            <button class="btn-ghost" id="md-refresh" style="margin-left:auto"><i class="fa-solid fa-rotate"></i>Refresh</button>
+          </div>
+          <div id="md-list"></div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-circle-info"></i></span>How routing works</h2>
+            <p class="sub" style="margin-bottom:0">Each product tries its specialized brain first (fine-tuned LoRA models on Modal), then falls back to Fenix Core, then to the Gemini engine. The badge on every answer shows the brain that ACTUALLY produced it — the UI never lies about the engine. Deploying a trained brain needs no code change: the apps pick it up automatically.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-library">
+        <div class="studio">
+          <div class="studio-head">
+            <div class="studio-mark" style="background:var(--gold-grad);box-shadow:0 8px 22px var(--gold-ring)"><i class="fa-solid fa-layer-group"></i></div>
+            <div>
+              <h1>Prompt <em>Library</em></h1>
+              <div class="st-sub">Curated expert prompt templates — plus the enhancer that turns a raw instruction into a production prompt.</div>
+            </div>
+          </div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-wand-magic-sparkles"></i></span>Prompt enhancer</h2>
+            <div class="fld">
+              <label for="lib-text">Your raw prompt</label>
+              <textarea id="lib-text" placeholder="Type a simple instruction — get back an enhanced expert prompt." style="min-height:80px"></textarea>
+            </div>
+            <div class="cta-row">
+              <button class="btn-main" id="lib-btn"><i class="fa-solid fa-wand-magic-sparkles"></i>Enhance prompt</button>
+            </div>
+            <div class="state-note" id="lib-state"></div>
+            <div class="out-card hide" id="lib-out"></div>
+          </div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-book"></i></span>Templates</h2>
+            <div id="lib-list"><p class="sub">Loading…</p></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div class="composer-wrap" id="composerWrap">
+      <div class="composer">
+        <div id="attachments"></div>
+        <textarea id="input" rows="1" placeholder="Message Fenix..."></textarea>
+        <div class="composer-row">
+          <div class="comp-left">
+            <button class="comp-btn" id="attachBtn" title="Add photos, camera or files"><i class="fa-solid fa-plus"></i></button>
+            <button class="comp-btn" id="micBtn" title="Voice input"><i class="fa-solid fa-microphone" id="micIcon"></i></button>
+            <button class="comp-btn" id="newChatBtn" title="New chat"><i class="fa-solid fa-comment-dots"></i></button>
+            <span class="model-tag" id="modelTag">Fenix Flash</span>
+          </div>
+          <button class="send-btn" id="sendBtn" disabled title="Send"><i class="fa-solid fa-arrow-up"></i></button>
+        </div>
+      </div>
+      <div class="disclaimer">Fenix can make mistakes — verify important info. Built by Hakari.</div>
+    </div>
+
+    <nav class="mbnav" id="mbnav">
+      <button data-nav="chat" class="active"><i class="fa-solid fa-comment"></i><span>Chat</span></button>
+      <button data-nav="music" class="gold-tab"><i class="fa-solid fa-music"></i><span>Music</span></button>
+      <button data-nav="video" class="gold-tab"><i class="fa-solid fa-clapperboard"></i><span>Video</span></button>
+      <button data-nav="home"><i class="fa-solid fa-grip"></i><span>More</span></button>
+    </nav>
+  </div>
+</div>
+
+<div class="att-menu" id="attMenu">
+  <button id="attPhoto"><i class="fa-regular fa-image"></i><span>Photo library<small>Choose from your gallery</small></span></button>
+  <button id="attCamera"><i class="fa-solid fa-camera"></i><span>Camera<small>Take a photo now</small></span></button>
+  <button id="attFile"><i class="fa-regular fa-folder-open"></i><span>Documents<small>PDF, code, text files</small></span></button>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+<input type="file" id="docInput" multiple hidden>
+
+<div class="overlay" id="overlay"></div>
+
+<aside class="drawer left" id="chatsDrawer">
+  <div class="drawer-head">
+    <b>Chats</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <button class="new-chat" id="newChatBtn2"><i class="fa-solid fa-plus"></i> New chat</button>
+  <div class="drawer-body" id="chatsList"></div>
+  <div class="drawer-foot">
+    <div class="foot-row">
+      <button class="fl" id="themeBtn2"><i class="fa-solid fa-circle-half-stroke"></i>Appearance</button>
+    </div>
+    <div class="save-note" id="drawerServerState" style="padding-top:0"></div>
+  </div>
+</aside>
+
+<aside class="drawer left" id="projectsDrawer">
+  <div class="drawer-head">
+    <b>Projects</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <button class="new-chat" id="newProjectBtn"><i class="fa-solid fa-folder-plus"></i> New project</button>
+  <div class="drawer-body" id="projectsList"></div>
+  <div class="drawer-foot">
+    <div class="save-note" id="projNote">Projects save your app's code in the cloud and power <b>Fenix Coder</b> — the AI sees every file on every message.</div>
+  </div>
+</aside>
+
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Settings</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="set-group">
+      <div class="set-label">Intelligence</div>
+      <div class="seg-pill" id="modelSeg">
+        <button data-v="flash" class="on"><i class="fa-solid fa-bolt"></i>Fenix Flash</button>
+        <button data-v="pro"><i class="fa-solid fa-brain"></i>Fenix Pro</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Reply style</div>
+      <div class="seg-pill" id="styleSeg">
+        <button data-v="concise" class="on"><i class="fa-solid fa-compress"></i>Concise</button>
+        <button data-v="detailed"><i class="fa-solid fa-expand"></i>Detailed</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Language</div>
+      <div class="seg-pill" id="langSeg">
+        <button data-v="en" class="on">English</button>
+        <button data-v="ar">العربية</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">Theme</div>
+      <div class="seg-pill" id="themeSeg">
+        <button data-v="dark" class="on"><i class="fa-regular fa-moon"></i>Dark</button>
+        <button data-v="light"><i class="fa-regular fa-sun"></i>Light</button>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">About</div>
+      <div class="about-card">
+        <b>Fenix 5.0 Ecosystem</b> — Chat · Music · Video · Builder, built by Hakari.<br>
+        Structured memory, evolution, research, cloud projects, and honest brain routing.<br>
+        <span class="ver-tag">Version 5.0 · each product routes through its own brain with honest fallback</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="projectSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>New project</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="auth-err" id="projErr"></div>
+    <div class="field">
+      <label for="projName">Project name</label>
+      <input id="projName" type="text" placeholder="My awesome app" maxlength="60">
+    </div>
+    <div class="field">
+      <label for="projStack">Tech stack</label>
+      <input id="projStack" type="text" placeholder="e.g. React + Node.js, Flutter, Python…" maxlength="120">
+    </div>
+    <div class="field">
+      <label for="projDesc">What are you building?</label>
+      <input id="projDesc" type="text" placeholder="A to-do app with reminders and dark mode">
+    </div>
+    <button class="auth-btn" id="projCreateBtn" type="button"><i class="fa-solid fa-rocket"></i>Create project</button>
+    <div class="save-note" style="margin-top:12px">Fenix Coder will know the name, stack and goal of this project — and every file you add — in every message.</div>
+  </div>
+</div>
+
+<div class="sheet" id="memorySheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Memory</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="save-note" style="margin-top:0">What Fenix remembers about you. Everything is visible, editable and deletable — nothing is stored behind your back.</div>
+    <div class="field">
+      <label for="memText">New memory</label>
+      <input id="memText" type="text" placeholder="e.g. I prefer TypeScript and concise answers">
+    </div>
+    <div class="field">
+      <label for="memCat">Category</label>
+      <select id="memCat" style="width:100%; border:1.5px solid var(--line); border-radius:13px; background:var(--bg-2); color:var(--text); padding:12px 14px; font-size:14px; outline:none">
+        <option value="facts">Fact</option>
+        <option value="preferences">Preference</option>
+        <option value="projects">Project</option>
+        <option value="goals">Long-term goal</option>
+        <option value="style">Working style</option>
+        <option value="context">Temporary context</option>
+      </select>
+    </div>
+    <button class="auth-btn" id="memAddBtn" type="button"><i class="fa-solid fa-brain"></i>Remember this</button>
+    <div id="memList" style="margin-top:16px"></div>
+    <div style="display:flex; gap:10px; margin-top:14px">
+      <button class="danger-btn" id="memExportBtn" style="flex:1"><i class="fa-solid fa-download"></i>Export</button>
+      <button class="danger-btn" id="memClearBtn" style="flex:1"><i class="fa-solid fa-trash"></i>Clear all</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="evoSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Evolution</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="save-note" style="margin-top:0">How Fenix learns to work with you — only from repeated patterns (3+ observations). Never invented, always inspectable.</div>
+    <div class="seg-pill" id="evoToggleSeg" style="margin-bottom:14px">
+      <button data-v="on"><i class="fa-solid fa-toggle-on"></i>Evolution on</button>
+      <button data-v="off"><i class="fa-solid fa-toggle-off"></i>Disabled</button>
+    </div>
+    <div class="set-label">Evolution profile</div>
+    <div id="evoInsights"></div>
+    <div class="set-label" style="margin-top:16px">Evolution log</div>
+    <div id="evoLog"></div>
+    <button class="danger-btn" id="evoClearBtn" style="margin-top:14px"><i class="fa-solid fa-eraser"></i>Reset evolution</button>
+  </div>
+</div>
+
+<div class="sheet" id="accountSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Account</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body" id="accountBody"></div>
+</div>
+
+<div id="toast"><i class="fa-solid fa-check"></i><span id="toastMsg">Copied</span></div>
+
+<script>
+
+/* =====================================================================
+   Fenix 5.0 Ecosystem — application logic
+   Chat · Music · Video · Builder — one account, honest brain routing.
+   Every AI call goes through the Fenix server; no key ever reaches this file.
+   ===================================================================== */
+'use strict';
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const IS_NATIVE = typeof window.Capacitor !== 'undefined';
+const API_BASE = (((window.FENIX_SERVER || window.PHOENIX_SERVER) || '') + '').replace(/\/+$/, '');
+const apiUrl = (p) => API_BASE + p;
+const canUseServer = () => !IS_NATIVE || !!API_BASE;
+
+/* ============================ i18n ============================ */
+const I18N = {
+  en: {
+    chat: 'Fenix Chat', music: 'Fenix Music', video: 'Fenix Video', builder: 'Fenix Builder',
+    home: 'Home', library: 'Library', models: 'Models', history: 'History', settings: 'Settings',
+    welcome: `Hey, I'm <em>Fenix</em>`, welcomeSub: 'Your smart AI companion — ask me anything.',
+    msgPh: 'Message Fenix...', send: 'Send', newChat: 'New chat',
+    signIn: 'Sign in', signOut: 'Sign out', guest: 'Guest', sync: 'Sign in to sync',
+  },
+  ar: {
+    chat: 'فينكس شات', music: 'فينكس ميوزك', video: 'فينكس فيديو', builder: 'فينكس بيلدر',
+    home: 'الرئيسية', library: 'المكتبة', models: 'العقول', history: 'السجل', settings: 'الإعدادات',
+    welcome: `أهلاً، أنا <em>فينكس</em>`, welcomeSub: 'رفيقك الذكي — اسألني أي شيء.',
+    msgPh: 'راسل فينكس...', send: 'إرسال', newChat: 'محادثة جديدة',
+    signIn: 'تسجيل الدخول', signOut: 'خروج', guest: 'زائر', sync: 'سجّل للمزامنة',
+  }
+};
+let LANG = localStorage.getItem('fenix_lang') || 'en';
+function t(k) { return (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k; }
+function applyLang(l) {
+  LANG = l; localStorage.setItem('fenix_lang', l);
+  document.documentElement.lang = l;
+  document.body.dir = l === 'ar' ? 'rtl' : 'ltr';
+  $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  const inp = $('#input'); if (inp) inp.placeholder = t('msgPh');
+  renderMessages(); syncSettingsUI();
+}
+const langSeg = $('#langSeg');
+if (langSeg) langSeg.querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => applyLang(b.dataset.v)));
+const langBtn = $('#langBtn');
+if (langBtn) langBtn.addEventListener('click', () => applyLang(LANG === 'en' ? 'ar' : 'en'));
+
+/* ============================ Settings ============================ */
+const SET = {
+  model: localStorage.getItem('fenix_model') || 'flash',
+  style: localStorage.getItem('fenix_style') || 'concise',
+};
+const MODEL_LABEL = { flash: 'Fenix Flash', pro: 'Fenix Pro' };
+
+/* ============================ Auth state ============================ */
+let USER = null;
+try { USER = JSON.parse(localStorage.getItem('fenix_user') || 'null'); } catch { USER = null; }
+function authHeaders() {
+  const tk = localStorage.getItem('fenix_token');
+  return tk ? { 'Authorization': 'Bearer ' + tk } : {};
+}
+function saveAuth(data) {
+  localStorage.setItem('fenix_token', data.token);
+  localStorage.setItem('fenix_user', JSON.stringify(data.user));
+  USER = data.user;
+}
+function clearAuth() {
+  localStorage.removeItem('fenix_token'); localStorage.removeItem('fenix_user');
+  USER = null;
+}
+
+/* ============================ Chats (localStorage) ============================ */
+let chats = JSON.parse(localStorage.getItem('fenix_chats') || '[]');
+let currentId = localStorage.getItem('fenix_current');
+let pending = [];
+let projects = [];
+let activeProjectId = localStorage.getItem('fenix_project') || null;
+let activeProject = null;
+let generating = false, stopGen = null, lastSources = null, lastBrain = null;
+
+function saveChats() {
+  try {
+    localStorage.setItem('fenix_chats', JSON.stringify(chats));
+    localStorage.setItem('fenix_current', currentId || '');
+  } catch (e) {
+    try {
+      const light = JSON.parse(JSON.stringify(chats));
+      light.forEach(c => (c.messages || []).forEach(m =>
+        (m.attachments || []).forEach(a => { if (a.dataUrl && a.dataUrl.length > 80000) delete a.dataUrl; })));
+      localStorage.setItem('fenix_chats', JSON.stringify(light));
+      localStorage.setItem('fenix_current', currentId || '');
+    } catch (_) {}
+  }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveChats(); });
+window.addEventListener('pagehide', saveChats);
+function currentChat() { return chats.find(c => c.id === currentId); }
+function newChat() {
+  const c = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'New chat', messages: [], created: Date.now() };
+  chats.unshift(c); currentId = c.id;
+  saveChats(); renderChats(); renderMessages();
+  closeAll(); const inp = $('#input'); if (inp) inp.focus();
+}
+function ensureChat() { if (!currentChat()) newChat(); return currentChat(); }
+function deleteChat(id, ev) {
+  ev.stopPropagation();
+  chats = chats.filter(c => c.id !== id);
+  if (currentId === id) currentId = chats[0] ? chats[0].id : null;
+  saveChats(); renderChats(); renderMessages();
+}
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function renderMd(tx) { try { return marked.parse(tx); } catch { return '<p>' + escHtml(tx).replace(/\n/g, '<br>') + '</p>'; } }
+function scrollDown() { const m = $('#mainScroll'); if (m) m.scrollTop = m.scrollHeight; }
+
+function renderChats() {
+  const list = $('#chatsList'); if (!list) return;
+  list.innerHTML = chats.map(c => `
+    <button class="drawer-item ${c.id === currentId ? 'active' : ''}" data-id="${c.id}">
+      <i class="fa-regular fa-message"></i>
+      <span class="lbl">${escHtml(c.title)}</span>
+      <span class="del" data-del="${c.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
+    </button>`).join('') || '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px">No chats yet</p>';
+  list.querySelectorAll('.drawer-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.del')) return;
+      currentId = el.dataset.id; saveChats(); renderChats(); renderMessages(); closeAll();
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(el => el.addEventListener('click', (e) => deleteChat(el.dataset.del, e)));
+}
+function enhanceCodeBlocks(root) {
+  root.querySelectorAll('.bubble pre').forEach(pre => {
+    if (pre.querySelector('.code-copy')) return;
+    const btn = document.createElement('button');
+    btn.className = 'code-copy'; btn.textContent = 'Copy';
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(pre.innerText.replace(/^Copy\n?/, '')); showToast('Code copied'); }
+      catch { showToast('Copy failed'); }
+    });
+    pre.appendChild(btn);
+  });
+}
+function bindCopyButtons() {
+  $$('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+    const c = currentChat(); if (!c) return;
+    const text = (c.messages[+btn.dataset.copy] || {}).content || '';
+    try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard'); }
+    catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  }));
+}
+function msgHtml(m, idx) {
+  if (m.role === 'user') {
+    const atts = (m.attachments || []).map(a => a.mime && a.mime.startsWith('image/')
+      ? `<img src="${a.dataUrl}" alt="" style="max-width:200px; border-radius:12px; margin:4px 0; display:block">`
+      : `<div style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); color:var(--accent); border-radius:9px; padding:5px 10px; font-size:12px; font-weight:600; margin:3px 2px"><i class="fa-regular fa-file"></i>${escHtml(a.name)}</div>`
+    ).join('');
+    return `<div class="msg user"><div class="who"><span class="dot"><i class="fa-solid fa-user"></i></span>You</div>
+      ${atts ? `<div style="align-self:flex-end">${atts}</div>` : ''}
+      <div class="bubble" dir="auto">${escHtml(m.content)}</div></div>`;
+  }
+  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+    <div class="bubble" dir="auto">${renderMd(m.content)}</div>
+    <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
+}
+function renderSources(sources) {
+  $$('.src-card').forEach(el => el.remove());
+  if (!sources || !sources.length) return;
+  const links = sources.map(s =>
+    `<a href="${escHtml(s.link)}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i>${escHtml(s.title || s.link)}</a>`).join('');
+  $('#chatCol').insertAdjacentHTML('beforeend', `
+    <div class="src-card"><b><i class="fa-solid fa-globe"></i> Sources (${sources.length}) — live web research</b>${links}</div>`);
+  scrollDown();
+}
+function renderBrainBadge() {
+  $$('.brain-tag').forEach(el => el.remove());
+  if (!lastBrain) return;
+  const label = lastBrain === 'gemini' ? 'Gemini engine'
+    : lastBrain === 'gemini-research' ? 'Gemini engine + live research'
+    : lastBrain === 'gemini-coder' ? 'Gemini engine · Coder'
+    : lastBrain === 'fenix-core' ? 'Fenix Core · private brain'
+    : 'Fenix brain · ' + lastBrain;
+  $('#chatCol').insertAdjacentHTML('beforeend', `<div class="brain-tag"><i class="fa-solid fa-microchip"></i>${escHtml(label)}</div>`);
+  scrollDown();
+}
+function renderMessages() {
+  const c = currentChat(); const col = $('#chatCol'); if (!col) return;
+  [...col.querySelectorAll('.msg')].forEach(el => el.remove());
+  const wel = $('#welcome');
+  if (!c || !c.messages.length) {
+    const h = new Date().getHours();
+    if (activeProjectId && activeProject) {
+      $('#welcomeTitle').innerHTML = `Let's build <em>${escHtml(activeProject.name)}</em>`;
+      $('#welcomeSub').textContent = 'Fenix Coder is ready — describe a feature and get complete, runnable code.';
+    } else {
+      $('#welcomeTitle').innerHTML = t('welcome');
+      $('#welcomeSub').textContent = t('welcomeSub');
+    }
+    renderSuggests(); if (wel) wel.style.display = 'block';
+    return;
+  }
+  if (wel) wel.style.display = 'none';
+  c.messages.forEach((m, i) => col.insertAdjacentHTML('beforeend', msgHtml(m, i)));
+  bindCopyButtons(); enhanceCodeBlocks(col); scrollDown();
+}
+const CODER_SUGGESTS = [
+  { ic: 'fa-rocket', q: 'Build the complete main screen of this app with modern styling.', label: 'Build the main screen' },
+  { ic: 'fa-database', q: 'Design the data layer for this project — models, storage and APIs.', label: 'Design the data layer' },
+  { ic: 'fa-bug', q: 'Review the current code of this project and fix any bugs or bad practices you find.', label: 'Review & fix the code' },
+  { ic: 'fa-wand-magic-sparkles', q: 'Add a polished dark mode and smooth animations to this app.', label: 'Add dark mode + animations' },
+];
+const CHAT_SUGGESTS = [
+  { ic: 'fa-lightbulb', q: 'Explain the difference between AI, machine learning and deep learning in simple terms.', label: 'Explain a concept simply' },
+  { ic: 'fa-pen-nib', q: 'Write a short, punchy product description for a smart water bottle that tracks hydration.', label: 'Write something for me' },
+  { ic: 'fa-code', q: "I'll share a screenshot of an error. What should I include so you can debug it fastest?", label: 'Help me with code' },
+  { ic: 'fa-wand-magic-sparkles', q: 'Give me a creative 7-day plan to build a consistent morning routine.', label: 'Plan my week' },
+];
+function renderSuggests() {
+  const box = $('#suggests'); if (!box) return;
+  const list = activeProjectId ? CODER_SUGGESTS : CHAT_SUGGESTS;
+  box.innerHTML = list.map(s =>
+    `<button class="sug" data-q="${escHtml(s.q)}"><span class="sug-ic"><i class="fa-solid ${s.ic}"></i></span>${s.label}</button>`).join('');
+  $$('.sug').forEach(s => s.addEventListener('click', () => { $('#input').value = s.dataset.q; updateSend(); send(); }));
+}
+
+/* ============================ Attachments ============================ */
+function compressImage(dataUrl, maxDim = 1024) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      if (scale >= 1 && dataUrl.length < 250000) return resolve(dataUrl);
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.width * scale));
+      cv.height = Math.max(1, Math.round(img.height * scale));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      resolve(cv.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/') && !/^text\/|pdf|json|javascript|csv|markdown/.test(f.type) && !/\.(pdf|txt|md|csv|json|py|js|ts|html|css|xml|log)$/i.test(f.name)) {
+      showToast('Unsupported file: ' + f.name); continue;
+    }
+    if (f.size > 10 * 1024 * 1024) { showToast('Too large (max 10MB): ' + f.name); continue; }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const isImg = (f.type || '').startsWith('image/');
+      const dataUrl = isImg ? await compressImage(reader.result) : reader.result;
+      pending.push({ name: f.name, mime: isImg ? 'image/jpeg' : (f.type || 'application/octet-stream'), dataUrl });
+      renderAttachments();
+    };
+    reader.readAsDataURL(f);
+  }
+  setTimeout(renderAttachments, 350);
+}
+function renderAttachments() {
+  const box = $('#attachments'); if (!box) return;
+  box.innerHTML = pending.map((a, i) => `
+    <div class="att">
+      ${a.mime.startsWith('image/') ? `<img src="${a.dataUrl}" alt="">` : `<div class="att-file"><i class="fa-regular fa-file-lines"></i><span>${escHtml(a.name)}</span></div>`}
+      <button class="rm" data-rm="${i}"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join('');
+  box.classList.toggle('has', pending.length > 0);
+  box.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { pending.splice(+b.dataset.rm, 1); renderAttachments(); }));
+}
+
+/* ============================ Voice input ============================ */
+let recognition = null, micOn = false, micBaseText = '';
+async function toggleMic() {
+  if (micOn) { stopMic(); return; }
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+    const SR = window.Capacitor.Plugins.SpeechRecognition;
+    try {
+      const avail = await SR.available();
+      if (!avail.available) { showToast('Speech recognition unavailable on this device'); return; }
+      await SR.requestPermission();
+      setMicUI(true);
+      SR.addListener('partialResults', (data) => {
+        if (data.matches && data.matches.length) {
+          $('#input').value = (micBaseText ? micBaseText + ' ' : '') + data.matches[data.matches.length - 1];
+          autoGrow(); updateSend();
+        }
+      });
+      await SR.start({ language: LANG === 'ar' ? 'ar' : 'en-US', partialResults: true, popup: true });
+      micOn = true;
+    } catch (e) { setMicUI(false); showToast('Mic permission denied'); }
+    return;
+  }
+  const WebSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!WebSR) { showToast('Voice input is not supported in this browser'); return; }
+  try {
+    recognition = new WebSR();
+    recognition.lang = LANG === 'ar' ? 'ar' : 'en-US';
+    recognition.interimResults = true; recognition.continuous = false;
+    recognition.onresult = (ev) => {
+      let txt = '';
+      for (const r of ev.results) txt += r[0].transcript;
+      $('#input').value = (micBaseText ? micBaseText + ' ' : '') + txt;
+      autoGrow(); updateSend();
+    };
+    recognition.onend = () => setMicUI(false);
+    recognition.onerror = () => { setMicUI(false); showToast('Mic error — check permission'); };
+    recognition.start();
+    micBaseText = $('#input').value.trim(); setMicUI(true);
+  } catch { showToast('Voice input unavailable'); }
+}
+function stopMic() {
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+    try { window.Capacitor.Plugins.SpeechRecognition.stop(); } catch (e) {}
+  }
+  if (recognition) { try { recognition.stop(); } catch (e) {} }
+  setMicUI(false);
+}
+function setMicUI(on) {
+  micOn = on;
+  const mb = $('#micBtn'); if (!mb) return;
+  mb.classList.toggle('rec', on); mb.classList.toggle('on', on);
+  const mi = $('#micIcon'); if (mi) mi.className = on ? 'fa-solid fa-stop' : 'fa-solid fa-microphone';
+  if (on) micBaseText = $('#input').value.trim();
+}
+
+/* ============================ AI calls ============================ */
+function streamAI(message, history, atts, onDelta) {
+  const ctrl = new AbortController();
+  stopGen = ctrl;
+  return new Promise((resolve, reject) => {
+    fetch(apiUrl('/api/chat/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        message, history, attachments: atts, model: SET.model, style: SET.style,
+        projectId: activeProjectId || undefined,
+      }),
+      signal: ctrl.signal,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) {
+        let msg = 'Server unreachable (HTTP ' + res.status + ')';
+        try { const d = await res.json(); if (d.error) msg = d.error; } catch (e) {}
+        throw new Error(msg);
+      }
+      const reader = res.body.getReader(); const dec = new TextDecoder();
+      let buf = '', full = '', stopped = false;
+      ctrl.signal.addEventListener('abort', () => { stopped = true; });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const events = buf.split('\n\n');
+        buf = events.pop();
+        for (const ev of events) {
+          const line = ev.split('\n').find(l => l.startsWith('data:'));
+          if (!line) continue;
+          let d; try { d = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+          if (d.t === 'delta' && d.v) { full += d.v; onDelta(d.v, full); }
+          else if (d.t === 'error') { if (!full) reject(new Error(d.v || 'Stream error')); else stopped = true; }
+          else if (d.t === 'done') { resolve(full); return; }
+        }
+      }
+      if (full) resolve(full); else reject(new Error('Empty response — try again'));
+    }).catch((e) => {
+      if (ctrl.signal.aborted) reject(Object.assign(new Error('stopped'), { stopped: true }));
+      else reject(e);
+    });
+  });
+}
+async function callAI(message, history, atts) {
+  const res = await fetch(apiUrl('/api/chat'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ message, history, attachments: atts, model: SET.model, style: SET.style, projectId: activeProjectId || undefined }),
+  });
+  const raw = await res.text();
+  let data; try { data = JSON.parse(raw); } catch (e) { throw new Error('Server unreachable (HTTP ' + res.status + ')'); }
+  if (!res.ok) throw new Error(data.error || 'Unknown error');
+  lastSources = data.sources || null;
+  lastBrain = data.brain || null;
+  return data.reply;
+}
+function maybeOfferFileSave(reply) {
+  if (!activeProjectId) return;
+  const m = reply.match(/```[a-zA-Z0-9+#-]*\n+([^\n]*?[\w./-]+\.[a-zA-Z0-9]{1,5})\s*\n/);
+  if (!m) return;
+  const path = m[1].trim();
+  const body = reply.split(/```[a-zA-Z0-9+#-]*\n+(?:[^\n]*?[\w./-]+\.[a-zA-Z0-9]{1,5})\s*\n/)[1] || '';
+  const content = body.split('```')[0];
+  if (!content.trim() || content.length > 200000) return;
+  window.__lastArtifact = { path, content };
+  setTimeout(() => showToast('💾 Say "save it" to store ' + path + ' in the project'), 400);
+}
+async function maybeSaveArtifact(text) {
+  if (!activeProjectId || !window.__lastArtifact || !canUseServer() || !USER) return;
+  if (!/\b(save|store|commit)\s+(it|this|the file)?\b/i.test(text)) return;
+  const a = window.__lastArtifact;
+  try {
+    const r = await fetch(apiUrl('/api/projects/' + activeProjectId + '/files'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ files: [{ path: a.path, content: a.content }] }),
+    });
+    if (r.ok) { window.__lastArtifact = null; showToast('💾 Saved ' + a.path + ' to the project'); await loadProjects(); }
+  } catch (e) {}
+}
+async function send() {
+  const input = $('#input');
+  const text = input.value.trim();
+  if (!text && pending.length === 0) return;
+  if (micOn) stopMic();
+  const c = ensureChat();
+  const atts = pending.splice(0);
+  renderAttachments();
+  if (c.messages.length === 0 && text) c.title = text.slice(0, 42);
+  c.messages.push({ role: 'user', content: text || '(see attachment)', attachments: atts });
+  input.value = ''; autoGrow(); updateSend();
+  renderMessages(); saveChats(); renderChats();
+  const col = $('#chatCol');
+  col.insertAdjacentHTML('beforeend', `
+    <div class="msg phoenix" id="typingMsg">
+      <div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+      <div class="bubble" dir="auto"><div class="typing"><span></span><span></span><span></span></div></div>
+    </div>`);
+  scrollDown(); setGenerating(true);
+  let reply = '', liveEl = null;
+  const renderLive = (full) => {
+    const tm = $('#typingMsg'); if (!tm) return;
+    if (!liveEl) { tm.querySelector('.bubble').innerHTML = '<div class="live-md" dir="auto"></div>'; liveEl = tm.querySelector('.live-md'); }
+    liveEl.innerHTML = renderMd(full) + '<span class="cursor"></span>';
+    scrollDown();
+  };
+  try {
+    reply = await streamAI(text, c.messages.slice(0, -1), atts, (delta, full) => renderLive(full));
+    lastBrain = 'fenix-core';
+    c.messages.push({ role: 'assistant', content: reply });
+    maybeOfferFileSave(reply);
+    maybeSaveArtifact(text);
+  } catch (e) {
+    if (e.stopped || e.name === 'AbortError') {
+      const partial = reply || (liveEl ? liveEl.textContent : '') || '';
+      if (partial) c.messages.push({ role: 'assistant', content: partial + '\n\n*— stopped by you —*' });
+      lastBrain = null;
+    } else {
+      try {
+        reply = await callAI(text, c.messages.slice(0, -1), atts);
+        c.messages.push({ role: 'assistant', content: reply });
+        maybeOfferFileSave(reply);
+      } catch (e2) {
+        lastBrain = null;
+        c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e2.message || e.message || 'Network error') });
+      }
+    }
+  }
+  setGenerating(false); stopGen = null;
+  saveChats(); renderMessages(); renderChats();
+  renderSources(lastSources); renderBrainBadge();
+  lastSources = null; lastBrain = null;
+}
+function setGenerating(on) {
+  generating = on;
+  const btn = $('#sendBtn');
+  btn.classList.toggle('stop', on);
+  btn.innerHTML = on ? '<i class="fa-solid fa-square"></i>' : '<i class="fa-solid fa-arrow-up"></i>';
+  btn.disabled = on ? false : !$('#input').value.trim() && pending.length === 0;
+}
+
+/* ============================ Navigation ============================ */
+const PRODUCT_TAG = { chat: 'AI', music: 'Music', video: 'Video', builder: 'Builder' };
+let CURRENT_VIEW = localStorage.getItem('fenix_view') || 'chat';
+function showView(v) {
+  CURRENT_VIEW = v; localStorage.setItem('fenix_view', v);
+  $$('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
+  $$('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === v));
+  const mp = $('#mtopProduct'); if (mp) mp.textContent = PRODUCT_TAG[v] || 'AI';
+  $('#sidebar').classList.remove('open');
+  $('#composerWrap').style.display = v === 'chat' ? '' : 'none';
+  if (v === 'models') loadBrains();
+  if (v === 'library') loadLibrary();
+  if (v === 'music') renderTracks();
+  window.scrollTo(0, 0);
+}
+$$('[data-nav]').forEach(b => b.addEventListener('click', () => showView(b.dataset.nav)));
+$$('[data-go]').forEach(b => b.addEventListener('click', () => showView(b.dataset.go)));
+$('#sideToggle').addEventListener('click', (e) => { e.stopPropagation(); $('#sidebar').classList.toggle('open'); });
+document.addEventListener('click', (e) => {
+  const sb = $('#sidebar');
+  if (sb.classList.contains('open') && !e.target.closest('#sidebar') && !e.target.closest('#sideToggle')) sb.classList.remove('open');
+});
+
+/* ============================ Theme ============================ */
+function applyTheme(th) {
+  document.documentElement.dataset.theme = th;
+  localStorage.setItem('fenix_theme', th);
+  const mi = $('#themeIcon'); if (mi) mi.className = th === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = th === 'dark' ? '#070b18' : '#f2f3f9';
+}
+applyTheme(localStorage.getItem('fenix_theme') || 'dark');
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  syncSettingsUI();
+}
+$('#themeBtn').addEventListener('click', toggleTheme);
+const themeBtn2 = $('#themeBtn2'); if (themeBtn2) themeBtn2.addEventListener('click', toggleTheme);
+
+/* ============================ Toast ============================ */
+let toastTimer;
+function showToast(m) {
+  const el = $('#toast');
+  $('#toastMsg').textContent = m;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ============================ Drawers / sheets ============================ */
+function openDrawer(id) { $('#' + id).classList.add('open'); $('#overlay').classList.add('show'); }
+function openSheet(id) { $('#' + id).classList.add('open'); $('#overlay').classList.add('show'); }
+function closeAll() {
+  $$('.drawer, .sheet').forEach(d => d.classList.remove('open'));
+  $('#overlay').classList.remove('show');
+  $('#attMenu').classList.remove('show');
+}
+$('#chatsBtn').addEventListener('click', () => openDrawer('chatsDrawer'));
+$('#settingsBtn').addEventListener('click', () => { syncSettingsUI(); openSheet('settingsSheet'); });
+const ncb2 = $('#newChatBtn2'); if (ncb2) ncb2.addEventListener('click', newChat);
+const ncb1 = $('#newChatBtn'); if (ncb1) ncb1.addEventListener('click', newChat);
+$('#overlay').addEventListener('click', closeAll);
+$$('[data-close]').forEach(b => b.addEventListener('click', closeAll));
+
+/* ============================ Settings UI ============================ */
+function syncSettingsUI() {
+  $$('#modelSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.model));
+  $$('#styleSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.style));
+  $$('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (document.documentElement.dataset.theme || 'dark')));
+  $$('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === LANG));
+  syncModelTag();
+}
+$$('#modelSeg button').forEach(b => b.addEventListener('click', () => { SET.model = b.dataset.v; localStorage.setItem('fenix_model', SET.model); syncSettingsUI(); showToast('Model: ' + MODEL_LABEL[SET.model]); }));
+$$('#styleSeg button').forEach(b => b.addEventListener('click', () => { SET.style = b.dataset.v; localStorage.setItem('fenix_style', SET.style); syncSettingsUI(); }));
+$$('#themeSeg button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.v)));
+function syncModelTag() {
+  const tag = $('#modelTag'); if (!tag) return;
+  if (activeProjectId) { tag.textContent = '⚡ Coder'; tag.classList.add('code'); }
+  else { tag.textContent = MODEL_LABEL[SET.model]; tag.classList.remove('code'); }
+}
+
+/* ============================ Attach menu ============================ */
+function toggleAttMenu() {
+  const r = $('#attachBtn').getBoundingClientRect();
+  const menu = $('#attMenu');
+  menu.style.left = Math.max(10, r.left - 4) + 'px';
+  menu.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+  menu.classList.toggle('show');
+}
+$('#attachBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleAttMenu(); });
+document.addEventListener('click', (e) => { if (!e.target.closest('#attMenu') && !e.target.closest('#attachBtn')) $('#attMenu').classList.remove('show'); });
+$('#attPhoto').addEventListener('click', () => { $('#attMenu').classList.remove('show'); $('#fileInput').click(); });
+$('#attCamera').addEventListener('click', async () => {
+  $('#attMenu').classList.remove('show');
+  if (IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera) {
+    try {
+      const photo = await window.Capacitor.Plugins.Camera.getPhoto({ quality: 85, width: 1600, resultType: 'dataUrl', source: 'PROMPT' });
+      pending.push({ name: 'camera-' + Date.now() + '.jpg', mime: 'image/jpeg', dataUrl: await compressImage(photo.dataUrl) });
+      renderAttachments(); updateSend();
+    } catch (e) {}
+  } else $('#cameraInput').click();
+});
+$('#attFile').addEventListener('click', () => { $('#attMenu').classList.remove('show'); $('#docInput').click(); });
+$('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+$('#cameraInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+$('#docInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+
+/* ============================ Composer ============================ */
+const input = $('#input');
+function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
+function updateSend() { if (generating) return; $('#sendBtn').disabled = !input.value.trim() && pending.length === 0; }
+input.addEventListener('input', () => { autoGrow(); updateSend(); });
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!generating) send(); }
+});
+$('#sendBtn').addEventListener('click', () => { if (generating && stopGen) { stopGen.abort(); return; } send(); });
+$('#micBtn').addEventListener('click', toggleMic);
+
+/* ============================ Projects (Builder) ============================ */
+async function loadProjects() {
+  if (!canUseServer() || !USER) { projects = []; renderProjects(); return; }
+  try {
+    const r = await fetch(apiUrl('/api/projects'), { headers: authHeaders() });
+    if (!r.ok) throw 0;
+    projects = await r.json();
+  } catch (e) { projects = []; }
+  renderProjects();
+}
+function renderProjects() {
+  const list = $('#projectsList'); if (!list) return;
+  if (!USER || !canUseServer()) {
+    list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px; line-height:1.7">Sign in with your email to create cloud projects.<br>Chats stay local either way.</p>';
+    return;
+  }
+  if (!projects.length) {
+    list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:13px; padding:24px">No projects yet — create your first one!</p>';
+    return;
+  }
+  list.innerHTML = projects.map(p => `
+    <button class="drawer-item ${p.id === activeProjectId ? 'active' : ''}" data-pid="${p.id}">
+      <i class="fa-solid fa-folder${p.id === activeProjectId ? '-open' : ''}"></i>
+      <span class="lbl">${escHtml(p.name)}<br><span class="meta">${escHtml(p.stack || 'project')} · ${p.files} file${p.files === 1 ? '' : 's'}</span></span>
+      <span class="del" data-pdel="${p.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
+    </button>`).join('');
+  list.querySelectorAll('.drawer-item').forEach(el => el.addEventListener('click', async (e) => {
+    if (e.target.closest('.del')) return;
+    await selectProject(el.dataset.pid);
+  }));
+  list.querySelectorAll('[data-pdel]').forEach(el => el.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const pid = el.dataset.pdel;
+    const p = projects.find(x => x.id === pid);
+    if (!confirm('Delete project "' + (p ? p.name : '') + '" and its files?')) return;
+    await fetch(apiUrl('/api/projects/' + pid), { method: 'DELETE', headers: authHeaders() });
+    if (activeProjectId === pid) { activeProjectId = null; activeProject = null; localStorage.removeItem('fenix_project'); renderBdActive(); }
+    await loadProjects(); syncModelTag(); renderMessages();
+    showToast('Project deleted');
+  }));
+}
+async function selectProject(pid) {
+  activeProjectId = pid;
+  localStorage.setItem('fenix_project', pid || '');
+  activeProject = null;
+  if (pid) {
+    try {
+      const r = await fetch(apiUrl('/api/projects/' + pid), { headers: authHeaders() });
+      if (r.ok) activeProject = await r.json();
+    } catch (e) {}
+  }
+  currentId = null; saveChats();
+  pending = []; renderAttachments();
+  renderProjects(); renderMessages(); syncModelTag(); renderBdActive(); closeAll();
+  if (pid) showToast('⚡ Coder mode: ' + (activeProject ? activeProject.name : 'project'));
+  showView('chat');
+  $('#input').focus();
+}
+function renderBdActive() {
+  const el = $('#bd-active'); if (!el) return;
+  if (activeProject) {
+    el.innerHTML = `<b style="color:var(--text)">${escHtml(activeProject.name)}</b><br>
+      <span style="font-size:12px">${escHtml(activeProject.stack || '')}</span><br>
+      <span style="font-size:12px">${escHtml(activeProject.description || '')}</span>
+      <span class="badge" style="margin-top:8px;display:inline-block">${Object.keys(activeProject.files || {}).length} files · Coder mode ON</span>`;
+    const fl = $('#bd-files');
+    fl.innerHTML = Object.keys(activeProject.files || {}).map(p =>
+      `<button class="file-chip" data-f="${escHtml(p)}"><i class="fa-regular fa-file-code"></i>${escHtml(p)}</button>`).join('');
+  } else {
+    el.textContent = 'No project selected — create or open one above.';
+    $('#bd-files').innerHTML = '';
+  }
+}
+$('#bd-new').addEventListener('click', () => {
+  if (!USER || !canUseServer()) { startAuth('signup'); return; }
+  $('#projErr').classList.remove('show');
+  openSheet('projectSheet');
+});
+$('#bd-open').addEventListener('click', () => { loadProjects(); openDrawer('projectsDrawer'); });
+$('#bd-chat').addEventListener('click', () => showView('chat'));
+const npb = $('#newProjectBtn'); if (npb) npb.addEventListener('click', () => {
+  if (!USER || !canUseServer()) { closeAll(); startAuth('signup'); return; }
+  $('#projErr').classList.remove('show');
+  openSheet('projectSheet');
+});
+$('#projCreateBtn').addEventListener('click', async () => {
+  const name = $('#projName').value.trim();
+  const stack = $('#projStack').value.trim();
+  const description = $('#projDesc').value.trim();
+  if (!name) { showProjErr('Give your project a name'); return; }
+  const btn = $('#projCreateBtn'); btn.disabled = true;
+  try {
+    const r = await fetch(apiUrl('/api/projects'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name, stack, description }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed to create project');
+    closeAll(); await loadProjects(); await selectProject(data.id);
+    SET.model = 'flash'; localStorage.setItem('fenix_model', SET.model); syncSettingsUI();
+    showToast('🚀 Project created — Coder mode on');
+  } catch (e) { showProjErr(e.message); }
+  btn.disabled = false;
+});
+function showProjErr(msg) { const el = $('#projErr'); el.textContent = msg; el.classList.add('show'); }
+
+/* ============================ Memory / Evolution ============================ */
+const MEM_LABEL = { preferences: 'Pref', projects: 'Project', goals: 'Goal', style: 'Style', facts: 'Fact', context: 'Temp' };
+async function loadMemory() {
+  if (!USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/memory'), { headers: authHeaders() });
+    if (!r.ok) return;
+    const entries = await r.json();
+    const list = $('#memList');
+    if (!entries.length) { list.innerHTML = '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:14px">Nothing remembered yet.</p>'; return; }
+    list.innerHTML = entries.map(e => `
+      <div class="mem-item">
+        <div class="mt"><span class="tag">${MEM_LABEL[e.category] || e.category}</span><span>${escHtml(e.text)}</span></div>
+        <div class="ops">
+          <button data-medit="${e.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button class="del" data-mdel="${e.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('[data-mdel]').forEach(b => b.addEventListener('click', async () => {
+      await fetch(apiUrl('/api/memory/' + b.dataset.mdel), { method: 'DELETE', headers: authHeaders() });
+      loadMemory(); showToast('Memory deleted');
+    }));
+    list.querySelectorAll('[data-medit]').forEach(b => b.addEventListener('click', () => {
+      const item = b.closest('.mem-item');
+      const nu = prompt('Edit memory:', item.querySelector('.mt span:last-child').textContent);
+      if (nu === null || !nu.trim()) return;
+      fetch(apiUrl('/api/memory/' + b.dataset.medit), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ text: nu.trim() }),
+      }).then(() => { loadMemory(); showToast('Memory updated'); });
+    }));
+  } catch (e) {}
+}
+$('#memAddBtn').addEventListener('click', async () => {
+  if (!USER) { closeAll(); startAuth('signin'); return; }
+  const text = $('#memText').value.trim(); if (!text) return;
+  await fetch(apiUrl('/api/memory'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text, category: $('#memCat').value }),
+  });
+  $('#memText').value = ''; loadMemory(); showToast('🧠 Remembered');
+});
+$('#memClearBtn').addEventListener('click', async () => {
+  if (!USER) return;
+  if (!confirm('Delete ALL memories? This cannot be undone.')) return;
+  await fetch(apiUrl('/api/memory/clear'), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: '{}' });
+  loadMemory(); showToast('Memory cleared');
+});
+$('#memExportBtn').addEventListener('click', async () => {
+  if (!USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/memory/export'), { headers: authHeaders() });
+    const data = await r.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'fenix-memory.json'; a.click();
+    showToast('Memory exported');
+  } catch (e) { showToast('Export failed'); }
+});
+
+/* ============================ Account & Auth ============================ */
+function initials(s) { return (s || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'; }
+function renderAvatar() {
+  const inits = USER ? initials(USER.name || USER.email) : '?';
+  const av = $('#sideAvatar'); if (av) av.textContent = inits;
+  const nm = $('#sideName'); if (nm) nm.textContent = USER ? (USER.name || USER.email.split('@')[0]) : t('guest');
+  const ml = $('#sideMail'); if (ml) ml.textContent = USER ? USER.email : t('sync');
+}
+function renderAccountSheet() {
+  const body = $('#accountBody');
+  if (USER) {
+    body.innerHTML = `
+      <div class="acct-row">
+        <div class="acct-avatar">${escHtml(initials(USER.name || USER.email))}</div>
+        <div><div class="acct-name">${escHtml(USER.name || '')}</div><div class="acct-mail">${escHtml(USER.email)}</div></div>
+      </div>
+      <button class="ghost-btn" id="openProjectsBtn" style="margin-bottom:10px"><i class="fa-solid fa-folder-tree"></i>My projects</button>
+      <button class="ghost-btn" id="openMemoryBtn" style="margin-bottom:10px"><i class="fa-solid fa-brain"></i>Memory</button>
+      <button class="ghost-btn" id="openEvoBtn" style="margin-bottom:14px"><i class="fa-solid fa-seedling"></i>Evolution</button>
+      <button class="danger-btn" id="signOutBtn"><i class="fa-solid fa-right-from-bracket"></i>Sign out</button>`;
+    $('#openProjectsBtn').addEventListener('click', () => { closeAll(); loadProjects(); openDrawer('projectsDrawer'); });
+    $('#openMemoryBtn').addEventListener('click', () => { closeAll(); loadMemory(); openSheet('memorySheet'); });
+    $('#openEvoBtn').addEventListener('click', () => { closeAll(); loadEvolution(); openSheet('evoSheet'); });
+    $('#signOutBtn').addEventListener('click', () => {
+      clearAuth(); renderAvatar();
+      activeProjectId = null; activeProject = null; localStorage.removeItem('fenix_project');
+      renderAccountSheet(); loadProjects(); syncModelTag(); renderBdActive(); renderMessages(); closeAll();
+      showToast('Signed out');
+    });
+  } else {
+    body.innerHTML = `
+      <p style="text-align:center; color:var(--text-2); font-size:13.5px; line-height:1.7; margin:6px 0 16px">
+        You're using Fenix as a guest — chats stay on this device.<br>Sign in to sync <b>cloud projects</b> with <b>Fenix Coder</b>.</p>
+      <button class="auth-btn" id="acctSignInBtn"><i class="fa-solid fa-right-to-bracket"></i>Sign in with email</button>`;
+    $('#acctSignInBtn').addEventListener('click', () => { closeAll(); startAuth('signin'); });
+  }
+}
+$('#acctBtnSide').addEventListener('click', () => { renderAccountSheet(); openSheet('accountSheet'); });
+let authMode = 'signin';
+function startAuth(mode) {
+  authMode = mode || 'signin';
+  $('#authErr').classList.remove('show');
+  $('#nameField').style.display = authMode === 'signup' ? 'block' : 'none';
+  $('#authTitle').textContent = authMode === 'signup' ? 'Create your account' : 'Welcome to Fenix';
+  $('#authSub').textContent = authMode === 'signup'
+    ? 'One account for all Fenix products — Chat, Music, Video and Builder, on every device.'
+    : 'Sign in with your email to unlock cloud projects that follow you across devices.';
+  $('#authSubmitLbl').textContent = authMode === 'signup' ? 'Create account' : t('signIn');
+  $('#authSwitchText').textContent = authMode === 'signup' ? 'Already have an account?' : 'New here?';
+  $('#authSwitchBtn').textContent = authMode === 'signup' ? 'Sign in instead' : 'Create an account';
+  $('#authScreen').classList.remove('hide');
+  setTimeout(() => $('#authEmail').focus(), 250);
+}
+function authErr(msg) {
+  const el = $('#authErr');
+  el.textContent = msg; el.classList.remove('show');
+  void el.offsetWidth; el.classList.add('show');
+}
+$('#authSwitchBtn').addEventListener('click', () => startAuth(authMode === 'signup' ? 'signin' : 'signup'));
+$('#authSkipBtn').addEventListener('click', () => $('#authScreen').classList.add('hide'));
+$('#authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#authSubmit');
+  const email = $('#authEmail').value.trim();
+  const pass = $('#authPass').value;
+  const name = $('#authName').value.trim();
+  btn.disabled = true;
+  $('#authSubmitIcon').className = 'fa-solid fa-spinner fa-spin';
+  try {
+    const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/signin';
+    const r = await fetch(apiUrl(endpoint), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, name }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Authentication failed');
+    saveAuth(data); renderAvatar();
+    $('#authScreen').classList.add('hide');
+    await loadProjects(); renderBdActive();
+    showToast(authMode === 'signup' ? '🎉 Account created — welcome to Fenix!' : 'Welcome back, ' + (data.user.name || data.user.email));
+  } catch (err) { authErr(err.message || 'Connection failed — is the server running?'); }
+  btn.disabled = false;
+  $('#authSubmitIcon').className = 'fa-solid fa-right-to-bracket';
+});
+$('#acctBtnSide').addEventListener('click', renderAvatar);
+
+/* ============================ Server state / brains ============================ */
+async function refreshServerState() {
+  const el = $('#serverState');
+  try {
+    const r = await fetch(apiUrl('/api/embedded-config'));
+    const c = await r.json();
+    if (el) el.innerHTML = c.embedded
+      ? `✅ AI ready — brain: <b>${escHtml(c.brain)}</b>${c.research ? ' · research on' : ''}`
+      : '⚠️ Server has no GEMINI_API_KEY — add it in Settings → Environment';
+  } catch (e) {
+    if (el) el.textContent = IS_NATIVE ? '⚠️ APK not linked to a server yet (web/config.js)' : '⚠️ Server unreachable';
+  }
+}
+let BRAINS = null;
+async function loadBrains() {
+  const box = $('#md-list'); if (!box) return;
+  try {
+    if (!BRAINS) BRAINS = await (await fetch(apiUrl('/api/brains'))).json();
+    const rows = [
+      { k: 'music', ic: 'fa-music', bg: 'var(--accent-grad)', name: 'Fenix Music Brain', d: 'Songwriter & sound-design brain — lyrics, structure, audio prompts.' },
+      { k: 'video', ic: 'fa-clapperboard', bg: 'var(--gold-grad)', name: 'Fenix Video Brain', d: 'Director brain — scene-by-scene scripts with strict JSON output.' },
+      { k: 'core', ic: 'fa-fire', bg: 'var(--accent-grad)', name: 'Fenix Core', d: 'The main fine-tuned mind — routes chat when configured.' },
+      { k: 'builder', ic: 'fa-cube', bg: 'linear-gradient(135deg,#0ea5e9,#6366f1)', name: 'Fenix Builder', d: 'Elite Coder persona on the Gemini engine with full project context.' },
+      { k: 'gemini', ic: 'fa-bolt', bg: 'linear-gradient(135deg,#334155,#0f172a)', name: 'Gemini Engine', d: 'Last-resort engine — always honest fallback, never fake results.' },
+    ];
+    box.innerHTML = rows.map(r => {
+      const b = BRAINS[r.k] || {};
+      const trained = b.trained;
+      const state = trained ? '<span class="state-chip st-live">TRAINED · LIVE</span>'
+        : b.configured ? '<span class="state-chip st-wait">FALLBACK READY</span>'
+        : '<span class="state-chip st-off">OFFLINE</span>';
+      const active = b.active ? `<span class="badge" style="margin-inline-start:auto">${escHtml(String(b.active))}</span>` : '';
+      return `<div class="model-row">
+        <div class="mr-ic" style="background:${r.bg}"><i class="fa-solid ${r.ic}"></i></div>
+        <div class="mr-body"><div class="mr-name">${r.name}</div><div class="mr-desc">${r.d}</div></div>
+        ${active}${state}</div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<p class="sub">Could not reach the server — brain status unknown.</p>';
+  }
+}
+$('#md-refresh').addEventListener('click', () => { BRAINS = null; loadBrains(); showToast('Brain status refreshed'); });
+
+/* ============================ Prompt Library ============================ */
+async function loadLibrary() {
+  const list = $('#lib-list'); if (!list) return;
+  try {
+    const r = await fetch(apiUrl('/api/library'));
+    const items = await r.json();
+    list.innerHTML = items.map(p => `
+      <button class="track" data-lib="${escHtml(p.id)}" style="cursor:pointer">
+        <span class="t-ic"><i class="fa-solid fa-book"></i></span>
+        <span class="t-body"><span class="t-title">${escHtml(p.title)}</span>
+        <span class="t-meta" style="display:block">${escHtml(p.description)}</span></span>
+        <i class="fa-solid fa-arrow-right" style="color:var(--accent)"></i>
+      </button>`).join('');
+    list.querySelectorAll('[data-lib]').forEach(b => b.addEventListener('click', () => {
+      const text = $('#lib-text').value.trim();
+      if (!text) { showState('lib-state', 'Type your raw prompt first, then apply a template.', 'warn'); return; }
+      applyTemplate(b.dataset.lib, text);
+    }));
+  } catch (e) { list.innerHTML = '<p class="sub">Library unavailable.</p>'; }
+}
+async function applyTemplate(id, text) {
+  showState('lib-state', 'Enhancing…', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/library/' + id), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    $('#lib-out').textContent = d.result || ''; $('#lib-out').classList.remove('hide');
+    showState('lib-state', 'Enhanced prompt ready — copy it into Fenix Chat.', 'ok');
+  } catch (e) { showState('lib-state', e.message, 'err'); }
+}
+$('#lib-btn').addEventListener('click', async () => {
+  const text = $('#lib-text').value.trim();
+  if (!text) { showState('lib-state', 'Enter some text first.', 'warn'); return; }
+  const btn = $('#lib-btn'); btn.disabled = true;
+  showState('lib-state', 'Enhancing…', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/enhance'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    $('#lib-out').textContent = d.result || ''; $('#lib-out').classList.remove('hide');
+    showState('lib-state', 'Enhanced prompt ready.', 'ok');
+  } catch (e) { showState('lib-state', e.message, 'err'); }
+  btn.disabled = false;
+});
+function showState(id, msg, kind) {
+  const el = $('#' + id); if (!el) return;
+  el.textContent = msg;
+  el.className = 'state-note show ' + (kind || '');
+}
+
+/* ============================ Fenix Music studio ============================ */
+const MU = { tracks: JSON.parse(localStorage.getItem('fenix_tracks') || '[]') };
+function saveTracks() { localStorage.setItem('fenix_tracks', JSON.stringify(MU.tracks)); }
+const muGenre = $('#mu-genre');
+if (muGenre) muGenre.addEventListener('change', () => {
+  $('#mu-genre-custom-wrap').style.display = muGenre.value === 'custom' ? '' : 'none';
+});
+$$('#mu-structure button').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+const muDur = $('#mu-duration');
+if (muDur) muDur.addEventListener('input', () => { $('#mu-duration-val').textContent = muDur.value + 's'; });
+const muBpm = $('#mu-bpm');
+if (muBpm) muBpm.addEventListener('input', () => { $('#mu-bpm-val').textContent = muBpm.value; });
+const MU_ENERGY = { 1: 'Very low', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Maximum' };
+const muEnergy = $('#mu-energy');
+if (muEnergy) muEnergy.addEventListener('input', () => { $('#mu-energy-val').textContent = MU_ENERGY[muEnergy.value] || 'Medium'; });
+function muSettings() {
+  const genreSel = $('#mu-genre').value;
+  const genre = genreSel === 'custom' ? ($('#mu-genre-custom').value.trim() || 'custom') : genreSel;
+  const structure = $$('#mu-structure button.on').map(b => b.dataset.v).join(', ');
+  return {
+    genre, mood: $('#mu-mood').value, language: $('#mu-lang').value,
+    vocal: $('#mu-vocal').value, duration: +$('#mu-duration').value,
+    bpm: +(($('#mu-bpm') && $('#mu-bpm').value) || 140),
+    energy: +(($('#mu-energy') && $('#mu-energy').value) || 3),
+    topic: $('#mu-topic').value.trim(), custom: $('#mu-lyrics-custom').value.trim(), structure,
+  };
+}
+function muAudioPrompt() { const el = $('#mu-prompt-out'); return el ? el.value.trim() : ''; }
+function muPromptFromSettings(s) {
+  const energy = MU_ENERGY[s.energy] || 'Medium';
+  return s.genre + ', ' + s.mood + ' mood, ' + s.bpm + ' BPM, ' + energy.toLowerCase() + ' energy, ' + s.vocal + ', ' + s.duration + 's — ' + (s.topic || s.genre + ' mood piece');
+}
+$('#mu-btn-lyrics').addEventListener('click', async () => {
+  const s = muSettings();
+  if (s.custom) { $('#mu-out').textContent = s.custom; $('#mu-out').classList.remove('hide'); $('#mu-out').dataset.brain = 'custom'; showState('mu-state', 'Using your custom lyrics.', 'ok'); return; }
+  const btn = $('#mu-btn-lyrics'); btn.disabled = true;
+  showState('mu-state', '✍️ The Music Brain is writing lyrics…', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/music/lyrics'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genre: s.genre, mood: s.mood, language: s.language, topic: s.topic || s.genre + ' ' + s.mood, structure: s.structure, extra: (s.vocal === 'instrumental only' ? 'instrumental — no lyrics, structure labels only' : s.vocal) }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Lyrics failed');
+    $('#mu-out').textContent = d.lyrics; $('#mu-out').dataset.brain = d.brain || '';
+    $('#mu-out').classList.remove('hide');
+    showState('mu-state', '✅ Lyrics ready — brain: ' + (d.brain || 'gemini'), 'ok');
+  } catch (e) { showState('mu-state', e.message, 'err'); }
+  btn.disabled = false;
+});
+$('#mu-btn-prompt').addEventListener('click', async () => {
+  const s = muSettings();
+  const btn = $('#mu-btn-prompt'); btn.disabled = true;
+  showState('mu-state', '🎛️ Building the audio prompt…', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/music/audio-prompt'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genre: s.genre, mood: s.mood, bpm: s.bpm, duration: s.duration, energy: s.energy, vocal: s.vocal }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Prompt failed');
+    $('#mu-prompt-out').value = d.prompt || '';
+    showState('mu-state', '✅ Audio prompt ready — review it, then generate.', 'ok');
+  } catch (e) { showState('mu-state', e.message, 'err'); }
+  btn.disabled = false;
+});
+async function startMusicGeneration(s, seed) {
+  const prompt = muAudioPrompt()
+    || ($('#mu-out').textContent || '').slice(0, 600)
+    || muPromptFromSettings(s);
+  const btn = $('#mu-btn-generate'); btn.disabled = true;
+  showState('mu-state', '🎹 Generating audio… this needs a GPU worker or HF token on the server.', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/music/generate'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, duration: s.duration, seed: seed || null }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      showState('mu-state', (d.error || 'Generation failed') + (d.detail ? ' — ' + d.detail : ''), 'err');
+      return;
+    }
+    const track = {
+      id: Date.now().toString(36), title: (s.topic || s.genre).slice(0, 40) || 'Untitled',
+      url: d.url, prompt, settings: s, date: new Date().toISOString(), dur: s.duration + 's',
+      seed: seed || null,
+    };
+    MU.tracks.unshift(track); saveTracks(); renderTracks();
+    showState('mu-state', '✅ Track generated — added to your library.', 'ok');
+  } catch (e) { showState('mu-state', e.message, 'err'); }
+  btn.disabled = false;
+}
+$('#mu-btn-generate').addEventListener('click', () => startMusicGeneration(muSettings(), null));
+$('#mu-btn-regen').addEventListener('click', () => {
+  const last = MU.tracks.find(t => t.settings);
+  if (!last) { showState('mu-state', 'Generate a track first — variation re-uses its settings with a new seed.', 'warn'); return; }
+  startMusicGeneration(last.settings, Math.floor(Math.random() * 1e9));
+});
+$('#mu-chat-btn').addEventListener('click', async () => {
+  const inp = $('#mu-chat-in');
+  const message = inp.value.trim();
+  if (!message) return;
+  const out = $('#mu-chat-out');
+  out.classList.remove('hide');
+  out.innerHTML = '<div class="who-brain">Fenix Music · thinking…</div>…';
+  try {
+    const r = await fetch(apiUrl('/api/music/chat'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Chat failed');
+    out.innerHTML = `<div class="who-brain">Brain: ${escHtml(d.brain || 'fenix-music')}</div>${renderMd(d.reply)}`;
+    inp.value = '';
+  } catch (e) { out.innerHTML = `<div class="who-brain" style="color:var(--danger)">${escHtml(e.message)}</div>`; }
+});
+$('#mu-chat-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#mu-chat-btn').click(); });
+function renderTracks() {
+  const box = $('#mu-tracks'); if (!box) return;
+  const cnt = $('#mu-count'); if (cnt) cnt.textContent = String(MU.tracks.length);
+  if (!MU.tracks.length) {
+    box.innerHTML = '<p class="sub">Nothing here yet — write lyrics, build an audio prompt and generate your first track.</p>';
+    return;
+  }
+  box.innerHTML = MU.tracks.map(t => `
+    <div class="track" data-tid="${t.id}">
+      <span class="t-ic"><i class="fa-solid fa-music"></i></span>
+      <span class="t-body">
+        <input class="t-title" data-tname value="${escHtml(t.title)}" style="background:none;border:none;color:var(--text);font-weight:700;font-size:14px;width:100%">
+        <span class="t-meta" style="display:block">${escHtml(t.date.slice(0, 16).replace('T', ' '))} · ${escHtml(t.dur || '')} · ${escHtml((t.settings && t.settings.genre) || '')}</span>
+        <audio controls src="${escHtml(t.url)}" preload="none"></audio>
+      </span>
+      <span class="t-ops">
+        <button data-fav title="Favorite"><i class="${t.fav ? 'fa-solid' : 'fa-regular'} fa-star" style="${t.fav ? 'color:var(--gold)' : ''}"></i></button>
+        <button data-var title="Generate a variation with a new seed"><i class="fa-solid fa-shuffle"></i></button>
+        <button data-dl title="Download"><i class="fa-solid fa-download"></i></button>
+        <button data-del class="del" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+      </span>
+    </div>`).join('');
+  box.querySelectorAll('.track').forEach(row => {
+    const id = row.dataset.tid;
+    const tk = MU.tracks.find(x => x.id === id);
+    row.querySelector('[data-tname]').addEventListener('change', (e) => { tk.title = e.target.value.slice(0, 60); saveTracks(); });
+    row.querySelector('[data-fav]').addEventListener('click', () => { tk.fav = !tk.fav; saveTracks(); renderTracks(); });
+    row.querySelector('[data-var]').addEventListener('click', () => {
+      if (tk.settings) { startMusicGeneration(tk.settings, Math.floor(Math.random() * 1e9)); showView('music'); }
+      else showToast('No saved settings for this track');
+    });
+    row.querySelector('[data-dl]').addEventListener('click', () => {
+      const a = document.createElement('a'); a.href = tk.url; a.download = tk.title.replace(/[^\w -]+/g, '') + '.wav'; a.click();
+    });
+    row.querySelector('[data-del]').addEventListener('click', () => {
+      MU.tracks = MU.tracks.filter(x => x.id !== id); saveTracks(); renderTracks(); showToast('Track deleted');
+    });
+  });
+}
+
+/* ============================ Fenix Video studio ============================ */
+const VD = { scenes: [], title: '', images: {}, ratio: '9:16', quality: 768, music: null, musicPending: false, duration: 25, camera: 'handheld, raw energy' };
+const RATIO_DIMS = { '9:16': [720, 1280], '16:9': [1280, 720], '1:1': [900, 900], '4:5': [864, 1080] };
+const vdRatio = $('#vd-ratio');
+if (vdRatio) vdRatio.addEventListener('change', () => {
+  VD.ratio = vdRatio.value;
+  const d = RATIO_DIMS[VD.ratio];
+  const cv = $('#render-canvas'); cv.width = d[0]; cv.height = d[1];
+});
+const vdQual = $('#vd-quality');
+if (vdQual) vdQual.addEventListener('change', () => { VD.quality = +vdQual.value; });
+function vdPipe(step) {
+  $$('#video-pipeline .pipe-step').forEach(s => {
+    s.classList.remove('done', 'active');
+    const order = ['idea', 'script', 'scenes', 'assets', 'voice', 'render'];
+    const idx = order.indexOf(step), me = order.indexOf(s.dataset.step);
+    if (idx < 0 || me < 0) return;
+    if (me < idx) s.classList.add('done');
+    if (me === idx) s.classList.add('active');
+  });
+}
+vdPipe('idea');
+$('#vd-btn-script').addEventListener('click', async () => {
+  const topic = $('#vd-topic').value.trim();
+  const btn = $('#vd-btn-script');
+  btn.disabled = true; vdPipe('script');
+  showState('vd-state', '🎬 The Video Brain is writing your script…', 'ok');
+  try {
+    const r = await fetch(apiUrl('/api/video/script'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, language: $('#vd-lang').value, style: $('#vd-style').value,
+        duration: +(($('#vd-duration') && $('#vd-duration').value) || 25),
+        camera: ($('#vd-camera') && $('#vd-camera').value) || '' }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Script failed');
+    VD.scenes = d.scenes; VD.title = d.title; VD.images = {};
+    VD.duration = d.scenes.reduce((a, s) => a + (s.secs || 6), 0);
+    $('#vd-brain').textContent = 'Brain: ' + (d.brain || 'gemini');
+    $('#vd-scenes-title').textContent = '“' + d.title + '” — tweak any scene duration or swap its image, then render.';
+    renderScenes();
+    $('#vd-scenes-card').classList.remove('hide');
+    $('#vd-btn-rewrite').classList.remove('hide');
+    vdPipe('scenes');
+    showState('vd-state', '✅ ' + d.scenes.length + ' scenes ready.', 'ok');
+    $('#vd-scenes-card').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { showState('vd-state', e.message, 'err'); vdPipe('idea'); }
+  btn.disabled = false;
+});
+$('#vd-btn-rewrite').addEventListener('click', () => $('#vd-btn-script').click());
+function vdImgUrl(prompt, seed) {
+  return apiUrl('/api/video/scene-image?w=' + VD.quality + '&h=' + VD.quality + '&seed=' + seed + '&prompt=' + encodeURIComponent(prompt));
+}
+function renderScenes() {
+  const list = $('#vd-scenes');
+  list.innerHTML = '';
+  VD.scenes.forEach((sc, i) => {
+    const div = document.createElement('div');
+    div.className = 'scene';
+    const thumb = document.createElement('div'); thumb.className = 'thumb';
+    const img = document.createElement('img');
+    img.alt = 'Scene ' + sc.n;
+    img.src = vdImgUrl(sc.visual, String(1000 + i * 137));
+    const status = document.createElement('div');
+    status.className = 'img-status'; status.textContent = '⏳ Generating image…';
+    img.onload = () => { status.textContent = '✓ Image ready'; status.style.color = 'var(--ok)'; VD.images[i] = img; };
+    img.onerror = () => { status.textContent = '✗ Failed — try another'; status.style.color = 'var(--danger)'; };
+    const regen = document.createElement('button');
+    regen.type = 'button'; regen.className = 'btn-ghost'; regen.style.padding = '7px 12px'; regen.style.marginTop = '6px';
+    regen.innerHTML = '<i class="fa-solid fa-rotate"></i> New image';
+    regen.addEventListener('click', () => {
+      delete VD.images[i];
+      status.textContent = '⏳ Generating a new image…'; status.style.color = '';
+      img.src = vdImgUrl(sc.visual, String(Math.floor(Math.random() * 99999)));
+    });
+    thumb.appendChild(img); thumb.appendChild(regen); thumb.appendChild(status);
+    const body = document.createElement('div'); body.className = 'body';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = 'Scene ' + sc.n + ' · ' + sc.secs + 's';
+    const vo = document.createElement('div'); vo.className = 'vo'; vo.dir = 'auto'; vo.textContent = sc.vo || '(no narration)';
+    const secs = document.createElement('input');
+    secs.type = 'number'; secs.min = 4; secs.max = 8; secs.value = sc.secs;
+    secs.addEventListener('change', () => {
+      sc.secs = Math.max(4, Math.min(8, parseInt(secs.value, 10) || 6));
+      meta.textContent = 'Scene ' + sc.n + ' · ' + sc.secs + 's';
+    });
+    body.appendChild(meta); body.appendChild(vo); body.appendChild(secs);
+    div.appendChild(thumb); div.appendChild(body);
+    list.appendChild(div);
+  });
+}
+const vdMusicSrc = $('#vd-music-src');
+if (vdMusicSrc) vdMusicSrc.addEventListener('change', async () => {
+  const mode = vdMusicSrc.value;
+  const wrap = $('#vd-music-upload-wrap'); const m = $('#vd-music-name');
+  if (wrap) wrap.classList.toggle('hide', mode !== 'upload');
+  if (mode === 'none') {
+    VD.music = null; VD.musicPending = false;
+    if (m) { m.textContent = 'No music'; m.classList.remove('hide'); }
+    return;
+  }
+  if (mode === 'upload') { VD.music = null; VD.musicPending = false; if (m) { m.textContent = 'Pick a file…'; m.classList.remove('hide'); } return; }
+  if (m) { m.textContent = '🎵 Asking the Music Brain…'; m.classList.remove('hide'); }
+  VD.music = null; VD.musicPending = false;
+  try {
+    const r = await fetch(apiUrl('/api/music/generate'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: (($('#vd-topic').value.trim() || VD.title || 'cinematic underscore') + ', instrumental underscore'), duration: Math.min(30, Math.max(10, VD.duration || 25)) }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Music generation unavailable');
+    VD.music = apiUrl(d.url);
+    if (m) m.textContent = '🎵 AI bed ready';
+    showToast('Background music ready');
+  } catch (err) {
+    if (m) m.textContent = 'Music unavailable — ' + err.message;
+  }
+});
+$('#vd-music-file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  VD.music = URL.createObjectURL(f); VD.musicPending = false;
+  const m = $('#vd-music-name'); m.textContent = '🎵 ' + f.name; m.classList.remove('hide');
+});
+function vdSpeak(i) {
+  return new Promise((resolve) => {
+    const sc = VD.scenes[i];
+    if (!sc.vo || !$('#vd-voice').checked || !('speechSynthesis' in window)) return resolve();
+    try {
+      const u = new SpeechSynthesisUtterance(sc.vo);
+      u.lang = ({ 'English': 'en', 'العربية': 'ar', 'Français': 'fr', 'Español': 'es', '日本語': 'ja', 'Русский': 'ru' })[$('#vd-lang').value] || 'en';
+      u.onend = resolve; u.onerror = resolve;
+      speechSynthesis.speak(u);
+    } catch (e) { resolve(); }
+  });
+}
+$('#vd-btn-render').addEventListener('click', () => {
+  const ready = VD.scenes.filter((_, i) => VD.images[i]).length;
+  if (!ready) { showState('vd-state', 'No scene image ready yet — wait for generation or swap images.', 'warn'); return; }
+  vdPipe('render');
+  startRender();
+});
+function vdWrapText(c, text, x, y, maxW, lh) {
+  const words = text.split(' '); let line = ''; const lines = [];
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (c.measureText(test).width > maxW && line) { lines.push(line.trim()); line = words[i] + ' '; }
+    else line = test;
+  }
+  lines.push(line.trim());
+  const last = lines.slice(-2);
+  last.forEach((l, k) => c.fillText(l, x, y - (last.length - 1 - k) * lh));
+}
+function startRender() {
+  const canvas = $('#render-canvas'), ctx = canvas.getContext('2d');
+  const dims = RATIO_DIMS[VD.ratio] || [720, 1280];
+  canvas.width = dims[0]; canvas.height = dims[1];
+  $('#vd-render-card').classList.remove('hide');
+  $('#vd-render-card').scrollIntoView({ behavior: 'smooth' });
+  const stream = canvas.captureStream(30);
+  let audioCtx = null, dest = null;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    dest = audioCtx.createMediaStreamDestination();
+  } catch (e) { audioCtx = null; }
+  const audioEl = new Audio();
+  audioEl.crossOrigin = 'anonymous';
+  if (VD.music) { audioEl.src = VD.music; audioEl.loop = true; audioEl.volume = 0.35; }
+  if (audioCtx && audioEl.src) {
+    try {
+      const src = audioCtx.createMediaElementSource(audioEl);
+      src.connect(dest); src.connect(audioCtx.destination);
+    } catch (e) {}
+  }
+  if (dest) dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4200000 });
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const v = $('#result'); v.src = url; v.classList.remove('hide');
+    const dl = $('#vd-download');
+    dl.onclick = () => { const a = document.createElement('a'); a.href = url; a.download = (VD.title || 'fenix-video').replace(/[^\w -]+/g, '') + '.webm'; a.click(); };
+    dl.classList.remove('hide');
+    $('#vd-render-status').textContent = '✅ Video ready — download or share it!';
+    showToast('Video ready 🎬');
+    try { if (audioCtx) audioCtx.close(); } catch (e) {}
+  };
+  function drawTitle() {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const rg = ctx.createRadialGradient(canvas.width / 2, canvas.height * 0.44, 20, canvas.width / 2, canvas.height * 0.44, canvas.width * 0.95);
+    rg.addColorStop(0, 'rgba(109,40,217,.45)'); rg.addColorStop(0.55, 'rgba(139,92,246,.16)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+    ctx.font = '800 ' + Math.round(canvas.width / 15) + 'px Inter, Cairo, sans-serif';
+    ctx.fillText((VD.title || 'Fenix Video').slice(0, 30), canvas.width / 2, canvas.height / 2);
+    ctx.fillStyle = 'rgba(240,211,120,.8)';
+    ctx.font = '600 ' + Math.round(canvas.width / 30) + 'px Inter, Cairo, sans-serif';
+    ctx.fillText('Fenix Video 🦅', canvas.width / 2, canvas.height / 2 + Math.round(canvas.width / 10));
+  }
+  function drawScene(i, tt) {
+    const img = VD.images[i];
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (img && img.complete && img.naturalWidth) {
+      const z = 1 + 0.06 * (tt / VD.scenes[i].secs);
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const base = Math.max(canvas.width / iw, canvas.height / ih);
+      const dw = iw * base * z, dh = ih * base * z;
+      ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    }
+    const g = ctx.createLinearGradient(0, canvas.height * .62, 0, canvas.height);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.78)');
+    ctx.fillStyle = g; ctx.fillRect(0, canvas.height * .62, canvas.width, canvas.height * .38);
+    const vo = VD.scenes[i].vo || '';
+    if (vo && $('#vd-captions').checked) {
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      const fs = Math.round(canvas.width / 27);
+      ctx.font = '600 ' + fs + 'px Inter, Cairo, sans-serif';
+      vdWrapText(ctx, vo, canvas.width / 2, canvas.height - Math.round(fs * 1.8), canvas.width - 80, Math.round(fs * 1.35));
+    }
+    if ($('#vd-watermark').checked) {
+      ctx.fillStyle = 'rgba(240,211,120,.55)';
+      ctx.font = '700 ' + Math.round(canvas.width / 46) + 'px Inter, Cairo, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Fenix Video 🦅', 18, 36);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.38)';
+    ctx.font = '500 ' + Math.round(canvas.width / 42) + 'px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText((i + 1) + ' / ' + VD.scenes.length, canvas.width - 18, 36);
+  }
+  rec.start(250);
+  if (VD.music) audioEl.play().catch(() => {});
+  const total = VD.scenes.reduce((a, s) => a + s.secs, 0);
+  function playScene(i) {
+    if (i >= VD.scenes.length) {
+      const t0 = performance.now();
+      (function endLoop() {
+        const el = (performance.now() - t0) / 1000;
+        drawTitle();
+        if (el < 1.2) requestAnimationFrame(endLoop); else rec.stop();
+      })();
+      return;
+    }
+    const sc = VD.scenes[i];
+    const t0 = performance.now();
+    vdSpeak(i);
+    (function loop() {
+      const tt = (performance.now() - t0) / 1000;
+      drawScene(i, tt);
+      const done = VD.scenes.slice(0, i).reduce((a, s) => a + s.secs, 0) + tt;
+      $('#vd-bar').style.width = Math.min(100, (done / total) * 100).toFixed(1) + '%';
+      $('#vd-render-status').textContent = '🎥 Scene ' + (i + 1) + ' / ' + VD.scenes.length + ' — ' + tt.toFixed(1) + 's / ' + sc.secs + 's';
+      if (tt < sc.secs) requestAnimationFrame(loop);
+      else playScene(i + 1);
+    })();
+  }
+  const tt0 = performance.now();
+  (function introLoop() {
+    const el = (performance.now() - tt0) / 1000;
+    drawTitle();
+    if (el < 1.2) requestAnimationFrame(introLoop); else playScene(0);
+  })();
+}
+
+/* ============================ Init ============================ */
+(async function init() {
+  applyLang(LANG);
+  syncSettingsUI(); syncModelTag();
+  refreshServerState();
+  renderAvatar();
+  renderBdActive();
+  if (currentId && !currentChat()) currentId = chats[0] ? chats[0].id : null;
+  if (!currentId && chats.length === 0) newChat();
+  else { renderChats(); renderMessages(); }
+  showView(['chat', 'music', 'video', 'builder', 'home', 'models', 'library'].includes(CURRENT_VIEW) ? CURRENT_VIEW : 'chat');
+  if (USER && canUseServer()) {
+    try {
+      const r = await fetch(apiUrl('/api/auth/me'), { headers: authHeaders() });
+      if (r.ok) {
+        await loadProjects();
+        if (activeProjectId) await selectProject(activeProjectId);
+      } else { clearAuth(); renderAvatar(); }
+    } catch (e) { clearAuth(); renderAvatar(); }
+  }
+  if (IS_NATIVE && !API_BASE) showToast('APK not linked to a server — set it in web/config.js');
+  if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+})();
+
+</script>
+</body>
+</html>
