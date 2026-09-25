@@ -4,11 +4,14 @@ Fenix Research — web search + page extraction with honest degradation.
 Pipeline: question → need? → search → fetch top pages → extract → synthesize
 → return answer + sources.
 
-Configuration (server-side only, never exposed to the client):
-  SERPER_API_KEY — api.serper.dev search API (https://serper.dev, free tier)
+Search providers, tried in order — all free:
+  1. SearXNG public instances (JSON API, no key). Configure your own instance
+     with SEARXNG_BASE_URL for full control (recommended for production).
+  2. Serper (only if SERPER_API_KEY is set — free 2500-credit trial).
+  3. DuckDuckGo Lite (keyless HTML, last-resort fallback).
 
-If SERPER_API_KEY is missing, research_is_configured() returns False and the
-/UI shows a clear "not configured" state instead of faking results.
+research_is_configured() is always True because at least one keyless provider
+exists; individual failures degrade to the next provider honestly.
 """
 import ipaddress
 import json
@@ -19,9 +22,22 @@ import urllib.parse
 import urllib.request
 
 SERPER_API_KEY = ""  # populated from env at import time below (see load_config)
+SEARXNG_BASE_URL = ""  # optional: your own SearXNG instance (e.g. https://myspace.hf.space)
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 MAX_FETCH_BYTES = 400_000
 FETCH_TIMEOUT = 12
+
+# Free public SearXNG instances with JSON enabled (community-maintained).
+# Order matters: private/self-hosted first if configured, then public ones.
+SEARXNG_INSTANCES = [
+    "https://searx.be",
+    "https://search.inetol.net",
+    "https://baresearch.org",
+    "https://search.hbubli.cc",
+    "https://searx.tiekoetter.com",
+    "https://priv.au",
+    "https://opnxng.com",
+]
 
 RESEARCH_SYSTEM = """You are Fenix's research synthesizer. You receive a user
 question and real snippets/pages fetched from the web. Write a direct, useful
@@ -34,14 +50,26 @@ answer grounded ONLY in the provided material. Rules:
 
 def load_config() -> None:
     """Read server-side config from env (called from server.py at startup)."""
-    global SERPER_API_KEY
+    global SERPER_API_KEY, SEARXNG_BASE_URL
     import os
 
     SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
+    SEARXNG_BASE_URL = os.environ.get("SEARXNG_BASE_URL", "").rstrip("/")
 
 
 def research_is_configured() -> bool:
-    return bool(SERPER_API_KEY)
+    """Always true: SearXNG/DDG fallbacks need no key."""
+    return True
+
+
+def _get(url: str, timeout: int = 12, headers: dict | None = None) -> str:
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json,text/html",
+        **(headers or {}),
+    })
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read(MAX_FETCH_BYTES).decode("utf-8", errors="ignore")
 
 
 def _post_json(url: str, body: dict, key_header: dict | None = None, timeout: int = 15) -> dict:
@@ -54,17 +82,96 @@ def _post_json(url: str, body: dict, key_header: dict | None = None, timeout: in
         return json.loads(resp.read())
 
 
+def _searxng_search(query: str, num: int) -> list[dict]:
+    """Search via SearXNG JSON API across configured instances.
+    Your own instance (SEARXNG_BASE_URL) is tried first, then public ones."""
+    instances = ([SEARXNG_BASE_URL] if SEARXNG_BASE_URL else []) + SEARXNG_INSTANCES
+    last_err = None
+    for base in instances[:6]:  # cap: don't crawl forever
+        try:
+            raw = _get(f"{base}/search?q={urllib.parse.quote(query)}&format=json&language=en")
+            data = json.loads(raw)
+            out = []
+            for item in (data.get("results") or [])[:num]:
+                link = str(item.get("url") or "").strip()
+                if not link:
+                    continue
+                out.append({
+                    "title": str(item.get("title") or "")[:200],
+                    "link": link,
+                    "snippet": str(item.get("content") or "")[:400],
+                })
+            if out:
+                return out
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            continue
+    raise RuntimeError(f"all SearXNG instances failed (last: {last_err})")
+
+
+def _ddg_lite_search(query: str, num: int) -> list[dict]:
+    """Keyless last-resort: DuckDuckGo Lite HTML results."""
+    body = urllib.parse.urlencode({"q": query}).encode()
+    req = urllib.request.Request(
+        "https://lite.duckduckgo.com/lite/", data=body,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as resp:
+        html = resp.read(MAX_FETCH_BYTES).decode("utf-8", "ignore")
+    out, seen = [], set()
+    for url, title in re.findall(r'<a[^>]+href="(http[^"]+)"[^>]*>(.*?)</a>', html, re.S):
+        if "duckduckgo.com" in url:
+            continue
+        title = re.sub(r"<[^>]+>", "", title).strip()
+        if not title or url in seen:
+            continue
+        seen.add(url)
+        out.append({"title": title[:200], "link": url, "snippet": ""})
+        if len(out) >= num:
+            break
+    if not out:
+        raise RuntimeError("ddg lite returned no results")
+    return out
+
+
 def search_web(query: str, num: int = 6) -> list[dict]:
-    """Search via Serper. Returns [{title, link, snippet}]. Raises on failure."""
-    data = _post_json(
-        "https://google.serper.dev/search",
-        {"q": query, "num": max(3, min(num, 10))},
-        {"X-API-KEY": SERPER_API_KEY},
-    )
-    out = []
-    seen = set()
-    for item in data.get("organic", [])[:num]:
-        link = str(item.get("link") or "").strip()
+    """Search the web through the free provider chain:
+    SearXNG → Serper (if key set) → DuckDuckGo Lite.
+    Returns [{title, link, snippet}]. Raises on total failure."""
+    errors = []
+
+    # 1) SearXNG (free, no key)
+    try:
+        results = _searxng_search(query, num)
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"searxng: {e}")
+        results = []
+    if results:
+        return _validate_results(results, num)
+
+    # 2) Serper (only when a key is configured)
+    if SERPER_API_KEY:
+        try:
+            results = _serper_search(query, num)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"serper: {e}")
+            results = []
+        if results:
+            return _validate_results(results, num)
+
+    # 3) DuckDuckGo Lite (keyless fallback)
+    try:
+        results = _ddg_lite_search(query, num)
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"ddg: {e}")
+        raise RuntimeError("No search results for this query (" + "; ".join(errors) + ")")
+    return _validate_results(results, num)
+
+
+def _validate_results(results: list[dict], num: int) -> list[dict]:
+    """Enforce SSRF-safe public URLs and dedupe."""
+    out, seen = [], set()
+    for r in results[: num * 2]:
+        link = str(r.get("link") or "").strip()
         if not link or link in seen:
             continue
         try:
@@ -72,12 +179,25 @@ def search_web(query: str, num: int = 6) -> list[dict]:
         except ValueError:
             continue
         seen.add(link)
-        out.append({
-            "title": str(item.get("title") or "")[:200],
-            "link": link,
-            "snippet": str(item.get("snippet") or "")[:400],
-        })
+        out.append({"title": (r.get("title") or "")[:200], "link": link,
+                    "snippet": (r.get("snippet") or "")[:400]})
+        if len(out) >= num:
+            break
     return out
+
+
+def _serper_search(query: str, num: int) -> list[dict]:
+    """Search via Serper (requires SERPER_API_KEY). Returns raw results."""
+    data = _post_json(
+        "https://google.serper.dev/search",
+        {"q": query, "num": max(3, min(num, 10))},
+        {"X-API-KEY": SERPER_API_KEY},
+    )
+    return [{
+        "title": str(item.get("title") or "")[:200],
+        "link": str(item.get("link") or "").strip(),
+        "snippet": str(item.get("snippet") or "")[:400],
+    } for item in data.get("organic", [])[:num]]
 
 
 def _public_http_url(url: str) -> str:
