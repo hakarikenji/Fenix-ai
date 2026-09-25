@@ -1,0 +1,34 @@
+name: Fenix Brains Keepalive
+
+# يبقي مساحات HF المجانية للعقول الثلاثة صاحية 24/7.
+# المساحة المجانية تنام بعد 48 ساعة صمت — كل 10 دقائق نping المساحة فنمنع النوم.
+# هذا هو الطريق المجاني 100% للعقول بعد训练: بدون Modal، بدون بطاقة، بدون فلوس.
+#
+# صادق: هذه المساحات CPU (2 vCPU / 16GB). للعقل المدرّب شغّل نسخة GGUF مضغوطة
+# (MODEL_GGUF_URL) لتعمل within الذاكرة. أول ping بعد النوم قد يستغرق 30-60 ثانية.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the free brain Spaces
+        run: |
+          stamp=$(date +%s)
+          for url in \
+            https://hakari66684-fenix-core.hf.space \
+            https://hakari66684-fenix-music.hf.space \
+            https://hakari66684-fenix-video.hf.space; do
+            # cache-buster حتى لا يرد الكاش بـ404 قديم
+            code=$(curl -s -o /dev/null -m 60 -w '%{http_code}' "$url/?k=$stamp" || echo 000)
+            echo "$url → $code"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
+              echo "  ok (200=awake, 503=waking)"
+            else
+              echo "  warn: Space not reachable — create it in the HF UI and set its variables"
+            fi
+          done

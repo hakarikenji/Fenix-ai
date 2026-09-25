@@ -1,6 +1,6 @@
 ---
 title: Fenix Brain
-emoji: 🔥
+emoji: 🐦‍🔥
 colorFrom: teal
 colorTo: blue
 sdk: docker

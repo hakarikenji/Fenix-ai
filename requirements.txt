@@ -1,6 +1,6 @@
-# Fenix AI — Multimodal Chat Engine (Python)
-# Requires: GEMINI_API_KEY in your environment (.env is auto-loaded by the workspace)
+# Fenix AI — production runtime
+flask>=3.0.0
+gunicorn>=21.2.0
 google-genai>=1.0.0
 python-dotenv>=1.0.0
-flask>=3.0.0
 Pillow>=10.0.0

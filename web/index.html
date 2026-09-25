@@ -76,6 +76,7 @@
     transition: background .25s, color .25s;
   }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .fenix-phoenix { display: inline-flex; align-items: center; justify-content: center; line-height: 1; filter: drop-shadow(0 0 6px var(--accent-ring)); }
   .hide { display: none !important; }
   body::before {
     content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -556,7 +557,7 @@
 <!-- ==================== AUTH OVERLAY (email sign-in) ==================== -->
 <div id="authScreen" class="hide">
   <div class="auth-card">
-    <div class="auth-logo"><i class="fa-solid fa-fire"></i></div>
+    <div class="auth-logo"><span class="fenix-phoenix" aria-hidden="true">🐦‍🔥</span></div>
     <h2 id="authTitle">Welcome to Fenix</h2>
     <p class="auth-sub" id="authSub">Sign in with your email to unlock cloud projects that follow you across devices.</p>
     <div class="auth-err" id="authErr"></div>
@@ -594,7 +595,7 @@
 
 <header>
   <button class="h-brand" id="brandBtn" title="New chat">
-    <div class="h-logo"><i class="fa-solid fa-fire"></i></div>
+    <div class="h-logo"><span class="fenix-phoenix" aria-hidden="true">🐦‍🔥</span></div>
     <div>
       <span class="h-name">Fenix <span>AI</span></span>
       <div class="h-sub" id="modeSub" style="display:none"><i class="fa-solid fa-code"></i> <span id="modeName"></span></div>
@@ -611,7 +612,7 @@
 <main id="chatMain">
   <div class="chat-col" id="chatCol">
     <div class="welcome" id="welcome">
-      <div class="w-mark"><i class="fa-solid fa-fire"></i></div>
+      <div class="w-mark"><span class="fenix-phoenix" aria-hidden="true">🐦‍🔥</span></div>
       <div class="w-code"><i class="fa-solid fa-less-than"></i><i class="fa-solid fa-greater-than"></i><i class="fa-solid fa-slash"></i></div>
       <h1 id="welcomeTitle">Hey, I'm <em>Fenix</em></h1>
       <p id="welcomeSub">Your smart AI companion — ask me anything.</p>
@@ -708,9 +709,9 @@
     <div class="set-group">
       <div class="set-label">About</div>
       <div class="about-card">
-        <b>Fenix 4.0</b> — an AI assistant built by Hakari, powered by Gemini.<br>
+        <b>Fenix 4.0</b> — an AI assistant built by Hakari, powered by the Fenix Core LoRA brain.<br>
         Chat, projects, memory, evolution and web research. Voice, camera, documents.<br>
-        <span class="ver-tag">Version 4.0 · The AI model is Gemini — Fenix is the system around it</span>
+        <span class="ver-tag">Version 4.0 · Brain: Fenix Core LoRA — Fenix is the system around it</span>
       </div>
     </div>
   </div>
@@ -824,7 +825,7 @@ const apiUrl = (p) => API_BASE + p;
 const canUseServer = () => !IS_NATIVE || !!API_BASE;
 
 const FENIX_SYSTEM = `You are "Fenix" — an AI assistant built by Hakari.
-Your engine is Google's Gemini model; your uniqueness is the system around it:
+Your brain is Fenix Core LoRA — the primary Fenix mind; your uniqueness is the system around it:
 personality, memory, evolution, research and honesty.
 
 Identity & honesty rules:
@@ -834,7 +835,7 @@ Identity & honesty rules:
 4. Distinguish clearly: model knowledge / retrieved web info / user memory / executed actions. Label proposals as "proposed".
 5. Say "I don't know" plainly when you don't.
 
-Personality: intelligent, natural, confident but never arrogant; concise on simple questions, detailed when the task deserves it; conversational, never robotic; never imitate ChatGPT, Claude or Gemini's personas.
+Personality: intelligent, natural, confident but never arrogant; concise on simple questions, detailed when the task deserves it; conversational, never robotic; never imitate other AI products' personas.
 
 General rules:
 - Formatting: clean Markdown when it helps.
@@ -845,7 +846,7 @@ const STYLE_HINTS = {
   detailed: '- Style: give thorough, well-structured answers with examples, context and step-by-step detail where useful.',
 };
 /* Ultra code-builder persona — active inside project chats (Fenix Coder). */
-const CODER_SYSTEM = `You are "Fenix Coder" \u2014 the coding side of Fenix, an AI assistant built by Hakari (engine: Google's Gemini model). You are an elite full-stack engineer: web apps, mobile apps, APIs, games, scripts, pipelines and DevOps.
+const CODER_SYSTEM = `You are "Fenix Coder" \u2014 the coding side of Fenix, an AI assistant built by Hakari (brain: Fenix Core LoRA). You are an elite full-stack engineer: web apps, mobile apps, APIs, games, scripts, pipelines and DevOps.
 
 Your engineering rules:
 1. Deliver, don't describe: output complete runnable code \u2014 never "... rest of the code here" placeholders.
@@ -1015,7 +1016,7 @@ function msgHtml(m, idx) {
       ${atts ? `<div style="align-self:flex-end">${atts}</div>` : ''}
       <div class="bubble" dir="auto">${escHtml(m.content)}</div></div>`;
   }
-  return `<div class="msg phoenix"><div class="who"><span class="dot"><i class="fa-solid fa-fire"></i></span>Fenix</div>
+  return `<div class="msg phoenix"><div class="who"><span class="dot"><span class="fenix-phoenix" aria-hidden="true">🐦‍🔥</span></span>Fenix</div>
     <div class="bubble" dir="auto">${renderMd(m.content)}</div>
     <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
 }
@@ -1039,10 +1040,9 @@ function renderSources(sources) {
 function renderBrainBadge() {
   document.querySelectorAll('.brain-tag').forEach(el => el.remove());
   if (!lastBrain) return;
-  const label = lastBrain === 'gemini' ? 'Gemini engine'
-    : lastBrain === 'gemini-research' ? 'Gemini engine + live research'
-    : lastBrain === 'gemini-coder' ? 'Gemini engine · Coder'
-    : 'Fenix Core · private brain';
+  const label = lastBrain === 'fenix-core-lora-research' ? 'Fenix Core LoRA + live research'
+    : lastBrain === 'fenix-core-lora-coder' ? 'Fenix Core LoRA · Coder'
+    : 'Fenix Core LoRA';
   const col = $('#chatCol');
   col.insertAdjacentHTML('beforeend', `<div class="brain-tag"><i class="fa-solid fa-microchip"></i>${label}</div>`);
   scrollDown();
@@ -1207,7 +1207,7 @@ $('#micBtn').addEventListener('click', toggleMic);
 let lastSources = null;   /* live web sources from Fenix Research (this reply) */
 let generating = false;   /* a reply is currently streaming */
 let stopGen = null;       /* abort controller for the active generation */
-let lastBrain = null;     /* 'fenix-core' | 'gemini' | ... — shown under the reply */
+let lastBrain = null;     /* 'fenix-core-lora' | 'fenix-core-lora-research' | ... — shown under the reply */
 
 /* Stream a reply token-by-token. onDelta(text, full) renders progressively.
    Resolves with the final text; rejects on connection errors. */

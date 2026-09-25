@@ -1,5 +1,7 @@
 # Fenix Music — عقل الموسيقى المدرَّب 🧠🎵
 
+> **حالة حالية:** لا يوجد LoRA مدرَّب أو Space منشور الآن. آخر فحص أعاد 404 للـSpace وModal workspace معطل. اتبع `MUSIC-BRAIN-GUIDE.md` ولا تعتبر التطبيق brain مدرّباً قبل POST ناجح؛ Gemini fallback يعمل حالياً.
+
 نفس رحلة Fenix Core حرفياً: **تدريب → Drive → Hugging Face → Modal**.
 
 ## الفكرة
@@ -33,3 +35,17 @@ freebuff-env set --file .env.local '{"MUSIC_BRAIN_URL":"https://<workspace>--fen
 
 قبل التدريب الخادم يستخدم **Gemini كعقل مؤقت** — التطبيق كامل الوظائف من اليوم الأول،
 والعقل الخاص يتوصّل لحظة جاهزيته بدون أي تغيير في التطبيق.
+
+## المسار الآلي (الأسرع اليوم)
+
+بدون Colab — كل شي من داخل Modal:
+
+```bash
+python fenix-music/training/gen_examples.py --count 24   # بيانات جديدة تُضاف فوق الموجود
+modal run fenix-brain-modal/train_all.py --only music     # يرفع البيانات ويقرّب
+modal run fenix-brain-modal/publish_adapters.py            # يرفع الـ adapter إلى HF
+modal deploy fenix-music/generator/music_brain_modal.py    # العقل الحي على Modal
+```
+
+نسخة الـ Space المجانية `hakari66684-fenix-music.hf.space` تدخل سلسلة العقول تلقائياً
+(فوق fenix-core وتحت عقل Modal)، وتبقى حية 24/7 بواسطة `brains-keepalive.yml`.

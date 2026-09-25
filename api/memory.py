@@ -44,6 +44,15 @@ def _save(token: str, data: dict) -> None:
     _write(_memory_path(token), data)
 
 
+def _index_entry(token: str, entry: dict) -> None:
+    """Best-effort semantic indexing; never blocks a memory write."""
+    try:
+        import semantic_memory
+        semantic_memory.index_memory(token, entry.get("id", ""), entry.get("text", ""))
+    except Exception:
+        pass
+
+
 def list_memory(token: str, category: str | None = None) -> list[dict]:
     """All entries (optionally one category), newest first."""
     data = _load(token)
@@ -77,6 +86,7 @@ def add_entry(token: str, category: str, text: str, source: str = "user") -> dic
             entries.sort(key=lambda e: (e.get("category") != "context", e.get("created", 0)))
             del entries[0 : len(entries) - MAX_ENTRIES]
         _save(token, data)
+    _index_entry(token, entry)
     return entry
 
 
@@ -91,6 +101,7 @@ def update_entry(token: str, entry_id: str, text: str, category: str | None = No
                     e["category"] = category
                 e["edited"] = time.time()
                 _save(token, data)
+                _index_entry(token, e)
                 return True
     return False
 
@@ -131,14 +142,25 @@ def export_memory(token: str) -> dict:
     }
 
 
-def memory_block(token: str | None, max_chars: int = 3000) -> str:
+def memory_block(token: str | None, max_chars: int = 3000, query: str = "") -> str:
     """Render long-term memory for the system prompt (never 'context' category).
+
+    With a query, semantic retrieval injects only relevant entries; without
+    vectors yet (fresh account) it falls back to newest-first injection.
     Empty string when there is nothing useful."""
     if not token:
         return ""
     entries = [e for e in _load(token).get("entries", []) if e.get("category") != "context"]
     if not entries:
         return ""
+    if query:
+        try:
+            import semantic_memory
+            focused = semantic_memory.relevant_block(token, query, entries, max_chars)
+            if focused:
+                return focused
+        except Exception:
+            pass
     label = {
         "preferences": "Preferences", "projects": "Projects", "goals": "Goals",
         "style": "Working style", "facts": "Facts the user saved",

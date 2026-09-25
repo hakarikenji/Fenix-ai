@@ -1,6 +1,6 @@
-# 🔥 Fenix
+# 🐦‍🔥 Fenix
 
-**Fenix — an AI assistant built by Hakari**, powered by Google's Gemini model. Fenix's identity is honest: the engine is Gemini; the uniqueness is the system around it — personality, structured memory, evolution, web research, projects with an elite coding mode, and verification honesty.
+**Fenix — an AI assistant built by Hakari**, powered by the **Fenix Core LoRA** brain. The public identity is one thing: every Fenix product answers as Fenix Core LoRA. Under the hood a private brain chain keeps it online 24/7 — the routing stays server-side and never reaches the client.
 
 Works as an installable PWA on any phone and as a native Android APK. **Zero user configuration**: the AI key lives only on the server; users open the app, sign in, and chat.
 
@@ -67,7 +67,7 @@ python server.py        # serves on 0.0.0.0:8000
 **Install on your phone:**
 1. Open the app URL in Chrome on Android
 2. Tap **Install** in the bottom bar (or browser menu → "Add to Home screen")
-3. Fenix appears with its fire icon — full screen, no browser bar
+3. Fenix appears with its phoenix icon — full screen, no browser bar
 
 ## 🗂️ Project structure
 
@@ -93,6 +93,9 @@ Server environment variables (users never see or enter these):
 |---|---|---|
 | `GEMINI_API_KEY` | ✅ yes | The AI engine (server-side only) — [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | `SERPER_API_KEY` | optional | Enables live web research with sources — [serper.dev](https://serper.dev) |
+| `SANDBOX_URL` | optional | Isolated code-execution service URL; Fenix never executes generated code in-process |
+| `SANDBOX_API_KEY` | optional | Server-only credential for the isolated sandbox provider |
+| `SANDBOX_TIMEOUT_MS` | optional | Maximum execution budget, capped at 10 seconds (default `5000`) |
 
 On Freebuff: **Settings → Environment** for the sandbox/preview, and **Deploy → Environment** for production hosting. The key is read by the server only — it never reaches any client.
 

@@ -1,10 +1,10 @@
-# Fenix Core brain — always-on API for the free HF CPU Space.
+# Fenix Video brain — always-on API for the free HF CPU Space.
 # OpenAI-compatible brain API for the free Hugging Face CPU Space.
 #
 # ENGINE A (recommended on free CPU): merged + quantized GGUF via llama-cpp-python
 #   MODEL_GGUF_URL=https://huggingface.co/<repo>/resolve/main/<file>.gguf
 # ENGINE B (GPU Space or lots of RAM): base model + trained LoRA adapter
-#   ADAPTER_ZIP_URL=https://huggingface.co/<repo>/resolve/main/fenix-core-adapter.zip
+#   ADAPTER_ZIP_URL=https://huggingface.co/<repo>/resolve/main/fenix-video-adapter.zip
 import os
 import threading
 import zipfile
@@ -12,12 +12,12 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request
 
-BRAIN = "fenix-core"
+BRAIN = "fenix-video"
 BASE_MODEL = os.environ.get("BASE_MODEL", "Qwen/Qwen3-4B-Instruct-2507")
 GGUF_URL = os.environ.get("MODEL_GGUF_URL", "").strip()
 ADAPTER_ZIP_URL = os.environ.get(
     "ADAPTER_ZIP_URL",
-    "https://huggingface.co/Hakari66684/fenix-core-lora/resolve/main/fenix-core-adapter.zip",
+    "https://huggingface.co/Hakari66684/fenix-video-lora/resolve/main/fenix-video-adapter.zip",
 )
 MAX_NEW = min(int(os.environ.get("MAX_NEW_TOKENS", "512")), 1024)
 THREADS = int(os.environ.get("LLAMA_THREADS", "2"))

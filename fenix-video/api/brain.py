@@ -15,8 +15,11 @@ MODEL_CHAIN = [m.strip() for m in os.environ.get(
 API = "https://generativelanguage.googleapis.com/v1beta/models"
 
 # سلسلة العقول المدرّبة: fenix-video أولاً → fenix-core (الحي) — أي فشل ينتقل للتي بعده
+# + نسخ HF Space المجانية 24/7 لكل عقل (تدخل السلسلة تلقائياً بمجرد نشرها)
 FENIX_CORE_BRAIN_URL = "https://yasinnait30--fenix-brain.modal.run"
 FENIX_VIDEO_BRAIN_URL = "https://yasinnait30--fenix-video-brain.modal.run"
+FENIX_CORE_HF_URL = "https://hakari66684-fenix-core.hf.space"
+FENIX_VIDEO_HF_URL = "https://hakari66684-fenix-video.hf.space"
 
 
 def _brain(url_env: str, default: str) -> str:
@@ -26,6 +29,8 @@ def _brain(url_env: str, default: str) -> str:
 
 VIDEO_BRAIN_URL = _brain("VIDEO_BRAIN_URL", FENIX_VIDEO_BRAIN_URL)
 CORE_BRAIN_URL = _brain("CORE_BRAIN_URL", FENIX_CORE_BRAIN_URL)
+VIDEO_HF_URL = _brain("VIDEO_HF_URL", FENIX_VIDEO_HF_URL)
+CORE_HF_URL = _brain("CORE_HF_URL", FENIX_CORE_HF_URL)
 VIDEO_BRAIN_MODEL = os.environ.get("VIDEO_BRAIN_MODEL", "fenix-video")
 BRAIN_TIMEOUT = float(os.environ.get("VIDEO_BRAIN_TIMEOUT", "150"))
 BRAIN_API_KEY = os.environ.get("VIDEO_BRAIN_API_KEY", "")
@@ -34,7 +39,8 @@ _errors: list = []
 
 
 def _brains_call(system: str, user: str, temperature: float, max_tokens: int = 3000) -> str | None:
-    """سلسلة العقول المدرّبة مع كشف فوري لرفض Modal. None = فشل الكل."""
+    """سلسلة العقول المدرّبة مع كشف فوري لرفض Modal. None = فشل الكل.
+    السلسلة: عقل الفيديو Modal → نسخته HF Space → عقل Core Modal → نسخته HF Space."""
     body = json.dumps({
         "model": VIDEO_BRAIN_MODEL,
         "messages": [{"role": "system", "content": system},
@@ -45,7 +51,7 @@ def _brains_call(system: str, user: str, temperature: float, max_tokens: int = 3
     if BRAIN_API_KEY:
         headers["Authorization"] = "Bearer " + BRAIN_API_KEY
     errors = []
-    for base_url in (VIDEO_BRAIN_URL, CORE_BRAIN_URL):
+    for base_url in (VIDEO_BRAIN_URL, VIDEO_HF_URL, CORE_BRAIN_URL, CORE_HF_URL):
         if not base_url:
             continue
         try:

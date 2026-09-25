@@ -10,8 +10,10 @@ Configuration (server-side only, never exposed to the client):
 If SERPER_API_KEY is missing, research_is_configured() returns False and the
 /UI shows a clear "not configured" state instead of faking results.
 """
+import ipaddress
 import json
 import re
+import socket
 import urllib.parse
 import urllib.request
 
@@ -59,18 +61,44 @@ def search_web(query: str, num: int = 6) -> list[dict]:
         {"X-API-KEY": SERPER_API_KEY},
     )
     out = []
+    seen = set()
     for item in data.get("organic", [])[:num]:
+        link = str(item.get("link") or "").strip()
+        if not link or link in seen:
+            continue
+        try:
+            link = _public_http_url(link)
+        except ValueError:
+            continue
+        seen.add(link)
         out.append({
-            "title": item.get("title", "")[:200],
-            "link": item.get("link", ""),
-            "snippet": item.get("snippet", "")[:400],
+            "title": str(item.get("title") or "")[:200],
+            "link": link,
+            "snippet": str(item.get("snippet") or "")[:400],
         })
     return out
 
 
+def _public_http_url(url: str) -> str:
+    """Reject non-HTTP and private/local targets to reduce SSRF exposure."""
+    parsed = urllib.parse.urlsplit(url or "")
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("research URL must be public HTTP(S)")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, None, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError("research URL host could not be resolved") from exc
+    for address in addresses:
+        ip = ipaddress.ip_address(address[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ValueError("research URL points to a non-public network")
+    return urllib.parse.urlunsplit(parsed)
+
+
 def fetch_page_text(url: str, max_chars: int = 6000) -> str:
-    """Fetch a page and strip it to readable text (very light extraction)."""
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Fenix research)"})
+    """Fetch a validated public page and strip it to readable text."""
+    safe_url = _public_http_url(url)
+    req = urllib.request.Request(safe_url, headers={"User-Agent": "Mozilla/5.0 (Fenix research)"})
     with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as resp:
         raw = resp.read(MAX_FETCH_BYTES).decode("utf-8", errors="ignore")
     raw = re.sub(r"<(script|style)[\s\S]*?</\1>", " ", raw, flags=re.I)

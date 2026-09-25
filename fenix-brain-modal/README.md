@@ -1,51 +1,78 @@
-# نشر عقلك المدرَّب كـ API بـ Modal — بدائل Colab و GGUF تماماً
+# عقول Fenix على Modal — تدريب ونشر وتشغيل 🧠🐦‍🔥
 
-مجاني: **$30 رصيد شهري** (يكفي آلاف الرسائل)، بدون بطاقة بنكية.
+هذه العقول تعتمد على `Qwen/Qwen3-4B-Instruct-2507` (Apache-2.0) مع LoRA مستقل لكل عقل:
 
-## النشر (أمر واحد)
+- `fenix-core`: المساعد المشترك.
+- `fenix-music`: كتابة الكلمات والردود الموسيقية.
+- `fenix-video`: كتابة سيناريوهات الفيديو.
+
+## حالة حالية
+
+هذا الكود يصف طريقة التشغيل، لكنه لا يثبت نجاح النشر. آخر فحص أعاد `404` على HF Spaces وModal workspace أعاد `workspace ... is disabled`. لا يوجد حالياً LoRA مدرّب ومنشور يمكن تأكيده. التطبيق يمر إلى Gemini fallback.
+
+الدليل المفصل لعقل الموسيقى هو:
+
+```text
+fenix-music/training/MUSIC-BRAIN-GUIDE.md
+```
+
+## المسار العام
 
 ```bash
-pip install modal
-modal token new          # يفتح المتصفح لتسجيل الدخول (مرة واحدة)
-modal deploy fenix-brain-modal/app.py
+pip install modal && modal token new
+modal run fenix-brain-modal/warm.py
+modal run fenix-brain-modal/train_all.py --only music --epochs 2
+modal secret create hf-write HF_TOKEN=hf_xxx
+modal run fenix-brain-modal/publish_adapters.py --only music
+modal deploy fenix-music/generator/music_brain_modal.py
 ```
 
-في النهاية يطبع رابط مثل:
-`https://<username>--fenix-brain-chat.modal.run`
-
-## اختبار سريع
+للعقول الأخرى:
 
 ```bash
-curl -X POST <الرابط> -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"من أنت؟"}]}'
+modal run fenix-brain-modal/train_all.py --only video --epochs 2
+modal run fenix-brain-modal/publish_adapters.py --only video
+modal deploy fenix-video/training/serve_modal.py
 ```
 
-## الربط بخادم Fenix
+## سلسلة brains
 
-العقل منشور وحي على هذا الرابط (مباشر، بدون إعداد):
+يقرأ الخادم المسار بالترتيب:
 
-```
-https://yasinnait30--fenix-brain.modal.run
-```
+1. عقل التطبيق على Modal.
+2. نسخة التطبيق على HF Space، إن كانت منشورة.
+3. عقل Fenix Core على Modal.
+4. نسخة Fenix Core على HF Space، إن كانت منشورة.
+5. Gemini كحلقة أخيرة.
 
-على الخادم (بيئة النشر):
+أي فشل أو رد فارغ ينتقل للحلقة التالية. الروابط الافتراضية موجودة في `server.py` و`fenix-video/api/brain.py`، لكنها لا تعني أن Spaces منشورة. اختبر كل رابط بـ GET وPOST فعليين.
 
-```
-CUSTOM_LLM_BASE_URL=https://yasinnait30--fenix-brain.modal.run
-CUSTOM_LLM_MODEL=fenix-core
-```
+## keepalive
 
-> سيرفر Fenix Music (مستودع Fenix-music-) موصول بنفس العقل **افتراضياً** — ما يحتاج شي.
+`.github/workflows/brains-keepalive.yml` يضرب المساحات كل 10 دقائق بعد حفظه في GitHub. شغّل Workflow مرة واحدة بعد نشر Space. هذا يوقظ المساحة، لكنه لا يضمن أن Free CPU Space تستطيع دائماً تحميل نموذج 4B؛ Modal GPU هو الخيار الأساسي.
 
-أي فشل → خادم Fenix يرجع تلقائياً لـ Gemini.
-
-## لو مستودع النموذج Private
-
-أضف secret قبل الرفع:
+## التحقق
 
 ```bash
-modal secret create hf-read HF_TOKEN=<التوكن>
+curl -X POST <modal-music-url>/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"fenix-music","messages":[{"role":"user","content":"اكتب كورس فونك قصيراً"}]}'
 ```
 
-واستبدل `@app.cls(...)` في `app.py` بـ:
-`@app.cls(image=image, cpu=8, memory=16384, timeout=900, scaledown_window=600, secrets=[modal.Secret.from_name("hf-read")])`
+لا تسجل النجاح إلا بعد:
+
+- `ADAPTER SAVED` داخل Volume.
+- رفع `fenix-music-adapter.zip` إلى Hugging Face.
+- Modal يرد على POST.
+- HF Space يرد على POST وليس 404.
+
+## إعادة التدريب
+
+```bash
+python3 fenix-music/training/gen_examples.py --count 24
+modal run fenix-brain-modal/train_all.py --only music --epochs 3
+modal run fenix-brain-modal/publish_adapters.py --only music
+modal deploy fenix-music/generator/music_brain_modal.py
+```
+
+لا تعدّل `server.py` عند إعادة التدريب؛ المسار يقرأ نفس Adapter zip.

@@ -16,4 +16,4 @@
    Example:
    window.FENIX_SERVER = "https://your-fenix-server.example.com";
 */
-window.FENIX_SERVER = "https://8000-iawl27qtbmjaeoxrj3nl4.e2b.app";
+window.FENIX_SERVER = "https://8010-iawl27qtbmjaeoxrj3nl4.e2b.app";

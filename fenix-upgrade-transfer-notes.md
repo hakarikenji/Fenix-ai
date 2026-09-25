@@ -1,5 +1,7 @@
 # رسائل جاهزة للصق — ترقية Fenix Music و Fenix Video بنفس ترقية منظومة Fenix-ai
 
+> **حالة حالية مهمة:** هذه الرسائل تصف تجهيز ونشر الملفات، ولا تثبت أن أي LoRA أو HF Space منشور الآن. آخر فحص أعاد 404 على Spaces وModal workspace disabled. لا تصف العقل كعقل حي قبل GET + POST، واترك Gemini fallback يعمل.
+
 انسخ الرسالة المناسبة والصقها في محادثة مساحة Freebuff الخاصة بكل تطبيق.
 (هذه التعديلات نفسها منفّذة فعلاً هنا في Fenix-ai: `server.py` + `web/index_new.html` + `web/sw.js`)
 
@@ -57,3 +59,45 @@
 - `web/sw.js` — ترقية كاش v11-ecosystem
 
 لو تبي أنا أدفعهم، قل "ادفع" وأنا أنفذ commit + push من هنا.
+
+---
+
+## 4️⃣ رسالة لمساحة Fenix Music — تجهيز عقل الموسيقى (انسخ الملفات الجاهزة)
+
+> الحالة الحالية: لا يوجد LoRA مدرّب أو Space منشور. Modal workspace معطل والـSpaces السابقة أعادت 404. لا تصف أي نشر بأنه ناجح قبل GET وPOST.
+
+انسخ من هنا ⬇️
+
+**جهّز Fenix Music brain من مستودع Fenix-ai باستخدام الملفات الجاهزة فقط. لا تبني Trainer جديداً ولا تعِد بناء الواجهة أو الخادم.**
+
+1. `git clone --depth 1 https://github.com/hakarikenji/Fenix-ai /tmp/fx`
+2. انسخ:
+   - `/tmp/fx/fenix-music/generator/music_brain_modal.py`
+   - `/tmp/fx/fenix-music-brain-space/` كاملاً
+   - `/tmp/fx/fenix-music/training/MUSIC-BRAIN-GUIDE.md`
+   - `/tmp/fx/.github/workflows/brains-keepalive.yml`
+3. لا تضع مفاتيح داخل Git. استخدم Modal Secret لـ HF Write token، وSettings → Environment لمفتاح التطبيق.
+4. فعّل Modal workspace، ثم نفّذ `modal run fenix-brain-modal/train_all.py --only music --epochs 2`.
+5. بعد نجاح التدريب: `modal run fenix-brain-modal/publish_adapters.py --only music`.
+6. انشر `fenix-music/generator/music_brain_modal.py` على Modal.
+7. أنشئ HF Docker Space باسم `fenix-music` وارفع محتويات `fenix-music-brain-space/`.
+8. شغّل keepalive، واضبط `MUSIC_BRAIN_URL` و`MUSIC_HF_URL` على الروابط الحقيقية.
+9. اختبر POST على Modal وSpace، ثم `/api/music/lyrics`. إذا فشل أي عنصر، اترك Gemini fallback.
+
+انسخ إلى هنا ⬆️
+
+---
+
+## 5️⃣ رسالة لمساحة Fenix Video — تجهيز عقل الفيديو (انسخ الملفات الجاهزة)
+
+انسخ من هنا ⬇️
+
+**جهّز Fenix Video brain من مستودع Fenix-ai باستخدام الملفات الجاهزة فقط. لا تعِد بناء الواجهة أو Trainer.**
+
+1. `git clone --depth 1 https://github.com/hakarikenji/Fenix-ai /tmp/fx`
+2. انسخ `fenix-video-brain-space/` و`.github/workflows/brains-keepalive.yml` و`fenix-video/api/brain.py` و`fenix-video/training/serve_modal.py`.
+3. نفّذ التدريب بـ `modal run fenix-brain-modal/train_all.py --only video`، ثم ارفع Adapter بـ `publish_adapters.py --only video`.
+4. انشر `serve_modal.py`، وأنشئ HF Docker Space باسم `fenix-video` بعد نجاح البناء.
+5. اختبر GET وPOST قبل وصف العقل بأنه منشور. عند الفشل استخدم Core ثم Gemini.
+
+انسخ إلى هنا ⬆️

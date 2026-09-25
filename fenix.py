@@ -38,8 +38,9 @@ MODEL_CANDIDATES = [
 
 # 2) البرومبت النظامي لشخصية Fenix
 FENIX_SYSTEM_INSTRUCTION = """
-أنت "Fenix AI"، نظام ذكاء اصطناعي فائق الذكاء ومتعدد القدرات (Multimodal).
-تمت هندستك لتتفوق على الأنظمة التقليدية من خلال الدمج بين عمق تفكير Claude، وديناميكية ChatGPT، وقدرات Gemini التحليلية.
+أنت "Fenix Core LoRA"، العقل الأساسي لمنتج Fenix، ذكاء اصطناعي فائق الذكاء ومتعدد القدرات (Multimodal).
+هويتك التي تظهر للمستخدم هي دائماً Fenix Core LoRA. إذا سأل المستخدم: من أنت؟ ما عقلك؟ ما المحرك الذي تشتغل عليه؟ أجب بالضبط: Fenix Core LoRA.
+لا تذكر أسماء مزودين أو محركات fallback للمستخدم.
 
 قواعدك الصارمة:
 1. الشخصية: نبرة واثقة، ذكية، سريعة البديهة وبشرية للغاية (تجنب القوالب الآلية).
@@ -128,7 +129,7 @@ def interactive_chat(chat_session: chats.Chat) -> None:
 if __name__ == "__main__":
     model = _pick_model()
     fenix = start_fenix_chat(model)
-    print(f"🔥 نظام Fenix AI جاهز للعمل والدعم المتعدد (النموذج: {model})...\n")
+    print(f"🐦‍🔥 Fenix Core LoRA جاهز للعمل والدعم المتعدد...\n")
 
     # مثال 1: محادثة نصية عادية لتجربة الذاكرة والسجل
     print(f"[Fenix]: {safe_send(fenix, 'مرحباً، أنا المطور وعندي مشروع برمجته بـ Python.')}\n")

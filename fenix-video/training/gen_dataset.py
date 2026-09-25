@@ -15,6 +15,10 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))  # لاستيراد api.common (gemini_brain cross-fallback)
+
 # استيراد brain.py بنفس طريقة server.py — بدون تعبئة sys.path
 _here = Path(__file__).parent
 _spec = importlib.util.spec_from_file_location("fenix_video_brain", _here.parent / "api" / "brain.py")
@@ -63,8 +67,14 @@ def ask(prompt_tuple):
     style, language, topic = prompt_tuple
     system = brain_mod.script_system(language, style, topic)
     user = f"Write the video script JSON for: {topic}."
+    text = None
     if USE_GEMINI:
-        text = brain_mod._gemini_call(system, user, 0.95, 2500)
+        try:
+            text = brain_mod._gemini_call(system, user, 0.95, 2500)
+        except Exception:
+            # حصة نموذج سلسلة الفيديو نفدت — جرّب سلسلة gemini_brain (نماذج مختلفة، حصص منفصلة)
+            from api.common import gemini_brain
+            text = gemini_brain(system, user, 0.95)
     else:
         body = json.dumps({
             "messages": [{"role": "system", "content": system},
@@ -92,12 +102,33 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--gemini", action="store_true",
                     help="ولّد من Gemini الاحتياطي (إذا عقل Modal معطّل)")
+    ap.add_argument("--append", action="store_true", default=True,
+                    help="أضف فوق البيانات الموجودة (السلوك الافتراضي) بدل المسح")
+    ap.add_argument("--offset", type=int, default=0,
+                    help="ابدأ من فكرة رقم كذا في قائمة PROMPTS — لدورات جديدة كل مرة")
     args = ap.parse_args()
     global USE_GEMINI
     USE_GEMINI = args.gemini
 
-    picks = [PROMPTS[i % len(PROMPTS)] for i in range(args.n)]
-    print(f"🎬 generating {len(picks)} examples ({'Gemini' if USE_GEMINI else BRAIN_URL})…")
+    out = _here / "data.jsonl"
+    existing = []
+    seen = set()
+    if args.append and out.exists():
+        for line in out.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+                existing.append(row)
+                # تفرّد حسب عنوان السيناريو داخل JSON المساعد
+                seen.add(row["messages"][2]["content"][:120])
+            except Exception:
+                continue
+
+    picks = [PROMPTS[(args.offset + i) % len(PROMPTS)] for i in range(args.n)]
+    print(f"🎬 generating {len(picks)} examples ({'Gemini' if USE_GEMINI else BRAIN_URL})… "
+          f"(existing: {len(existing)}, append mode)")
 
     def ask_retry(pt):  # محاولتان لكل مثال قبل الاستسلام
         last = None
@@ -109,18 +140,23 @@ def main():
         print(f"  ✗ {pt[2]}: {last}")
         return None
 
-    rows = []
+    rows = list(existing)
+    added = 0
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         for res in pool.map(ask_retry, picks):
             if res is not None:
+                key = res["messages"][2]["content"][:120]
+                if key in seen:
+                    continue
+                seen.add(key)
                 rows.append(res)
-                print(f"  ✓ {len(rows)}/{len(picks)}")
+                added += 1
+                print(f"  ✓ +{added} (total {len(rows)})")
 
-    out = _here / "data.jsonl"
     with open(out, "w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    print(f"✅ {len(rows)} examples → {out}")
+    print(f"✅ +{added} new → {len(rows)} total examples in {out}")
     if len(rows) < 12:
         print("⚠️ أمثلة قليلة — أعد التشغيل لاحقاً لزيادة العدد (30+ أفضل للتدريب)")
 

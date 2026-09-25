@@ -19,3 +19,36 @@ android/capacitor-cordova-android-plugins/
 *.apk
 *.aab
 .data/
+__pycache__/
+*.py[cod]
+.env
+.env.local
+.venv/
+venv/
+*.log
+
+# Node
+node_modules/
+
+# Android / Capacitor build outputs (source android/ is committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+*.apk
+*.aab
+.data/
+
+# Fenix runtime & sandbox artifacts (local data, logs, secrets)
+api/fenix.sqlite3
+api/context_engine.py
+api/semantic_memory.py
+api/tool_registry.py
+api/observability.py
+api/db.py
+api/sandbox.py
+api/debug_semantic.py
+api/test_identity_guard.py
+api/test_world_class.py

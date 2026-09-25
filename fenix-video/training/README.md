@@ -1,22 +1,55 @@
-# Fenix Video — عقل الفيديو المدرّب 🧠🎬
+# Fenix Video — دليل عقل الفيديو المدرَّب 🧠🎬
 
-نفس رحلة Fenix Music حرفياً: **بيانات → تدريب على Modal → نشر → ربط تلقائي**.
+> **حالة حالية:** لا يمكن تأكيد وجود Video LoRA أو HF Space منشور. آخر فحص أعاد `404` للـSpaces وModal workspace معطل. اتبع المسار أدناه، ولا تصف العقل كحي قبل GET وPOST ناجحين. Gemini fallback هو السلوك الحالي.
 
-## 1) البيانات (data.jsonl)
+## 1) البيانات
 
-كل سطر: محادثة `messages` — طلب سيناريو → JSON سيناريو صارم (نفس مخطط `/api/script`).
-اجمع 25-100 مثال. النموذج الأمثل: اطلبها من العقل الحي (fenix-core) بنفس
-`SCHEMA_RULES` الموجود في `fenix-video/api/brain.py` — فتحصل على أمثلة متوافقة 100%.
+الملف:
 
-## 2) التدريب (بدون نوتبوك)
+```text
+fenix-video/training/data.jsonl
+```
+
+كل سطر يحتوي `messages`، والمخرجات أمثلة JSON منظّمة لسيناريو فيديو. السكربت المتاح:
+
+```bash
+python3 fenix-video/training/gen_dataset.py --gemini --n 12 --append
+```
+
+## 2) التدريب
+
+```bash
+modal run fenix-brain-modal/train_all.py --only video --epochs 2
+```
+
+البديل اليدوي:
 
 ```bash
 modal volume put fenix-video-out fenix-video/training/data.jsonl data.jsonl
-modal run fenix-video/training/train_modal.py
-modal deploy fenix-video/training/serve_modal.py
+modal run fenix-video/training/train_modal.py --epochs 2
 ```
 
-## 3) الربط (تلقائي افتراضياً)
+بعد التدريب، Adapter يكون داخل:
 
-الخادم مدمج افتراضياً على `https://<workspace>--fenix-video-brain.modal.run`.
-أي فشل → fenix-core → Gemini — بدون أي تغيير في التطبيق.
+```text
+fenix-video-out:/adapter
+```
+
+## 3) النشر
+
+```bash
+modal deploy fenix-video/training/serve_modal.py
+modal run fenix-brain-modal/publish_adapters.py --only video
+```
+
+لا تنشر Space قبل نجاح التدريب ورفع `fenix-video-adapter.zip`.
+
+## 4) السلسلة
+
+المسار في `fenix-video/api/brain.py`:
+
+```text
+Video Modal → Video HF Space → Core Modal → Core HF Space → Gemini
+```
+
+الـSpace وkeepalive يجعلان المسار أكثر مرونة، لكن لا تفترض أنهما منشوران قبل اختبار فعلي.
