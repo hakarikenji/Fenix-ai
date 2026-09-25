@@ -75,6 +75,10 @@ CUSTOM_LLM_API_KEY = os.environ.get("CUSTOM_LLM_API_KEY", "")
 # treated as a live brain until it has returned a valid non-empty response.
 CUSTOM_BRAIN_STATE = "unverified" if CUSTOM_LLM_BASE_URL else "unconfigured"
 PUBLIC_BRAIN = "fenix-core-lora"
+# Circuit breaker: after a failure, skip the dead endpoint for a cool-down so
+# every chat doesn't pay the dead-endpoint latency again.
+_BRAIN_FAIL_UNTIL = 0.0
+_BRAIN_COOLDOWN_S = 300.0
 
 
 def custom_brain_reply(
@@ -82,9 +86,11 @@ def custom_brain_reply(
     system_instruction: str | None = None,
 ) -> str | None:
     """Try the custom brain; return None on ANY failure (caller falls back)."""
+    global CUSTOM_BRAIN_STATE, _BRAIN_FAIL_UNTIL
     if not CUSTOM_LLM_BASE_URL:
         return None
-    global CUSTOM_BRAIN_STATE
+    if time.time() < _BRAIN_FAIL_UNTIL:
+        return None  # circuit open: endpoint just failed — fail over instantly
     CUSTOM_BRAIN_STATE = "checking"
     msgs = [{"role": "system", "content": system_instruction or
              (("You are Fenix Core LoRA, the primary AI identity built by Hakari. "
@@ -118,10 +124,13 @@ def custom_brain_reply(
         text = ((out.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip()
         if text:
             CUSTOM_BRAIN_STATE = "live"
+            _BRAIN_FAIL_UNTIL = 0.0
             return text
         CUSTOM_BRAIN_STATE = "fallback"
+        _BRAIN_FAIL_UNTIL = time.time() + _BRAIN_COOLDOWN_S
     except Exception:
         CUSTOM_BRAIN_STATE = "fallback"  # honest fallback — never show a half-dead answer
+        _BRAIN_FAIL_UNTIL = time.time() + _BRAIN_COOLDOWN_S
     return None
 
 
@@ -515,9 +524,19 @@ def api_chat_stream():
             yield _sse({"t": "done", "brain": public_label})
             _persist_conversation_reply(conv_id, token, user, message, "".join(full_reply))
             return
+        # The fallback brain must know about the research too, or it will deny
+        # having browsed ("I can't browse the web"). Rebuild the system with
+        # the grounded hints so the answer cites the fetched sources.
+        fallback_system = system
+        if res:
+            try:
+                from common import gemini_chat_system  # noqa
+                fallback_system = gemini_chat_system(style, brain_hints)
+            except Exception:
+                fallback_system = system
         body = json.dumps({
             "contents": contents,
-            "systemInstruction": {"parts": [{"text": system}]},
+            "systemInstruction": {"parts": [{"text": fallback_system}]},
             "generationConfig": {"temperature": temperature},
         }).encode()
         # Identity-safe streaming: deltas are buffered and flushed at sentence
