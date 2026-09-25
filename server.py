@@ -67,7 +67,7 @@ if _SENTRY_DSN:
 # is kept in API diagnostics for verification.
 CUSTOM_LLM_BASE_URL = os.environ.get("CUSTOM_LLM_BASE_URL", "").rstrip("/")
 CUSTOM_LLM_MODEL = os.environ.get("CUSTOM_LLM_MODEL", "fenix-core")
-CUSTOM_LLM_TIMEOUT = float(os.environ.get("CUSTOM_LLM_TIMEOUT", "120"))
+CUSTOM_LLM_TIMEOUT = float(os.environ.get("CUSTOM_LLM_TIMEOUT", "25"))
 # Optional shared secret for YOUR brain (Bearer token sent on every call).
 # The brain server validates it; Gemini is untouched and keeps its own key.
 CUSTOM_LLM_API_KEY = os.environ.get("CUSTOM_LLM_API_KEY", "")
@@ -109,6 +109,11 @@ def custom_brain_reply(
         req = urllib.request.Request(CUSTOM_LLM_BASE_URL + "/chat/completions", data=body,
                                      headers=headers)
         with urllib.request.urlopen(req, timeout=CUSTOM_LLM_TIMEOUT) as r:
+            status = getattr(r, "status", getattr(r, "code", 200))
+            if status == 404:
+                # Endpoint not deployed — fail over instantly instead of stalling.
+                CUSTOM_BRAIN_STATE = "fallback"
+                return None
             out = json.load(r)
         text = ((out.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip()
         if text:
@@ -410,6 +415,14 @@ def api_chat_stream():
         return jsonify({"error": "Type a message first"}), 400
     history = history[-40:] if isinstance(history, list) else []
 
+    # Pre-initialize so the streaming generator can never hit unbound names
+    # if setup fails partway (gen() closes over these).
+    token = user = None
+    hints = ""
+    system = ""
+    temperature = 0.7
+    chain = EMBEDDED_MODEL_CHAINS.get(tier, EMBEDDED_MODEL_CHAINS["flash"])
+
     try:
         token = store.bearer_token()
         user = store.get_user(token)
@@ -468,13 +481,17 @@ def api_chat_stream():
             grounded = "\n".join(
                 f"[{i}] {s['title']} — {s['snippet']} ({s['link']})"
                 for i, s in enumerate(res["sources"], 1))
-            hints = (hints + "\n" if hints else "") + (
+            # New local name: assigning the outer `hints` here would make Python
+            # treat `hints` as gen-local and raise UnboundLocalError on the read.
+            brain_hints = (hints + "\n" if hints else "") + (
                 "Live web research results (cite as [n] when used):\n" + grounded[:6000])
+        else:
+            brain_hints = hints
 
         # Fenix Core LoRA is the primary brain. The custom endpoint is tried
         # before every free provider and Gemini; any failure returns None and
         # lets the chain continue honestly.
-        core = custom_brain_reply(message, history, attachments, style, hints, system)
+        core = custom_brain_reply(message, history, attachments, style, brain_hints, system)
         if core:
             clean = identity_guard.sanitize_reply(core)
             full_reply.append(clean)
