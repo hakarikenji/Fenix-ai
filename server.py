@@ -1067,6 +1067,7 @@ def api_brains():
         "tools": tool_registry.tool_catalog(),
         "server_ai": bool(KEY),
         "free_images": True,
+        "audio_gen": bool(os.environ.get("MUSIC_GEN_URL") or os.environ.get("HF_TOKEN")),
     })
 
 
@@ -1190,7 +1191,7 @@ def api_music_generate():
         if audio is None and os.environ.get("HF_TOKEN"):
             body = json.dumps({"inputs": prompt}).encode()
             req = urllib.request.Request(
-                "https://api-inference.huggingface.co/models/facebook/musicgen-small",
+                "https://router.huggingface.co/hf-inference/models/facebook/musicgen-small",
                 data=body, headers={"Authorization": "Bearer " + os.environ["HF_TOKEN"]})
             with urllib.request.urlopen(req, timeout=600) as r:
                 audio = r.read()
@@ -1198,10 +1199,11 @@ def api_music_generate():
                 audio = None
         if audio is None:
             return jsonify({
-                "error": "No audio generator configured",
-                "detail": "Audio generation needs a GPU worker: set MUSIC_GEN_URL (Modal MusicGen worker) "
-                          "or HF_TOKEN (free Hugging Face MusicGen). The lyrics and audio-prompt "
-                          "brains work without it.",
+                "error": "Audio generation needs a GPU worker (free option below)",
+                "detail": "Everything else works free: lyrics, audio prompt, chat. To generate actual "
+                          "audio, deploy the free MusicGen worker once: modal deploy "
+                          "fenix-music/generator/music_brain_modal.py → then set MUSIC_GEN_URL. "
+                          "Alternative: add HF_TOKEN (Hugging Face free tier, MusicGen-small).",
                 "generator_required": True}), 503
         out = Path("/tmp") / f"fenix-music-{int(time.time())}.wav"
         out.write_bytes(audio)
@@ -1243,29 +1245,56 @@ def api_video_script():
 
 @app.route("/api/video/scene-image")
 def api_video_scene_image():
-    """Free scene image proxy (Pollinations) — works from any device, no key."""
+    """Free scene image proxy — works without any key. Provider chain:
+    1) Pollinations (POLLINATIONS_API_KEY optional — better quality when set)
+       NOTE: anonymous Pollinations is dead (402 insufficient balance), the key
+       path stays only for when the user adds one.
+    2) a0.dev free text-to-image — no key, no account, supports aspect ratios.
+    Honest 503 with setup instructions when every provider fails."""
     prompt = request.args.get("prompt", "").strip()[:600]
     if not prompt:
         return jsonify({"error": "prompt is required"}), 400
     w = min(1024, max(512, int(request.args.get("w", 768))))
     h = min(1024, max(512, int(request.args.get("h", 768))))
+    seed = str(request.args.get("seed") or "7")[:12]
+    styled = (prompt + ", cinematic film still, no text")[:600]
+
+    # --- Provider 1: Pollinations (only when a key is configured) ---
     api_key = os.environ.get("POLLINATIONS_API_KEY", "").strip()
-    if not api_key:
-        return jsonify({"error": "Scene images need a free API key: enter.pollinations.ai → POLLINATIONS_API_KEY"}), 503
-    url = ("https://gen.pollinations.ai/image/"
-           + urllib.parse.quote(prompt + ", cinematic film still, no text")
-           + f"?model=flux&width={w}&height={h}&nologo=true&seed={request.args.get('seed', '7')}")
+    if api_key:
+        try:
+            url = ("https://gen.pollinations.ai/image/"
+                   + urllib.parse.quote(styled, safe="")
+                   + f"?model=flux&width={w}&height={h}&nologo=true&seed={seed}")
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "FenixVideo/1.0", "Authorization": "Bearer " + api_key})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                img = r.read()
+            if len(img) > 1000 and (img[:4] in (b"RIFF", b"OggS") or img[:3] == b"\xff\xd8\xff"):
+                return Response(img, mimetype="image/jpeg",
+                                headers={"Cache-Control": "public, max-age=86400"})
+        except Exception:
+            pass  # fall through to the keyless provider
+
+    # --- Provider 2: a0.dev (free, keyless) ---
+    aspect = "1:1"
+    if w > h * 1.15:
+        aspect = "16:9"
+    elif h > w * 1.15:
+        aspect = "9:16"
     try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "FenixVideo/1.0", "Authorization": "Bearer " + api_key})
+        url = ("https://api.a0.dev/assets/image?text=" + urllib.parse.quote(styled, safe="")
+               + f"&aspect={aspect}&seed={seed}")
+        req = urllib.request.Request(url, headers={"User-Agent": "FenixVideo/1.0"})
         with urllib.request.urlopen(req, timeout=120) as r:
             img = r.read()
-        if len(img) < 1000:
-            raise RuntimeError("empty image")
-        return Response(img, mimetype="image/jpeg",
-                        headers={"Cache-Control": "public, max-age=86400"})
+        if len(img) > 1000 and (img[:4] == b"RIFF" or img[:3] == b"\xff\xd8\xff" or img[:4] == b"\x89PNG"):
+            return Response(img, mimetype="image/webp",
+                            headers={"Cache-Control": "public, max-age=86400"})
+        raise RuntimeError("empty image")
     except Exception as e:
-        return jsonify({"error": f"Image generation failed: {e}"}), 502
+        return jsonify({"error": "All free image providers failed",
+                        "detail": f"{e} — scene images are free but the provider may be rate-limited; retry in a minute"}), 502
 
 
 @app.route("/")
