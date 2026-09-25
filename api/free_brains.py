@@ -12,7 +12,9 @@ the UI is told exactly which provider answered (never faked).
 Chain (all optional, zero-config — no key means silently skipped):
     GROQ_API_KEY       -> Groq       (fastest free tier, OpenAI-compatible)
     OPENROUTER_API_KEY -> OpenRouter (many ":free" models incl. Qwen)
-    CEREBRAS_API_KEY   -> Cerebras   (fast free tier)
+    CEREBRAS_API_KEY   -> Cerebras   (1M tokens/day free, no card)
+    NVIDIA_API_KEY     -> NVIDIA NIM (free credits on signup, no card)
+    COHERE_API_KEY     -> Cohere     (command models, free tier, no card)
     DEEPSEEK_API_KEY   -> DeepSeek   (OpenAI-compatible secondary brain)
 
 Groq free tier, verified against Groq docs in Sept 2026:
@@ -32,8 +34,12 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+import time
 import urllib.error
 import urllib.request
+
+import free_brains_cache as _cache
 
 TIMEOUT = float(os.environ.get("FREE_BRAINS_TIMEOUT", "45"))
 
@@ -46,10 +52,15 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
         "openai/gpt-oss-120b,openai/gpt-oss-20b,qwen/qwen3.6-27b",
         "GROQ_API_KEY",
     ),
+    # Model list verified live against a real key: the previous three slugs
+    # now return 404 "unavailable for free". These answered in Arabic.
     "openrouter": (
         "https://openrouter.ai/api/v1",
-        "qwen/qwen3-32b:free",
-        "meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nvidia/nemotron-3-super-120b-a12b:free,"
+        "inclusionai/ling-3.0-flash-fin:free,"
+        "nvidia/nemotron-3.5-lightning:free,"
+        "qwen/qwen3.8-27b:free",
         "OPENROUTER_API_KEY",
     ),
     "cerebras": (
@@ -57,6 +68,22 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
         "llama3.1-8b",
         "qwen-3-32b,llama-3.3-70b",
         "CEREBRAS_API_KEY",
+    ),
+    # NVIDIA NIM — ~1k free credits on signup, no card, very fast inference.
+    "nvidia": (
+        "https://integrate.api.nvidia.com/v1",
+        "qwen/qwen3-coder-30b-a3b-instruct",
+        "meta/llama-3.3-70b-instruct,qwen/qwen3-235b-a22b",
+        "NVIDIA_API_KEY",
+    ),
+    # Cohere — command models, free trial tier, no card.
+    # command-r / command-r-plus were removed in Sep 2025; command-a is the
+    # current line and was verified live to answer in Arabic.
+    "cohere": (
+        "https://api.cohere.com/v2",
+        "command-a-03-2025",
+        "command-a-plus-05-2026",
+        "COHERE_API_KEY",
     ),
     "deepseek": (
         "https://api.deepseek.com/v1",
@@ -68,6 +95,81 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
 
 _last_error: list[str] = []
 _last_provider: str = ""
+
+# Verified liveness, refreshed by the background prober.
+# label -> {"ok": bool, "checked_at": float, "detail": str}
+_verified: dict[str, dict] = {}
+
+
+def _probe_one(label: str) -> dict:
+    """One tiny real call. This is the only trustworthy liveness signal."""
+    cfg = PROVIDERS.get(label)
+    if not cfg:
+        return {"ok": False, "checked_at": time.time(), "detail": "unknown provider"}
+    key = os.environ.get(cfg[3], "").strip()
+    if not key:
+        return {"ok": False, "checked_at": time.time(), "detail": "no key"}
+    body = {"model": _model_chain(label, cfg[1], cfg[2])[0],
+            "messages": [{"role": "user", "content": "ok"}],
+            "max_tokens": 4}
+    try:
+        _post(_base_url(label, cfg[0]), key, body)
+        return {"ok": True, "checked_at": time.time(), "detail": "answered"}
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            # Rate limited, not broken: the key works, it is just busy.
+            return {"ok": True, "checked_at": time.time(), "detail": "rate-limited"}
+        return {"ok": False, "checked_at": time.time(), "detail": f"http {e.code}"}
+    except Exception as e:
+        return {"ok": False, "checked_at": time.time(), "detail": type(e).__name__}
+
+
+def verify(force: bool = False) -> dict[str, dict]:
+    """Refresh verified liveness for every configured provider."""
+    if not enabled():
+        return {}
+    for label in configured_labels():
+        prev = _verified.get(label)
+        fresh = prev and (time.time() - prev.get("checked_at", 0)) < 900
+        if force or not fresh:
+            _verified[label] = _probe_one(label)
+    return dict(_verified)
+
+
+def verified_count() -> int:
+    """Providers that actually answered. This is what the UI must show.
+
+    Falls back to the configured count only before the first probe finishes,
+    so a cold start cannot read as zero; after that the number is measured,
+    never assumed.
+    """
+    if not enabled():
+        return 0
+    labels = configured_labels()
+    if not labels:
+        return 0
+    if not any(label in _verified for label in labels):
+        return len(labels)  # first probe has not run yet — do not claim zero
+    return sum(1 for label in labels if _verified.get(label, {}).get("ok"))
+
+
+def verified_detail() -> dict[str, str]:
+    """label -> short status, for server-side diagnostics only."""
+    return {label: _verified.get(label, {}).get("detail", "unprobed")
+            for label in configured_labels()}
+
+
+def start_prober(interval: int = 600) -> None:
+    """Keep verified liveness warm so the UI never shows a stale number."""
+    def loop() -> None:
+        while True:
+            try:
+                verify(force=True)
+            except Exception:
+                pass
+            time.sleep(max(60, interval))
+
+    threading.Thread(target=loop, daemon=True).start()
 
 
 def enabled() -> bool:
@@ -126,9 +228,10 @@ def _post(base: str, key: str, body: dict, extra_headers: dict | None = None) ->
     headers = {"Content-Type": "application/json", "Authorization": "Bearer " + key}
     if extra_headers:
         headers.update(extra_headers)
-    req = urllib.request.Request(
-        base.rstrip("/") + "/chat/completions", data=json.dumps(body).encode(), headers=headers
-    )
+    base = base.rstrip("/")
+    # Cohere's v2 surface is /chat; everyone else is OpenAI-compatible.
+    url = base + "/chat" if base.endswith("/v2") else base + "/chat/completions"
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
         raw = r.read().decode("utf-8", "ignore")
     out = json.loads(raw)
@@ -152,14 +255,27 @@ def free_brain_reply(
     if not enabled() or not user.strip():
         return None
 
+    temp = max(0.0, min(1.5, temperature))
+    cap = max(64, min(int(max_tokens), 4096))
+
+    # A cached answer costs no upstream request at all. Free tiers are capped
+    # per day, so serving repeats from disk is what makes $0 stretch.
+    cached = _cache.cache_get(system, user)
+    if cached:
+        _last_provider = "cache"
+        return cached, "cache"
+
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]
-    temp = max(0.0, min(1.5, temperature))
-    cap = max(64, min(int(max_tokens), 4096))
 
-    for label, (default_base, default_model, fallbacks, key_env) in PROVIDERS.items():
+    # Healthy providers first; ones in cooldown are still tried, just last.
+    for label in _cache.ordered_labels(list(PROVIDERS)):
+        cfg = PROVIDERS.get(label)
+        if not cfg:
+            continue
+        default_base, default_model, fallbacks, key_env = cfg
         key = os.environ.get(key_env, "").strip()
         if not key:
             continue
@@ -172,10 +288,14 @@ def free_brain_reply(
                 text = _post(base, key, body, extra)
                 if text:
                     _last_provider = label
+                    _cache.note_success(label)
+                    _cache.cache_put(system, user, text, label)
                     return text, label
                 _last_error.append(f"{label}/{model}: empty reply")
             except urllib.error.HTTPError as e:
                 _last_error.append(f"{label}/{model}: HTTP {e.code}")
+                _cache.note_failure(label, f"HTTP {e.code}")
             except Exception as e:  # network / DNS / timeout
                 _last_error.append(f"{label}/{model}: {type(e).__name__}")
+                _cache.note_failure(label, type(e).__name__)
     return None

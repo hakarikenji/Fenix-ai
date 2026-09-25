@@ -1,19 +1,16 @@
 /* Fenix — studio live layer
- * Late-binding upgrades for the Music & Video studios:
- *  - Brain pills on both studios reflect real /api/brains health (no fake state).
- *  - Scene images retry automatically (the free image provider is shared, it can be busy).
+ *  - Brain pills reflect real /api/brains health (no fake state).
+ *  - Scene images retry automatically (the free provider is shared and can be busy).
  *  - Honest messaging when audio generation needs the one-time GPU worker.
  *  - Video pipeline disables the "Fenix Music bed" option while no generator is set up.
+ *  - Scene image prompts are rewritten so every shot is anchored to the user's
+ *    own topic and style. The director brain writes each scene prompt in
+ *    isolation, which is why shots drifted away from the brief.
  */
 (function () {
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
-  var esc = function (v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-    });
-  };
 
   /* ---------------- Brain pills: real health, no faking ---------------- */
   function renderStudioPills(b) {
@@ -62,96 +59,100 @@
   function sceneImagesPatch() {
     VD = VD || (typeof window.VD !== 'undefined' ? window.VD : null);
     if (!VD) return false;
-    var tries = {}; /* scene index -> attempts, keyed per node instead */
     $$('#vd-scenes .scene').forEach(function (node) {
       if (node.dataset.slLive) return; /* already bound */
       var img = node.querySelector('.thumb img');
-      var status = node.querySelector('.img-status');
-      if (!img || !status) return;
+      if (!img) return;
       node.dataset.slLive = '1';
-      var attempts = 0;
-      var ok = null, bad = null;
-      ok = function () {
-        attempts = 0;
-        status.textContent = '\u2713 Image ready';
-        status.style.color = 'var(--ok)';
+      var tries = 0;
+      var retry = function () {
+        /* The free image host is shared and returns 5xx when busy. Bust the
+           cache each time so a retry really re-requests the image. */
+        img.src = img.src.split('&slr=')[0] + '&slr=' + Date.now();
       };
-      bad = function () {
-        attempts++;
-        if (attempts <= 2) {
-          status.textContent = '\u23f3 Busy \u2014 retrying automatically\u2026';
-          status.style.color = '';
-          setTimeout(function () {
-            img.src = img.src.split('&slr=')[0] + '&slr=' + attempts;
-          }, 2500 + attempts * 1500);
-        } else {
-          status.textContent = '\u2717 Image provider busy \u2014 tap \u201cNew image\u201d to retry';
-          status.style.color = 'var(--danger)';
-        }
-      };
-      img.addEventListener('load', ok);
-      img.addEventListener('error', bad);
-      /* trigger one fresh attempt now so errors fire through these handlers */
-      img.src = img.src + (img.src.indexOf('?') > -1 ? '&' : '?') + 'slr=0';
+      var guard = 0;
+      var timer = setInterval(function () {
+        guard += 1;
+        if (img.complete && img.naturalWidth) { clearInterval(timer); return; }
+        if (guard > 4 || tries >= 3) { clearInterval(timer); return; }
+        tries += 1;
+        retry();
+      }, 4000);
     });
     return true;
   }
-  /* scenes render twice per script write; hook renderScenes via scene-list observer */
-  var sceneList = $('#vd-scenes');
-  if (sceneList && 'MutationObserver' in window) {
-    new MutationObserver(function () { sceneImagesPatch(); })
-      .observe(sceneList, { childList: true });
+
+  function watchScenes() {
+    var root = document.getElementById('vd-scenes');
+    if (!root) return;
+    new MutationObserver(function () { sceneImagesPatch(); }).observe(root, { childList: true, subtree: true });
+    sceneImagesPatch();
   }
 
-  /* ---------------- Honest audio-generation messaging ---------------- */
-  document.addEventListener('click', function (ev) {
-    var btn = ev.target.closest && ev.target.closest('#mu-btn-generate');
-    if (!btn) return;
-    var note = $('#mu-state');
-    if (note && note.classList.contains('show')) return; /* already running */
-    setTimeout(function () {
-      if (note && /Generating/i.test(note.textContent)) {
-        note.textContent = '\ud83c\udfb9 Generating audio\u2026 (needs the free GPU worker on the server \u2014 lyrics & prompts stay free)';
+  /* ---------------- Keep every shot tied to the user's own brief ----------
+   * The director brain writes each scene's `visual` prompt on its own, so two
+   * adjacent scenes can end up describing different worlds. Re-anchoring each
+   * prompt to the topic and style the user actually chose is what makes the
+   * shots read as one film instead of unrelated stills. */
+  function anchorScenePrompts() {
+    VD = VD || (typeof window.VD !== 'undefined' ? window.VD : null);
+    if (!VD || !VD.scenes) return;
+    var topic = String(VD.topic || VD.brief || '').trim();
+    var style = String(VD.style || '').trim();
+    if (!topic) return;
+    VD.scenes.forEach(function (sc) {
+      if (!sc) return;
+      if (!sc._anchored) {
+        sc._anchored = true;
+        sc._rawVisual = sc.visual || '';
       }
-    }, 50);
-  }, true);
+      var core = sc._rawVisual || sc.visual || '';
+      if (core.toLowerCase().indexOf(topic.toLowerCase()) >= 0) return; /* already on-topic */
+      sc.visual = (core + ' ' + topic + (style ? ', ' + style : '')).slice(0, 600);
+    });
+  }
 
-  /* Toast helper consistent with the app's own toast */
+  /* ---------------- Honest messaging for audio generation ---------------- */
   function toast(msg) {
-    try {
-      if (typeof window.showToast === 'function') { window.showToast(msg); return; }
-    } catch (e) {}
-    var t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    t.style.cssText = 'position:fixed;bottom:84px;inset-inline-start:50%;transform:translateX(-50%);'
-      + 'background:#1a1a1f;color:#f7f5f2;border:1px solid #323238;border-radius:12px;'
-      + 'padding:10px 16px;font-size:13px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.4)';
-    document.body.appendChild(t);
-    setTimeout(function () { t.remove(); }, 3600);
+    if (typeof window.__fenixToast === 'function') { window.__fenixToast(msg); return; }
+    var el = $('#vd-state') || $('#mu-state');
+    if (el) { el.textContent = msg; el.className = 'err'; }
   }
-  window.__fenixToast = toast;
 
-  /* Honest video music-bed picker: disable the AI bed while no generator exists */
-  function patchMusicPicker(brains) {
+  function onAudioAttempt() {
+    fetchBrains().then(function (b) {
+      if (b && b.audio_gen) return; /* a real generator exists: stay quiet */
+      toast('Audio generation is not connected yet. Lyrics, audio prompts and ' +
+            'the video storyboard all work free — only the audio file needs a one-time ' +
+            'worker. Check /api/music/generator-check for the exact state.');
+    }).catch(function () {});
+  }
+
+  function patchMusicPicker() {
     var sel = $('#vd-music-src');
-    if (!sel || !brains) return;
-    var audioReady = !!brains.audio_gen;
+    if (!sel || sel.dataset.slPatched) return;
+    sel.dataset.slPatched = '1';
     var opt = sel.querySelector('option[value="fenix"]');
-    if (!opt) return;
-    if (!audioReady) {
-      opt.textContent = 'Fenix Music bed \u2014 needs free GPU worker (setup required)';
+    if (opt) {
       opt.disabled = true;
-      if (sel.value === 'fenix') {
-        sel.value = 'none';
-        var m = $('#vd-music-name');
-        if (m) { m.textContent = 'No music \u2014 AI bed needs setup'; m.classList.remove('hide'); }
-      }
-    } else {
-      opt.disabled = false;
-      opt.textContent = 'Fenix Music brain (free AI bed)';
+      opt.textContent = 'Fenix Music bed (needs the audio worker — not connected)';
     }
   }
-  fetchBrains().then(patchMusicPicker).catch(function () {});
-  setTimeout(function () { fetchBrains().then(patchMusicPicker).catch(function () {}); }, 4000);
+
+  function boot() {
+    watchScenes();
+    patchMusicPicker();
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.closest && e.target.closest('#mu-btn-generate')) onAudioAttempt();
+    });
+    /* Re-anchor as soon as a new script lands, before the images are fetched. */
+    setInterval(function () { anchorScenePrompts(); sceneImagesPatch(); }, 2000);
+    anchorScenePrompts();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 })();

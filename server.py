@@ -27,7 +27,8 @@ from common import (  # noqa: E402
 )
 import brain_health  # noqa: E402
 import db  # noqa: E402
-import free_brains  # noqa: E402
+import free_brains
+import free_brains_cache  # noqa: E402
 import identity_guard  # noqa: E402
 import store  # noqa: E402
 import memory as memory_store  # noqa: E402
@@ -1062,7 +1063,15 @@ def api_brains():
         # Provider names/models/errors stay server-side for diagnostics. The
         # client only learns the count — every brain presents as Fenix Core LoRA.
         "free_brains": {"enabled": free_brains.enabled(),
-                        "ready": free_brains.configured_count(),
+                        # Measured, not assumed: counts providers that actually
+                        # answered a live probe. A key that exists but is dead
+                        # must not read as a working brain.
+                        "ready": free_brains.verified_count(),
+                        # Measured, not assumed: how much traffic the cache
+                        # absorbs for free, and which providers are alive.
+                        "cache_hits": free_brains_cache.stats()["hits"],
+                        "cache_entries": free_brains_cache.stats()["cache_entries"],
+                        "cache_hit_rate": free_brains_cache.stats()["hit_rate"],
                         "last_errors": len(free_brains.last_errors()[:5])},
         "tools": tool_registry.tool_catalog(),
         "server_ai": bool(KEY),
@@ -1159,6 +1168,97 @@ def api_music_chat():
     return jsonify({"reply": identity_guard.sanitize_reply(reply), "brain": "fenix-music"})
 
 
+def _looks_like_audio(data: bytes) -> bool:
+    """True when the bytes really are WAV/MP3/OGG, not an HTML error page."""
+    if not data or len(data) < 1000:
+        return False
+    if data[:4] in (b"RIFF", b"OggS", b"fLaC"):
+        return True
+    if data[:3] == b"ID3":
+        return True
+    if data[:5] in (b"<?xml", b"<html", b"<!DOC"):
+        return False
+    # Bare MP3 frame: 11 sync bits.
+    return data[0] == 0xFF and (data[1] & 0xE0) == 0xE0
+
+
+def _call_music_worker(worker_url: str, prompt: str, duration: int,
+                       seed, token: str) -> tuple[bytes | None, str]:
+    """Call the self-hosted audio worker. Returns (audio, source) or (None, err)."""
+    body = json.dumps({"prompt": prompt, "duration": duration,
+                       "seed": seed if seed else None}).encode()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = urllib.request.Request(worker_url, data=body, headers=headers)
+    with urllib.request.urlopen(req, timeout=600) as r:
+        return r.read(), "worker"
+
+
+def _call_hf_musicgen(prompt: str, hf_token: str) -> tuple[bytes | None, str]:
+    """Fallback: hosted MusicGen-small on the free tier."""
+    body = json.dumps({"inputs": prompt}).encode()
+    req = urllib.request.Request(
+        "https://router.huggingface.co/hf-inference/models/facebook/musicgen-small",
+        data=body, headers={"Authorization": "Bearer " + hf_token})
+    with urllib.request.urlopen(req, timeout=600) as r:
+        return r.read(), "hosted-free-tier"
+
+
+@app.route("/api/free-scaling")
+def api_free_scaling():
+    """Real numbers for the $0 layer: cache hit rate and provider health.
+
+    Reported from measurement only. A provider that is not answering shows up
+    as unavailable instead of being counted as ready.
+    """
+    return jsonify({
+        "cache": free_brains_cache.stats(),
+        "providers": free_brains.verified_detail(),
+        "ready": free_brains.verified_count(),
+        "top_questions": free_brains_cache.top_repeats(10),
+        "note": "Free tiers are capped per day. The cache is what keeps the "
+                "app serving without a paid plan.",
+    })
+
+
+@app.route("/api/music/generator-check")
+def api_music_generator_check():
+    """Tell the truth about the audio worker before the user waits on a track."""
+    worker_url = os.environ.get("MUSIC_GEN_URL", "").rstrip("/")
+    token = os.environ.get("MUSIC_GEN_API_KEY", "")
+    info = {
+        "worker_url_set": bool(worker_url),
+        "shared_secret_set": bool(token),
+        "hosted_free_tier_set": bool(os.environ.get("HF_TOKEN")),
+        "worker_reachable": False,
+        "worker_says": None,
+        "problem": None,
+    }
+    if not worker_url:
+        info["problem"] = ("MUSIC_GEN_URL is not set. Deploy the audio worker once with: "
+                           "modal deploy fenix-music/generator/worker.py")
+        return jsonify(info)
+    req = urllib.request.Request(worker_url if worker_url.endswith("/") else worker_url + "/",
+                                 headers={"Authorization": "Bearer " + token} if token else {})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            info["worker_reachable"] = True
+            info["worker_says"] = r.read(600).decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            info["problem"] = ("Worker is up but rejected the token \u2014 MUSIC_GEN_API_KEY "
+                               "must match MUSIC_GEN_TOKEN.")
+        else:
+            info["problem"] = f"Worker answered HTTP {e.code}."
+    except Exception as e:
+        info["problem"] = f"Could not reach the worker: {type(e).__name__}: {e}"
+    if not info["problem"]:
+        info["problem"] = "Worker is reachable \u2014 generate a track to confirm the GPU model loads."
+    info["ready"] = info["worker_reachable"] and not info["problem"].startswith("Worker is reachable")
+    return jsonify(info)
+
+
 @app.route("/api/music/generate", methods=["POST"])
 def api_music_generate():
     """{prompt, duration, seed?} → {url}. WAV from the nearest real generator:
@@ -1173,48 +1273,57 @@ def api_music_generate():
     except (TypeError, ValueError):
         duration = 20
     worker_url = os.environ.get("MUSIC_GEN_URL", "").rstrip("/")
+    token = os.environ.get("MUSIC_GEN_API_KEY", "")
     t0 = time.time()
     try:
-        audio = None
+        audio, source = None, None
         if worker_url:
-            body = json.dumps({"prompt": prompt, "duration": duration,
-                               "seed": data.get("seed") if data.get("seed") else None}).encode()
-            headers = {"Content-Type": "application/json"}
-            token = os.environ.get("MUSIC_GEN_API_KEY", "")
-            if token:
-                headers["Authorization"] = "Bearer " + token
-            req = urllib.request.Request(worker_url, data=body, headers=headers)
-            with urllib.request.urlopen(req, timeout=600) as r:
-                audio = r.read()
-            if len(audio) < 1000:
-                audio = None
+            try:
+                audio, source = _call_music_worker(
+                    worker_url, prompt, duration, data.get("seed"), token)
+            except Exception as e:
+                source = f"worker error: {e}"
         if audio is None and os.environ.get("HF_TOKEN"):
-            body = json.dumps({"inputs": prompt}).encode()
-            req = urllib.request.Request(
-                "https://router.huggingface.co/hf-inference/models/facebook/musicgen-small",
-                data=body, headers={"Authorization": "Bearer " + os.environ["HF_TOKEN"]})
-            with urllib.request.urlopen(req, timeout=600) as r:
-                audio = r.read()
-            if len(audio) < 1000:
-                audio = None
+            try:
+                audio, source = _call_hf_musicgen(prompt, os.environ["HF_TOKEN"])
+            except Exception as e:
+                source = f"free tier error: {e}"
         if audio is None:
             return jsonify({
-                "error": "Audio generation needs a GPU worker (free option below)",
-                "detail": "Everything else works free: lyrics, audio prompt, chat. To generate actual "
-                          "audio, deploy the free MusicGen worker once: modal deploy "
-                          "fenix-music/generator/music_brain_modal.py → then set MUSIC_GEN_URL. "
-                          "Alternative: add HF_TOKEN (Hugging Face free tier, MusicGen-small).",
-                "generator_required": True}), 503
-        out = Path("/tmp") / f"fenix-music-{int(time.time())}.wav"
+                "error": "Audio generation is not connected yet",
+                "detail": "Lyrics, audio prompts and chat all work free right now — only the "
+                          "audio itself needs a one-time GPU worker. Deploy the audio worker once: "
+                          "modal deploy fenix-music/generator/worker.py, then set MUSIC_GEN_URL to the "
+                          "URL that deploy prints (plus MUSIC_GEN_API_KEY if you created a shared "
+                          "secret). Diagnose the wiring at /api/music/generator-check. "
+                          "Alternative: set HF_TOKEN for the hosted free tier.",
+                "generator_required": True,
+                "last_failure": source,
+                "worker_url_set": bool(worker_url),
+                "hosted_free_tier_set": bool(os.environ.get("HF_TOKEN"))}), 503
+        if not _looks_like_audio(audio):
+            return jsonify({"error": "Generator replied with something that is not audio",
+                            "detail": f"{source} returned {len(audio)} bytes that are not WAV/MP3/OGG",
+                            "generator_required": True}), 502
+        out = Path("/tmp") / f"fenix-music-{int(time.time())}-{os.getpid()}.wav"
         out.write_bytes(audio)
-        return jsonify({"url": f"/audio/{out.name}", "seconds": round(time.time() - t0, 1)})
+        return jsonify({"url": f"/audio/{out.name}", "source": source,
+                        "bytes": len(audio), "seconds": round(time.time() - t0, 1)})
     except Exception as e:
         return jsonify({"error": f"Generation failed: {e}"}), 502
 
 
 @app.route("/audio/<path:name>")
 def serve_audio(name):
-    return send_from_directory("/tmp", name, mimetype="audio/wav")
+    # Only ever hand back a track this server generated. /tmp is shared with
+    # every other process on the box, so serving it wholesale would expose
+    # unrelated files by name.
+    base = os.path.basename(name)
+    if not base.startswith("fenix-music-") or not base.endswith(".wav"):
+        return jsonify({"error": "Unknown audio track"}), 404
+    if not (Path("/tmp") / base).exists():
+        return jsonify({"error": "Track expired — generate it again"}), 404
+    return send_from_directory("/tmp", base, mimetype="audio/wav")
 
 
 # ---------------- Fenix Video ----------------
@@ -1352,7 +1461,12 @@ def _tts_audio(text: str, lang: str) -> tuple[bytes, str] | None:
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             data = r.read(1_000_000)
-        if data[:4] in (b"RIFF", b"OggS") or data[:3] == b"ID3" or data[:2] == b"\xff\xfb":
+        # Real responses arrive as MPEG-1 (0xFFFB) or MPEG-2 (0xFFF3) frames,
+        # with or without an ID3 tag. Accept every valid MP3 sync word instead of
+        # one exact frame header, otherwise good audio is thrown away and the
+        # client silently falls back to its own voice.
+        if (data[:4] in (b"RIFF", b"OggS") or data[:3] == b"ID3"
+                or (len(data) > 1024 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0)):
             return data, "audio/mpeg"
     except Exception:
         pass
@@ -1379,6 +1493,15 @@ def api_tts():
         return jsonify({"fallback": True, "lang": lang})
     b64 = base64.b64encode(audio[0]).decode()
     return jsonify({"audio": f"data:{audio[1]};base64,{b64}", "lang": lang})
+
+
+# Keep the free-brain layer's verified liveness fresh so /api/brains never
+# reports a stale or optimistic number. A revoked or expired key is detected
+# here instead of surfacing to the user as a mid-conversation failure.
+try:
+    free_brains.start_prober()
+except Exception:
+    pass
 
 
 if __name__ == "__main__":
