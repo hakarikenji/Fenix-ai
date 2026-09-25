@@ -1303,5 +1303,9 @@ def api_tts():
 if __name__ == "__main__":
     brain_health.start_background()
     port = int(os.environ.get("PORT", "8010"))
-    print(f"🐦‍🔥 Fenix running on port {port}")
-    app.run(host="0.0.0.0", port=port, threaded=True)
+    # Auto-reload on code changes (dev/preview convenience; debug stays off so
+    # no debugger or error page is exposed). Gunicorn path in serve.py is the
+    # production launcher and does not need this.
+    reloader = os.environ.get("FENIX_RELOAD", "1").strip().lower() not in ("0", "off", "false")
+    print(f"🐦‍🔥 Fenix running on port {port} (reload={'on' if reloader else 'off'})")
+    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=reloader, debug=False)
