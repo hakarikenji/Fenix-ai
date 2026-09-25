@@ -14,6 +14,7 @@ import ipaddress
 import json
 import re
 import socket
+import time
 import urllib.parse
 import urllib.request
 
@@ -118,24 +119,81 @@ def decide_research_needed(message: str) -> bool:
     return any(c in m for c in cues)
 
 
+def _plan_queries(message: str) -> list[str]:
+    """Turn the question into 2–3 complementary search queries.
+    The first is the question itself; the second strips question words and
+    targets the core nouns; the third adds the current year for freshness."""
+    base = " ".join(message.split())[:180]
+    clean = re.sub(r"^(who|what|when|where|why|how|is|are|was|were|do|does|did|can|tell me about)\s+", "",
+                   base, flags=re.I).strip(" ?؟.")
+    year = time.strftime("%Y")
+    queries = [base]
+    if clean and clean.lower() != base.lower():
+        queries.append(clean)
+    if not any(y in base for y in (year, str(int(year) - 1))):
+        queries.append(f"{clean or base} {year}")
+    # Dedupe, keep order, cap at 3.
+    seen, out = set(), []
+    for q in queries:
+        k = q.lower()
+        if q and k not in seen:
+            seen.add(k)
+            out.append(q)
+    return out[:3]
+
+
+def _rank_sources(results: list[dict]) -> list[dict]:
+    """Simple source ranking: domain diversity first, then snippet richness."""
+    def score(r: dict) -> float:
+        s = len(r.get("snippet") or "") / 400.0
+        title_bonus = 0.5 if r.get("title") else 0.0
+        return s + title_bonus
+    seen_domains: dict[str, int] = {}
+    ranked = sorted(results, key=score, reverse=True)
+    out = []
+    for r in ranked:
+        try:
+            host = urllib.parse.urlsplit(r["link"]).hostname or ""
+        except Exception:
+            host = ""
+        if host and seen_domains.get(host, 0) >= 2:
+            continue  # max 2 results per domain for diversity
+        seen_domains[host] = seen_domains.get(host, 0) + 1
+        out.append(r)
+    return out
+
+
 def run_research(message: str, tier: str = "flash", gemini_key: str | None = None) -> dict:
     """Full pipeline. Returns {answer, sources, note}. Raises ValueError with a
     friendly message when research is not configured, and RuntimeError on failure."""
     if not research_is_configured():
         raise ValueError("not_configured")
-    results = search_web(message, num=6)
+
+    # Query planning: several complementary queries, merged and deduped.
+    merged: list[dict] = []
+    seen_links = set()
+    for q in _plan_queries(message):
+        try:
+            for r in search_web(q, num=5):
+                if r["link"] not in seen_links:
+                    seen_links.add(r["link"])
+                    merged.append(r)
+        except Exception:
+            continue  # one failing query must not kill the run
+    results = _rank_sources(merged)[:8]
     if not results:
         raise RuntimeError("No search results for this query")
-    # Light retrieval: fetch the top 2 pages when possible.
+
+    # Deeper retrieval: fetch up to 4 top pages (snippets already cover the rest).
     corpus = []
     for i, r in enumerate(results, 1):
         corpus.append(f"[{i}] {r['title']}\n{r['link']}\n{r['snippet']}")
-    for i, r in enumerate(results[:2], 1):
+    for i, r in enumerate(results[:4], 1):
         try:
-            corpus.append(f"[{i}] page content: {fetch_page_text(r['link'])}")
+            corpus.append(f"[{i}] page content: {fetch_page_text(r['link'], max_chars=8000)}")
         except Exception:
             pass  # a blocked page is fine — snippets already cover it
-    material = "\n\n".join(corpus)[:14000]
+    material = "\n\n".join(corpus)[:16000]
 
     # Synthesize with Gemini (server-side key)
     key = gemini_key or ""

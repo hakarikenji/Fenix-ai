@@ -44,6 +44,21 @@ import urllib.request
 
 app = Flask(__name__, static_folder="web", static_url_path="")
 
+# ===================== Optional error monitoring (Sentry) =====================
+# Set SENTRY_DSN in the server environment to enable. Without it Fenix runs the
+# same, just without remote error reporting.
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        sentry_sdk.init(dsn=_SENTRY_DSN, integrations=[FlaskIntegration()],
+                        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_RATE", "0")),
+                        send_default_pii=False)
+        print("🐦‍🔥 Sentry error monitoring enabled")
+    except Exception as _sentry_err:  # noqa: BLE001
+        print(f"Sentry disabled (sdk not installed or init failed): {_sentry_err}")
+
 # ===================== Fenix Core — custom brain routing =====================
 # When CUSTOM_LLM_BASE_URL is set, Fenix answers from the fine-tuned open-weight
 # model (OpenAI-compatible endpoint, e.g. Ollama/llama.cpp/vLLM). ANY failure —
@@ -1233,6 +1248,56 @@ def manifest():
 @app.route("/healthz")
 def healthz():
     return Response("ok", mimetype="text/plain")
+
+
+# ===================== Fenix TTS — spoken replies =====================
+# Server-side TTS so the browser/APK gets one consistent Fenix voice. Uses the
+# free, key-less Google translate TTS endpoint as a lightweight default and
+# falls back to the browser's built-in speechSynthesis on the client when the
+# network path is unavailable.
+
+import base64  # noqa: E402
+
+_TTS_LANG = {"en": "en", "ar": "ar", "fr": "fr", "es": "es", "de": "de", "tr": "tr"}
+
+
+def _tts_audio(text: str, lang: str) -> tuple[bytes, str] | None:
+    """Return (audio_bytes, mime) or None when the provider is unreachable."""
+    q = urllib.parse.quote(text[:1000])
+    url = f"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl={lang}&q={q}"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Fenix TTS)", "Referer": "https://translate.google.com/",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = r.read(1_000_000)
+        if data[:4] in (b"RIFF", b"OggS") or data[:3] == b"ID3" or data[:2] == b"\xff\xfb":
+            return data, "audio/mpeg"
+    except Exception:
+        pass
+    return None
+
+
+@app.route("/api/tts", methods=["POST"])
+def api_tts():
+    """Speak a reply: {text, lang?} → {audio: dataURL} (or {fallback: true}).
+    The client falls back to its built-in speechSynthesis when fallback=true."""
+    limited, payload = _rate_limit("tts", limit=30)
+    if not limited:
+        return jsonify(payload), 429
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "No text to speak"}), 400
+    if len(text) > 2000:
+        return jsonify({"error": "Text too long for voice (max 2000 chars)"}), 400
+    lang = _TTS_LANG.get((data.get("lang") or "").lower()[:2], "en")
+    audio = _tts_audio(text, lang)
+    if not audio:
+        # Honest fallback: let the client speak locally with its own voice.
+        return jsonify({"fallback": True, "lang": lang})
+    b64 = base64.b64encode(audio[0]).decode()
+    return jsonify({"audio": f"data:{audio[1]};base64,{b64}", "lang": lang})
 
 
 if __name__ == "__main__":

@@ -4,3 +4,5 @@ gunicorn>=21.2.0
 google-genai>=1.0.0
 python-dotenv>=1.0.0
 Pillow>=10.0.0
+# Optional error monitoring (enabled only when SENTRY_DSN is set)
+sentry-sdk[flask]>=2.0.0

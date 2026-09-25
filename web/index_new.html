@@ -302,6 +302,16 @@
   }
   .msg.phoenix:hover .copy-msg, .msg.phoenix:active .copy-msg { opacity: 1; }
   .copy-msg:hover { color: var(--accent); background: var(--accent-soft); }
+  .rate-btn { border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 12px;
+    padding: 5px 9px; margin-top: 6px; margin-inline-start: 4px; border-radius: 8px;
+    opacity: 0; transition: opacity .15s, color .15s, background .15s; display: inline-flex; align-items: center; gap: 5px; }
+  .msg.phoenix:hover .rate-btn, .msg.phoenix:active .rate-btn { opacity: 1; }
+  .rate-btn:hover { color: var(--accent); background: var(--accent-soft); }
+  .rate-btn.on-up { color: #22c55e; opacity: 1; }
+  .rate-btn.on-down { color: #ef4444; opacity: 1; }
+  .rate-btn.speaking { color: var(--gold); opacity: 1; }
+  .rate-btn.speaking i { animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
   .cursor {
     display: inline-block; width: 7px; height: 15px; margin-left: 2px; vertical-align: -2px;
     background: var(--gold); border-radius: 2px; animation: caret 1s steps(2) infinite;
@@ -1753,6 +1763,71 @@ function bindCopyButtons() {
     catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
   }));
 }
+
+/* ============================ Ratings (data flywheel) + TTS ============================ */
+async function sendRating(idx, rating, btn) {
+  const c = currentChat(); if (!c) return;
+  const msg = c.messages[idx - 1] || {};
+  const reply = (c.messages[idx] || {}).content || '';
+  if (!reply) return;
+  btn.classList.remove('on-up', 'on-down');
+  btn.classList.add(rating > 0 ? 'on-up' : 'on-down');
+  const other = btn.parentElement.querySelector(rating > 0 ? '[data-rate-down]' : '[data-rate-up]');
+  if (other) other.classList.remove('on-up', 'on-down');
+  if (!canUseServer() || !USER) { showToast('Sign in to rate replies — they train Fenix'); return; }
+  try {
+    const r = await fetch(apiUrl('/api/ratings'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ rating, message: msg.content || '', reply, conversationId: c.serverId || undefined,
+        brain: 'fenix-core-lora' }),
+    });
+    if (r.ok) showToast(rating > 0 ? '👍 Thanks — Fenix learns from this' : '👎 Noted — Fenix will improve');
+    else showToast('Could not save rating');
+  } catch (e) { showToast('Could not save rating'); }
+}
+let speakingBtn = null;
+function stopSpeaking() {
+  try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+  if (speakingBtn) { speakingBtn.classList.remove('speaking'); speakingBtn = null; }
+}
+async function speakReply(idx, btn) {
+  if (speakingBtn === btn) { stopSpeaking(); return; }
+  stopSpeaking();
+  const c = currentChat(); if (!c) return;
+  const text = ((c.messages[idx] || {}).content || '').replace(/```[\s\S]*?```/g, ' code block ').replace(/[#*_>`|]/g, '').trim();
+  if (!text) return;
+  btn.classList.add('speaking'); speakingBtn = btn;
+  const done = () => { btn.classList.remove('speaking'); if (speakingBtn === btn) speakingBtn = null; };
+  const speakLocal = () => {
+    try {
+      const u = new SpeechSynthesisUtterance(text.slice(0, 1200));
+      u.lang = LANG === 'ar' ? 'ar' : 'en-US';
+      u.onend = done; u.onerror = done;
+      window.speechSynthesis.speak(u);
+    } catch (e) { done(); showToast('Voice unavailable on this device'); }
+  };
+  if (!canUseServer()) { speakLocal(); return; }
+  try {
+    const r = await fetch(apiUrl('/api/tts'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ text: text.slice(0, 2000), lang: LANG }),
+    });
+    if (!r.ok) { speakLocal(); return; }
+    const d = await r.json();
+    if (d.audio) {
+      const a = new Audio(d.audio);
+      a.onended = done; a.onerror = () => { done(); speakLocal(); };
+      a.play().catch(() => { done(); speakLocal(); });
+    } else {
+      speakLocal();
+    }
+  } catch (e) { speakLocal(); }
+}
+function bindMessageActions() {
+  $$('[data-rate-up]').forEach(b => b.addEventListener('click', () => sendRating(+b.dataset.rateUp, 1, b)));
+  $$('[data-rate-down]').forEach(b => b.addEventListener('click', () => sendRating(+b.dataset.rateDown, -1, b)));
+  $$('[data-speak]').forEach(b => b.addEventListener('click', () => speakReply(+b.dataset.speak, b)));
+}
 function msgHtml(m, idx) {
   if (m.role === 'user') {
     const atts = (m.attachments || []).map(a => a.mime && a.mime.startsWith('image/')
@@ -1765,7 +1840,10 @@ function msgHtml(m, idx) {
   }
   return `<div class="msg phoenix"><div class="who"><span class="dot"><span class="fenix-phoenix" aria-hidden="true">🐦‍🔥</span></span>Fenix</div>
     <div class="bubble" dir="auto">${renderMd(m.content)}</div>
-    <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button></div></div>`;
+    <div><button class="copy-msg" data-copy="${idx}"><i class="fa-regular fa-copy"></i> Copy</button>
+    <button class="rate-btn" data-rate-up="${idx}" title="Good reply"><i class="fa-regular fa-thumbs-up"></i></button>
+    <button class="rate-btn" data-rate-down="${idx}" title="Bad reply"><i class="fa-regular fa-thumbs-down"></i></button>
+    <button class="rate-btn" data-speak="${idx}" title="Read aloud"><i class="fa-solid fa-volume-high"></i></button></div></div>`;
 }
 function renderSources(sources) {
   $$('.src-card').forEach(el => el.remove());
@@ -1801,7 +1879,7 @@ function renderMessages() {
   }
   if (wel) wel.style.display = 'none';
   c.messages.forEach((m, i) => col.insertAdjacentHTML('beforeend', msgHtml(m, i)));
-  bindCopyButtons(); enhanceCodeBlocks(col); scrollDown();
+  bindCopyButtons(); bindMessageActions(); enhanceCodeBlocks(col); scrollDown();
 }
 const CODER_SUGGESTS = [
   { ic: 'fa-rocket', q: 'Build the complete main screen of this app with modern styling.', label: 'Build the main screen' },
@@ -1866,6 +1944,29 @@ function renderAttachments() {
     </div>`).join('');
   box.classList.toggle('has', pending.length > 0);
   box.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { pending.splice(+b.dataset.rm, 1); renderAttachments(); }));
+}
+
+
+/* Server-backed conversations: every chat gets a serverId once the user signs in,
+   so the conversation list survives devices and feeds memory + training. */
+async function ensureServerConversation(c) {
+  if (!c || c.serverId || !canUseServer() || !USER) return;
+  try {
+    const r = await fetch(apiUrl('/api/conversations'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ title: c.title || 'New chat' }),
+    });
+    if (r.ok) { const d = await r.json(); if (d.id) c.serverId = d.id; saveChats(); }
+  } catch (e) {}
+}
+async function syncConversationTitle(c) {
+  if (!c || !c.serverId || !canUseServer() || !USER) return;
+  try {
+    await fetch(apiUrl('/api/conversations/' + c.serverId), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ title: c.title || 'New chat' }),
+    });
+  } catch (e) {}
 }
 
 /* ============================ Voice input ============================ */
@@ -1934,6 +2035,7 @@ function streamAI(message, history, atts, onDelta) {
       body: JSON.stringify({
         message, history, attachments: atts, model: SET.model, style: SET.style,
         projectId: activeProjectId || undefined,
+        conversationId: (currentChat() || {}).serverId || undefined,
       }),
       signal: ctrl.signal,
     }).then(async (res) => {
@@ -2029,6 +2131,7 @@ async function send() {
     liveEl.innerHTML = renderMd(full) + '<span class="cursor"></span>';
     scrollDown();
   };
+  ensureServerConversation(c);
   try {
     reply = await streamAI(text, c.messages.slice(0, -1), atts, (delta, full) => renderLive(full));
     c.messages.push({ role: 'assistant', content: reply });
@@ -2051,6 +2154,7 @@ async function send() {
     }
   }
   setGenerating(false); stopGen = null;
+  if (c.serverId) syncConversationTitle(c);
   saveChats(); renderMessages(); renderChats();
   renderSources(lastSources); renderBrainBadge();
   lastSources = null; lastBrain = null;
