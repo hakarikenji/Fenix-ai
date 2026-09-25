@@ -41,14 +41,5 @@ android/capacitor-cordova-android-plugins/
 *.aab
 .data/
 
-# Fenix runtime & sandbox artifacts (local data, logs, secrets)
+# Fenix runtime data only
 api/fenix.sqlite3
-api/context_engine.py
-api/semantic_memory.py
-api/tool_registry.py
-api/observability.py
-api/db.py
-api/sandbox.py
-api/debug_semantic.py
-api/test_identity_guard.py
-api/test_world_class.py
