@@ -1,5 +1,5 @@
 /* Fenix — Service Worker */
-const CACHE = "fenix-v19-video-fixes";
+const CACHE = "fenix-v20-video-length";
 const SHELL = [
   "/",
   "/index.html",

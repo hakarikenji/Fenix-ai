@@ -1204,7 +1204,11 @@
                 <select id="vd-duration">
                   <option value="15">~15s — quick cut</option>
                   <option value="25" selected>~25s — standard</option>
-                  <option value="40">~40s — full story</option>
+                  <option value="45">~45s — short film</option>
+                  <option value="60">~60s — full story</option>
+                  <option value="90">~90s — mini documentary</option>
+                  <option value="120">~2 min — long form</option>
+                  <option value="180">~3 min — full episode</option>
                 </select>
               </div>
               <div class="fld">
@@ -2893,9 +2897,11 @@ function renderScenes() {
     meta.textContent = 'Scene ' + sc.n + ' · ' + sc.secs + 's';
     const vo = document.createElement('div'); vo.className = 'vo'; vo.dir = 'auto'; vo.textContent = sc.vo || '(no narration)';
     const secs = document.createElement('input');
-    secs.type = 'number'; secs.min = 4; secs.max = 8; secs.value = sc.secs;
+    secs.type = 'number'; secs.min = 3; secs.max = 12; secs.step = 0.5; secs.value = sc.secs;
     secs.addEventListener('change', () => {
-      sc.secs = Math.max(4, Math.min(8, parseInt(secs.value, 10) || 6));
+      // A shot under 3s reads as a flash, over 12s goes stale. Allow
+      // half-second control so pacing can actually be tuned.
+      sc.secs = Math.max(3, Math.min(12, parseFloat(secs.value) || 6));
       meta.textContent = 'Scene ' + sc.n + ' · ' + sc.secs + 's';
     });
     body.appendChild(meta); body.appendChild(vo); body.appendChild(secs);

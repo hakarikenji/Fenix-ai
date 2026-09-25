@@ -1341,7 +1341,11 @@ def api_video_script():
         temperature = 0.9
     try:
         vb = _video_brain()
-        script = vb.write_script(language, style, topic, temperature)
+        try:
+            wanted = int(data.get("duration") or 25)
+        except (TypeError, ValueError):
+            wanted = 25
+        script = vb.write_script(language, style, topic, temperature, wanted)
         active = vb.VIDEO_BRAIN_MODEL if vb.VIDEO_BRAIN_URL else ("fenix-core" if vb.CORE_BRAIN_URL else "gemini")
     except Exception:
         return jsonify({"error": "Video brain unavailable right now"}), 503

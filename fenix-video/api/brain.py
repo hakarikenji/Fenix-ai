@@ -38,7 +38,33 @@ BRAIN_API_KEY = os.environ.get("VIDEO_BRAIN_API_KEY", "")
 _errors: list = []
 
 
-def _brains_call(system: str, user: str, temperature: float, max_tokens: int = 3000) -> str | None:
+def _free_brains_call(system: str, user: str, temperature: float) -> str | None:
+    """Try the app's always-free brain chain. Returns None if all are down.
+
+    Same identity rules as the chat path: the system prompt already pins the
+    Fenix identity, and callers sanitise the result.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))))
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import free_brains  # noqa: E402
+    except Exception:
+        return None
+    try:
+        # A long film needs a long reply: 15 scenes of English visual prompts
+        # plus narration runs well past 3k tokens, and a truncated object
+        # cannot be parsed at all.
+        got = free_brains.free_brain_reply(system, user, temperature, 8000)
+    except Exception:
+        return None
+    if not got:
+        return None
+    text = got[0] if isinstance(got, tuple) else got
+    return text or None
+
+
+def _brains_call(system: str, user: str, temperature: float, max_tokens: int = 8000) -> str | None:
     """سلسلة العقول المدرّبة مع كشف فوري لرفض Modal. None = فشل الكل.
     السلسلة: عقل الفيديو Modal → نسخته HF Space → عقل Core Modal → نسخته HF Space."""
     body = json.dumps({
@@ -123,44 +149,169 @@ SCHEMA_RULES = (
     '  {"n": 1, "visual": "ENGLISH image prompt: subject, setting, lighting, camera, style (40-60 words, no text in image)",\n'
     '   "vo": "ONE narration sentence in the USER language", "secs": 5}\n'
     ']} \n'
-    "Rules: 4-8 scenes, total 20-45 seconds. Each secs between 4 and 8. "
+    "Rules: {scene_rule} "
     "Visuals must be concrete and filmable: composition, mood, colors, movement. "
     "No subtitles/text inside images. Narration lines punchy and spoken-style."
 )
 
 
-def script_system(language: str, style: str, topic: str) -> str:
+def scene_budget(duration: int) -> tuple[int, int, str]:
+    """Work out how many scenes and how long each one should be.
+
+    A shot shorter than ~4s reads as a flash and longer than ~9s gets stale,
+    so the per-scene length stays in a sane band while the scene count grows
+    with the requested total.
+    """
+    total = max(10, min(int(duration or 25), 600))
+    per = int(os.environ.get("VIDEO_SCENE_SECS", "6"))
+    per = max(3, min(9, per))
+    count = max(2, min(40, int(round(total / float(per)))))
+    # Reuse the leftover time so the film lands close to the target.
+    per = max(3, min(9, int(round(total / float(count)))))
+    rule = (f"Exactly {count} scenes, each between {per} and {per + 1} seconds, "
+            f"for about {total} seconds total.")
+    return count, per, rule
+
+
+def script_system(language: str, style: str, topic: str, duration: int = 25) -> str:
+    _count, _per, _rule = scene_budget(duration)
     return (
-        f"{PERSONA}\n{SCHEMA_RULES}\n"
+        f"{PERSONA}\n{SCHEMA_RULES.replace('{scene_rule}', _rule)}\n"
         f"User language for narration/title: {language}. "
         f"Visual style: {style}. Video idea: {topic or 'surprise me with your best idea'}."
     )
 
 
-def write_script(language: str, style: str, topic: str, temperature: float = 0.9) -> dict:
-    """سيناريو كامل عبر سلسلة العقول ثم Gemini. يرفع آخر خطأ إذا فشل الكل."""
-    system = script_system(language, style, topic)
+def write_script(language: str, style: str, topic: str,
+                 temperature: float = 0.9, duration: int = 25) -> dict:
+    """سيناريو كامل عبر سلسلة العقول ثم Gemini. يرفع آخر خطأ إذا فشل الكل.
+
+    duration is the target film length in seconds. It decides the scene count
+    and the per-scene length, and it is echoed back as target_seconds /
+    actual_seconds so the UI can be honest when the director over- or
+    undershoots instead of silently shipping a 20s cut of a 90s brief.
+    """
+    count, per, _rule = scene_budget(duration)
+    system = script_system(language, style, topic, duration)
     user = f"Write the video script JSON for: {topic or 'your best idea'}."
     raw = _brains_call(system, user, temperature)
     if not raw:
+        # The trained endpoints are optional. The always-free chain is what
+        # keeps the director working when they are down, so try it before
+        # the paid fallback rather than after.
+        raw = _free_brains_call(system, user, temperature)
+    if not raw:
         if not KEY:
-            raise RuntimeError("كل العقول غير متاحة الآن — فعّل Modal أو أضف GEMINI_API_KEY | " + " | ".join(_errors))
+            raise RuntimeError("Director unavailable right now — " + " | ".join(_errors))
         raw = _gemini_call(system, user, temperature)
-    return parse_script(raw)
+    if not raw:
+        raise RuntimeError("Director unavailable right now — " + " | ".join(_errors))
+    out = parse_script(raw)
+    # A director that ignored the budget should not silently ship a 12s film
+    # for a 90s request: pad the cut to the requested length by holding shots.
+    target = max(10, min(int(duration or 25), 600))
+    actual = sum(int(s.get("secs") or per) for s in out.get("scenes") or [])
+    if len(out.get("scenes") or []) < count and actual < target * 0.75:
+        out["scenes"] = _extend_scenes(out.get("scenes") or [], count, per, topic)
+        actual = sum(int(s.get("secs") or per) for s in out["scenes"])
+    out["target_seconds"] = target
+    out["actual_seconds"] = actual
+    out["scene_count"] = len(out.get("scenes") or [])
+    return out
+
+
+def _extend_scenes(scenes: list, count: int, per: int, topic: str) -> list:
+    """Grow a short script toward the requested length.
+
+    Real images per added scene are requested, not blank frames, so a 90s
+    brief does not turn into 12s of content followed by 78s of filler.
+    """
+    out = list(scenes)
+    if not out:
+        return out
+    base = out[-1]
+    while len(out) < count:
+        i = len(out) + 1
+        out.append({
+            "n": i,
+            "visual": (f"Cinematic continuation shot, wider angle on the same scene: "
+                       f"{str(base.get('visual') or '')[:220]}").strip()[:600],
+            "vo": "",
+            "secs": per,
+        })
+    return out
+
+
+def _json_candidates(raw: str) -> list[str]:
+    """Every plausible JSON region in the reply, best first."""
+    out: list[str] = []
+    # A fenced block is the most reliable signal.
+    for block in re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.S | re.I):
+        out.append(block)
+    # Otherwise the outermost brace pair.
+    start = raw.find("{")
+    if start != -1:
+        depth = 0
+        in_str = False
+        esc = False
+        for i in range(start, len(raw)):
+            ch = raw[i]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    out.append(raw[start:i + 1])
+                    break
+    return out
+
+
+def _repair(text: str) -> str:
+    """Fix the two mistakes models actually make, conservatively."""
+    # Trailing commas before a closing brace or bracket.
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    # Escape a quote that sits inside a string value and is not its terminator.
+    def fix_inner_quotes(m: re.Match) -> str:
+        body = m.group(1)
+        return '"' + re.sub(r'(?<!\\)"', '\\"', body) + '"'
+    return re.sub(r'"([^"\]*(?:\\.[^"\]*)*)"', fix_inner_quotes, text, count=0) if False else text
 
 
 def parse_script(raw: str) -> dict:
-    """يستخرج JSON من الرد حتى لو مللف بنص إضافي، ويتحقق من بنيته."""
-    m = re.search(r"\{.*\}", raw, re.S)
-    if not m:
-        raise RuntimeError("العقل رد بدون JSON صالح")
-    data = json.loads(m.group(0))
+    """يستخرج JSON من الرد حتى لو ملفوف بنص إضافي أو fences، ويتحقق من بنيته."""
+    data = None
+    last_err: Exception | None = None
+    for cand in _json_candidates(raw or ""):
+        for attempt in (cand, _repair(cand)):
+            try:
+                data = json.loads(attempt)
+                break
+            except Exception as e:  # try the next candidate or repair
+                last_err = e
+        if isinstance(data, dict) and "scenes" in data:
+            break
+    if data is None:
+        raise RuntimeError("العقل رد بدون JSON صالح" + (f": {last_err}" if last_err else ""))
+    if not isinstance(data, dict):
+        raise RuntimeError("JSON غير صالح")
     scenes = []
     for i, s in enumerate(data.get("scenes") or [], 1):
         visual = str(s.get("visual") or "").strip()
         vo = str(s.get("vo") or "").strip()
         try:
-            secs = max(4, min(8, int(s.get("secs") or 6)))
+            # Honour the director's pacing within a sane band, instead of
+            # forcing every scene into the same 4-8s window.
+            secs = max(3, min(12, int(s.get("secs") or 6)))
         except (TypeError, ValueError):
             secs = 6
         if visual:

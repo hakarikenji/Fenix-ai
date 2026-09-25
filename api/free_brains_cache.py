@@ -172,12 +172,22 @@ def note_success(label: str) -> None:
     st["used"] = st.get("used", 0) + 1
 
 
-def note_failure(label: str, reason: str = "") -> None:
-    """Back off exponentially so one dead provider stops costing timeouts."""
+# A daily quota does not recover in minutes. Park the provider until the
+# next UTC day instead of retrying it all evening.
+QUOTA_COOLDOWN = 20 * 60 * 60
+
+
+def note_failure(label: str, reason: str = "", quota: bool = False) -> None:
+    """Back off so one dead provider stops costing timeouts on every request."""
     st = _provider_state.setdefault(label, {})
     st["fails"] = st.get("fails", 0) + 1
-    delay = min(600, 30 * (2 ** min(st["fails"] - 1, 5)))
-    st["cooldown_until"] = time.time() + delay
+    if quota:
+        st["cooldown_until"] = time.time() + QUOTA_COOLDOWN
+        st["quota_exhausted"] = True
+    else:
+        st["quota_exhausted"] = False
+        delay = min(600, 30 * (2 ** min(st["fails"] - 1, 5)))
+        st["cooldown_until"] = time.time() + delay
     st["last_error"] = reason[:120]
 
 
@@ -211,6 +221,7 @@ def stats() -> dict:
                 "used": st.get("used", 0),
                 "fails": st.get("fails", 0),
                 "available": provider_ok(label),
+                "quota_exhausted": bool(st.get("quota_exhausted")),
                 "last_error": st.get("last_error", ""),
             }
             for label, st in _provider_state.items()

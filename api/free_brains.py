@@ -286,15 +286,29 @@ def free_brain_reply(
             body = {"model": model, "messages": messages, "temperature": temp, "max_tokens": cap}
             try:
                 text = _post(base, key, body, extra)
-                if text:
+                if text and text.strip():
                     _last_provider = label
                     _cache.note_success(label)
                     _cache.cache_put(system, user, text, label)
                     return text, label
+                # An empty reply means the model cannot serve this request
+                # (some refuse structured output). Back off so the next
+                # request tries another provider instead of hitting the
+                # same dead end.
                 _last_error.append(f"{label}/{model}: empty reply")
+                _cache.note_failure(label, "empty reply")
             except urllib.error.HTTPError as e:
-                _last_error.append(f"{label}/{model}: HTTP {e.code}")
-                _cache.note_failure(label, f"HTTP {e.code}")
+                detail = ""
+                try:
+                    detail = e.read().decode("utf-8", "replace")[:200]
+                except Exception:
+                    pass
+                spent = e.code == 429 and (
+                    "per-day" in detail or "per day" in detail
+                    or "quota" in detail.lower() or "credits" in detail.lower())
+                _last_error.append(f"{label}/{model}: HTTP {e.code}"
+                                   + (" (daily quota used up)" if spent else ""))
+                _cache.note_failure(label, f"HTTP {e.code}", quota=spent)
             except Exception as e:  # network / DNS / timeout
                 _last_error.append(f"{label}/{model}: {type(e).__name__}")
                 _cache.note_failure(label, type(e).__name__)
