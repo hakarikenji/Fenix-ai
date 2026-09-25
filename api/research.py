@@ -229,12 +229,20 @@ def fetch_page_text(url: str, max_chars: int = 6000) -> str:
 
 
 def decide_research_needed(message: str) -> bool:
-    """Heuristic: does this question likely need current web info?"""
+    """Heuristic: does this question likely need current web info?
+    Bilingual (English + Arabic) cues — any hit triggers live search."""
     m = (message or "").lower()
     cues = (
-        "latest", "news", "today", "current", "2025", "2026", "price of",
-        "who won", "release date", "update on", "recent", "stock", "weather",
-        "score", "version of", "how much is", "as of",
+        # English
+        "latest", "news", "today", "current", "2024", "2025", "2026",
+        "price of", "who won", "release date", "update on", "recent",
+        "stock", "weather", "score", "version of", "how much is", "as of",
+        "search", "google", "look up", "web", "online", "find out",
+        # Arabic (and transliterations users actually type)
+        "ابحث", "ابحث", "بحث", "ابحاث", "جوجل", "انترنت", "إنترنت",
+        "اخبار", "أخبار", "خبر", "اليوم", "حاليا", "الان", "الآن",
+        "احدث", "أحدث", "جديد", "سعر", "اسعار", "أسعار", "نتيجة", "نتائج",
+        "في الويب", "عن الويب", "مين", "من هو", "ماهو", "ما هو",
     )
     return any(c in m for c in cues)
 

@@ -2058,6 +2058,7 @@ function streamAI(message, history, atts, onDelta) {
           if (!line) continue;
           let d; try { d = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
           if (d.t === 'delta' && d.v) { full += d.v; onDelta(d.v, full); }
+          else if (d.t === 'sources') { lastSources = d.sources || null; renderSources(lastSources); }
           else if (d.t === 'error') { if (!full) reject(new Error(d.v || 'Stream error')); else stopped = true; }
           else if (d.t === 'done') { lastBrain = d.brain || 'fenix-core-lora'; resolve(full); return; }
         }

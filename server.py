@@ -455,6 +455,22 @@ def api_chat_stream():
     @stream_with_context
     def gen():
         full_reply = []
+        # Live research first for current-info questions: sources stream to the
+        # UI as an SSE event, and the grounding material is prepended to hints.
+        research_note = None
+        try:
+            res = research_engine.maybe_research(message, gemini_key=KEY, tier=tier)
+        except Exception:
+            res = None
+        if res:
+            research_note = res.get("note")
+            yield _sse({"t": "sources", "sources": res["sources"], "note": research_note})
+            grounded = "\n".join(
+                f"[{i}] {s['title']} — {s['snippet']} ({s['link']})"
+                for i, s in enumerate(res["sources"], 1))
+            hints = (hints + "\n" if hints else "") + (
+                "Live web research results (cite as [n] when used):\n" + grounded[:6000])
+
         # Fenix Core LoRA is the primary brain. The custom endpoint is tried
         # before every free provider and Gemini; any failure returns None and
         # lets the chain continue honestly.
