@@ -390,7 +390,31 @@
   .quota-line i { color: var(--accent); font-size: 11px; }
   .quota-line .q-sub { color: var(--text-3); opacity: .78; }
   .quota-line.q-out { background: var(--accent-soft); }
-  .model-tag { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 0 6px; }
+  .model-tag { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 4px 8px;
+    background: none; border: 1px solid transparent; border-radius: 99px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+  .model-tag:hover { border-color: var(--line); background: var(--surface-2); }
+  .model-tag .tag-caret { font-size: 8px; opacity: .7; }
+  /* Coder mode is a mode, so it gets a way out — always on the same control
+     the user is already looking at. */
+  .mode-menu { position: fixed; z-index: 90; min-width: 232px; padding: 6px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 18px 46px rgba(0,0,0,.42); }
+  .mode-menu button, .mode-menu a { display: flex; width: 100%; gap: 11px; align-items: flex-start;
+    padding: 9px 11px; border: 0; border-radius: 10px; background: none; color: var(--text);
+    font-size: 13.5px; font-family: inherit; text-align: start; cursor: pointer; }
+  .mode-menu button:hover { background: var(--surface-2); }
+  .mode-menu .mm-i { width: 20px; flex: 0 0 20px; text-align: center; color: var(--accent); margin-top: 1px; }
+  .mode-menu .mm-t { font-weight: 600; }
+  .mode-menu .mm-d { display: block; font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+  .mode-menu .mm-sep { height: 1px; background: var(--line); margin: 5px 8px; }
+  .mode-menu .mm-head { padding: 7px 11px 8px; font-size: 11px; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--text-3); }
+  .coder-exit { display:inline-flex; align-items:center; gap:7px; margin-top:12px;
+    font-size:12.5px; padding:7px 14px; border-radius:99px; cursor:pointer;
+    border:1px solid var(--line); background: var(--surface-2); color: var(--text-2);
+    font-family: inherit; }
+  .coder-exit:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .model-tag.code { color: var(--gold); }
   .send-btn {
     width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
@@ -1454,8 +1478,9 @@
             <button class="comp-btn" id="attachBtn" title="Add photos, camera or files"><i class="fa-solid fa-plus"></i></button>
             <button class="comp-btn" id="micBtn" title="Voice input"><i class="fa-solid fa-microphone" id="micIcon"></i></button>
             <button class="comp-btn" id="newChatBtn" title="New chat"><i class="fa-solid fa-comment-dots"></i></button>
-            <span class="model-tag" id="modelTag">Fenix Flash</span>
+            <button type="button" class="model-tag" id="modelTag" aria-haspopup="menu">Fenix Flash</button>
           </div>
+          <div class="mode-menu hide" id="modeMenu" role="menu"></div>
           <button class="send-btn" id="sendBtn" disabled title="Send"><i class="fa-solid fa-arrow-up"></i></button>
         </div>
       </div>
@@ -1979,9 +2004,19 @@ function renderMessages() {
     if (activeProjectId && activeProject) {
       $('#welcomeTitle').innerHTML = `Let's build <em>${escHtml(activeProject.name)}</em>`;
       $('#welcomeSub').textContent = 'Fenix Coder is ready — describe a feature and get complete, runnable code.';
+      // A stuck user should never have to hunt for the way out.
+      if (!$('#welcomeExit')) {
+        const b = document.createElement('button');
+        b.className = 'coder-exit'; b.id = 'welcomeExit'; b.type = 'button';
+        b.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Back to normal chat';
+        b.addEventListener('click', () => leaveCoder());
+        const w = $('#welcome');
+        if (w) w.insertBefore(b, $('#suggests') || null);
+      }
     } else {
       $('#welcomeTitle').innerHTML = t('welcome');
       $('#welcomeSub').textContent = t('welcomeSub');
+      const ex = $('#welcomeExit'); if (ex) ex.remove();
     }
     renderSuggests(); if (wel) wel.style.display = 'block';
     return;
@@ -2358,11 +2393,105 @@ function syncSettingsUI() {
 $$('#modelSeg button').forEach(b => b.addEventListener('click', () => { SET.model = b.dataset.v; localStorage.setItem('fenix_model', SET.model); syncSettingsUI(); showToast('Model: ' + MODEL_LABEL[SET.model]); }));
 $$('#styleSeg button').forEach(b => b.addEventListener('click', () => { SET.style = b.dataset.v; localStorage.setItem('fenix_style', SET.style); syncSettingsUI(); }));
 $$('#themeSeg button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.v)));
+function coderMode() { return !!(activeProjectId && USER); }
 function syncModelTag() {
   const tag = $('#modelTag'); if (!tag) return;
-  if (activeProjectId) { tag.textContent = '⚡ Coder'; tag.classList.add('code'); }
-  else { tag.textContent = MODEL_LABEL[SET.model]; tag.classList.remove('code'); }
+  const on = coderMode();
+  const name = on ? (activeProject ? activeProject.name : 'Coder') : MODEL_LABEL[SET.model];
+  tag.innerHTML = escHtml(name) + '<span class="tag-caret"><i class="fa-solid fa-chevron-down"></i></span>';
+  tag.classList.toggle('code', on);
+  tag.setAttribute('title', on
+    ? 'Coder mode is on for "' + name + '" — tap to switch or leave'
+    : 'Brain: ' + MODEL_LABEL[SET.model] + ' — tap to switch');
+  tag.setAttribute('aria-expanded', 'false');
+  const mm = $('#modeMenu');
+  if (mm) mm.classList.add('hide');
 }
+
+/* Leaving Coder mode is a normal, reversible action: it closes the mode, it
+   never deletes the project, the files or the conversation. */
+function leaveCoder(why) {
+  if (!activeProjectId) return;
+  const name = activeProject ? activeProject.name : 'project';
+  activeProjectId = null; activeProject = null;
+  localStorage.removeItem('fenix_project');
+  // The chat itself is kept — the user is changing modes, not throwing work away.
+  currentId = null; saveChats(); pending = []; renderAttachments();
+  renderProjects(); renderBdActive(); renderMessages(); syncModelTag();
+  if (why !== 'silent') showToast('Back to normal chat · "' + name + '" is still in your projects');
+}
+
+function openModeMenu() {
+  const menu = $('#modeMenu'), tag = $('#modelTag');
+  if (!menu || !tag) return;
+  const on = coderMode();
+  const name = on ? (activeProject ? activeProject.name : 'this project') : '';
+  const item = (i, t, d, fn) =>
+    '<button type="button" data-mm="' + i + '"><span class="mm-i"><i class="fa-solid '
+    + ({ leave: 'fa-arrow-left', files: 'fa-folder-open', projects: 'fa-folder-tree',
+          flash: 'fa-bolt', pro: 'fa-brain', settings: 'fa-gear' }[i] || 'fa-circle') + '"></i></span>'
+    + '<span><span class="mm-t">' + escHtml(t) + '</span>'
+    + (d ? '<span class="mm-d">' + escHtml(d) + '</span>' : '') + '</span></button>';
+
+  let html = '';
+  if (on) {
+    html += '<div class="mm-head">Coder mode · ' + escHtml(name) + '</div>';
+    html += item('leave', 'Back to normal chat', 'Keep this project and its files — just switch brains.');
+    html += item('files', 'Project files', 'Open the file editor for ' + name + '.');
+    html += item('projects', 'Switch project', 'Pick a different project, or come out.');
+    html += '<div class="mm-sep"></div>';
+  }
+  html += item('flash', 'Fenix Flash', on ? 'Also leave Coder mode and use the chat brain.' : 'Fast everyday brain.');
+  html += item('pro', 'Fenix Pro', on ? 'Also leave Coder mode and use the deeper brain.' : 'Slower, deeper answers.');
+  html += '<div class="mm-sep"></div>';
+  html += item('settings', 'Settings', 'Language, theme, style, memory.');
+  menu.innerHTML = html;
+
+  const r = tag.getBoundingClientRect();
+  menu.classList.remove('hide');
+  // Measure only once it is laid out — a display:none element has no height,
+  // which is what put the menu off the bottom of a phone screen.
+  const mw = menu.offsetWidth || 244;
+  const mh = Math.min(menu.offsetHeight || 320, window.innerHeight - 20);
+  menu.style.left = Math.max(10, Math.min(r.left, window.innerWidth - mw - 10)) + 'px';
+  const below = r.bottom + 8;
+  menu.style.top = (below + mh > window.innerHeight ? Math.max(10, r.top - 8 - mh) : below) + 'px';
+  tag.setAttribute('aria-expanded', 'true');
+
+  menu.querySelectorAll('[data-mm]').forEach((b) => b.addEventListener('click', () => {
+    const what = b.dataset.mm;
+    menu.classList.add('hide'); tag.setAttribute('aria-expanded', 'false');
+    if (what === 'leave') { leaveCoder(); return; }
+    if (what === 'files') { closeAll(); showView('more'); return; }
+    if (what === 'projects') { closeAll(); loadProjects(); openDrawer('projectsDrawer'); return; }
+    if (what === 'settings') { syncSettingsUI(); openSheet('settingsSheet'); return; }
+    if (what === 'flash' || what === 'pro') {
+      // Choosing a chat brain from inside Coder mode leaves Coder mode —
+      // otherwise the choice would look like it did nothing.
+      if (on) leaveCoder('silent');
+      SET.model = what; localStorage.setItem('fenix_model', SET.model);
+      syncSettingsUI();
+      showToast('Model: ' + MODEL_LABEL[SET.model]);
+    }
+  }));
+}
+
+$('#modelTag').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = $('#modeMenu');
+  if (menu && !menu.classList.contains('hide')) { menu.classList.add('hide'); return; }
+  openModeMenu();
+});
+document.addEventListener('click', (e) => {
+  const menu = $('#modeMenu');
+  if (menu && !e.target.closest('#modeMenu') && !e.target.closest('#modelTag')) {
+    menu.classList.add('hide');
+    const tag = $('#modelTag'); if (tag) tag.setAttribute('aria-expanded', 'false');
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { const m = $('#modeMenu'); if (m) m.classList.add('hide'); }
+});
 
 /* ============================ Attach menu ============================ */
 function toggleAttMenu() {
@@ -2427,8 +2556,16 @@ function renderProjects() {
       <span class="lbl">${escHtml(p.name)}<br><span class="meta">${escHtml(p.stack || 'project')} · ${p.files} file${p.files === 1 ? '' : 's'}</span></span>
       <span class="del" data-pdel="${p.id}" title="Delete"><i class="fa-regular fa-trash-can"></i></span>
     </button>`).join('');
+  list.innerHTML += `<button class="drawer-item" data-pid="">
+    <i class="fa-solid fa-comments"></i>
+    <span class="lbl">Normal chat<br><span class="meta">Close Coder mode — your projects stay</span></span>
+  </button>`;
   list.querySelectorAll('.drawer-item').forEach(el => el.addEventListener('click', async (e) => {
     if (e.target.closest('.del')) return;
+    // Tapping the project you are already in leaves Coder mode. Without this
+    // there is no way back: the drawer only ever set a project, never cleared one.
+    if (el.dataset.pid && el.dataset.pid === activeProjectId) { leaveCoder(); return; }
+    if (!el.dataset.pid) { leaveCoder(); return; }
     await selectProject(el.dataset.pid);
   }));
   list.querySelectorAll('[data-pdel]').forEach(el => el.addEventListener('click', async (e) => {
@@ -2592,7 +2729,7 @@ function renderAccountSheet() {
     $('#openEvoBtn').addEventListener('click', () => { closeAll(); loadEvolution(); openSheet('evoSheet'); });
     $('#signOutBtn').addEventListener('click', () => {
       clearAuth(); renderAvatar();
-      activeProjectId = null; activeProject = null; localStorage.removeItem('fenix_project');
+      leaveCoder('silent');
       renderAccountSheet(); loadProjects(); syncModelTag(); renderBdActive(); renderMessages(); closeAll();
       showToast('Signed out');
     });
@@ -3459,9 +3596,16 @@ function startRender() {
       const r = await fetch(apiUrl('/api/auth/me'), { headers: authHeaders() });
       if (r.ok) {
         await loadProjects();
-        if (activeProjectId) await selectProject(activeProjectId);
-      } else { clearAuth(); renderAvatar(); }
-    } catch (e) { clearAuth(); renderAvatar(); }
+        if (activeProjectId) {
+          if (projects.some(p => p.id === activeProjectId)) await selectProject(activeProjectId);
+          else leaveCoder('silent');   // the project is gone — do not trap them in Coder
+        }
+      } else { clearAuth(); leaveCoder('silent'); renderAvatar(); }
+    } catch (e) { clearAuth(); leaveCoder('silent'); renderAvatar(); }
+  } else if (activeProjectId) {
+    // Signed out with a project id still in storage: Coder needs an account,
+    // so clear it instead of showing a mode the user cannot leave.
+    leaveCoder('silent');
   }
   if (IS_NATIVE && !API_BASE) showToast('APK not linked to a server — set it in web/config.js');
   if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -14,6 +14,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api"))
+# This suite checks the clip engine contract, not the allowance. Metering has
+# its own suites (api/test_quota*.py); with it on, the repeated stub calls here
+# would spend a shared loopback allowance and later checks would be refused for
+# the wrong reason.
+os.environ["QUOTA_ENABLED"] = "0"
 import server as s  # noqa: E402
 
 MODE = {"v": "mp4"}
