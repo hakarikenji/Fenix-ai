@@ -1,5 +1,5 @@
 /* Fenix — Service Worker */
-const CACHE = "fenix-v26-honest-motion";
+const CACHE = "fenix-v27-training-flywheel";
 const SHELL = [
   "/",
   "/index.html",

@@ -1898,6 +1898,22 @@ function bindCopyButtons() {
   }));
 }
 
+/* The conversation summary is what "continue where you left off" reads back.
+   It is derived here rather than by another model call, because the brain is
+   the one resource in Fenix that runs out. */
+async function syncConversationSummary(c, firstMessage) {
+  if (!c || !c.serverId || !canUseServer() || !USER) return;
+  const last = (c.messages || []).filter(m => m.role === 'user').slice(-1)[0];
+  const newest = (last && last.content) || firstMessage || '';
+  if (!newest || /^\(see attachment\)$/.test(newest)) return;
+  try {
+    await fetch(apiUrl('/api/conversations/' + c.serverId), {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ title: (c.title || newest).slice(0, 60), summary: newest.slice(0, 300) }),
+    });
+  } catch (e) {}
+}
+
 /* ============================ Ratings (data flywheel) + TTS ============================ */
 async function sendRating(idx, rating, btn) {
   const c = currentChat(); if (!c) return;
@@ -2103,6 +2119,27 @@ async function ensureServerConversation(c) {
     if (r.ok) { const d = await r.json(); if (d.id) c.serverId = d.id; saveChats(); }
   } catch (e) {}
 }
+/* Store the exchange on the server. This is the only thing that makes the
+   data flywheel turn: ratings carry their own copy of the text, but nothing
+   else does, so without this a conversation never becomes a training pair. */
+async function persistExchange(c, prompt, reply) {
+  if (!c || !c.serverId || !canUseServer() || !USER) return;
+  if (!prompt || !reply) return;
+  // A failed reply is not an example of good behaviour. Keeping it would let
+  // a broken run poison the next adapter.
+  if (/^\*\*Connection failed\*\*/.test(reply)) return;
+  try {
+    await fetch(apiUrl('/api/conversations/' + c.serverId + '/messages'), {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ role: 'user', content: prompt }),
+    });
+    await fetch(apiUrl('/api/conversations/' + c.serverId + '/messages'), {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ role: 'assistant', content: reply }),
+    });
+  } catch (e) { /* a failed sync must never break the chat */ }
+}
+
 async function syncConversationTitle(c) {
   if (!c || !c.serverId || !canUseServer() || !USER) return;
   try {
@@ -2281,12 +2318,15 @@ async function send() {
     liveEl.innerHTML = renderMd(full) + '<span class="cursor"></span>';
     scrollDown();
   };
-  ensureServerConversation(c);
+  // Awaited: the id is needed by persistExchange a moment later, and firing
+  // and forgetting it raced the first message of every conversation.
+  await ensureServerConversation(c);
   try {
     reply = await streamAI(text, c.messages.slice(0, -1), atts, (delta, full) => renderLive(full));
     c.messages.push({ role: 'assistant', content: reply });
     maybeOfferFileSave(reply);
     maybeSaveArtifact(text);
+    persistExchange(c, text, reply);
   } catch (e) {
     if (e.stopped || e.name === 'AbortError') {
       const partial = reply || (liveEl ? liveEl.textContent : '') || '';
@@ -2297,6 +2337,7 @@ async function send() {
         reply = await callAI(text, c.messages.slice(0, -1), atts);
         c.messages.push({ role: 'assistant', content: reply });
         maybeOfferFileSave(reply);
+        persistExchange(c, text, reply);
       } catch (e2) {
         lastBrain = null;
         c.messages.push({ role: 'assistant', content: '**Connection failed** — ' + (e2.message || e.message || 'Network error') });
@@ -2304,7 +2345,7 @@ async function send() {
     }
   }
   setGenerating(false); stopGen = null;
-  if (c.serverId) syncConversationTitle(c);
+  if (c.serverId) { syncConversationTitle(c); syncConversationSummary(c, text); }
   saveChats(); renderMessages(); renderChats();
   renderSources(lastSources); renderBrainBadge();
   lastSources = null; lastBrain = null;

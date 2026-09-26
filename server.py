@@ -1253,6 +1253,29 @@ def api_project_files(pid):
 # Fenix Ecosystem — Music & Video brains (same chains as their apps)
 # =====================================================================
 
+def brain_routing() -> dict:
+    """Which brains are actually in the chain right now, in order.
+
+    "order" used to be a literal, so a brain that answers 404 still read as
+    the primary. Now every entry carries whether it is configured and whether
+    it has ever returned a reply, so a status page cannot imply a brain is
+    live just because a URL is spelled out in the source.
+    """
+    chain = [
+        ("fenix-core-lora", bool(CORE_BRAIN_URL), CUSTOM_BRAIN_STATE == "live"),
+        ("fenix-core-lora-coder", bool(KEY), False),
+    ]
+    live = [name for name, configured, is_live in chain if is_live]
+    order = [name for name, configured, _is_live in chain if configured]
+    return {
+        "order": order,
+        "primary": live[0] if live else (order[0] if order else "none"),
+        "serving": live,
+        "note": ("no trained brain is serving replies; the free chain is answering"
+                 if not live else "a trained brain is serving replies"),
+    }
+
+
 def clip_engine_state() -> str:
     """own | shared | off — what a "Real motion" press will actually meet."""
     if os.environ.get("VIDEO_GEN_URL"):
@@ -1271,9 +1294,11 @@ def api_brains():
     except Exception:
         video_ok = False
     return jsonify({
-        "routing": {"primary": "fenix-core-lora", "order": ["fenix-core-lora"]},
+        "routing": brain_routing(),
         "core": {"configured": bool(CUSTOM_LLM_BASE_URL or CORE_BRAIN_URL),
-                 "active": "fenix-core-lora", "state": CUSTOM_BRAIN_STATE,
+                 # What answered, measured — not what was typed into the source.
+                 "active": "fenix-core-lora" if CUSTOM_BRAIN_STATE == "live" else "fallback",
+                 "state": CUSTOM_BRAIN_STATE,
                  "health": brain_health.status()},
         "music": {"configured": bool(MUSIC_BRAIN_URL or CORE_BRAIN_URL or KEY),
                   "trained": bool(MUSIC_BRAIN_URL), "active": "fenix-music"},
