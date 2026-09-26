@@ -126,13 +126,27 @@ def rating_stats() -> dict:
     return {"up": up, "down": down, "total": up + down}
 
 
-def export_training_pairs(min_score: int = 0) -> list[dict]:
-    """Rated pairs for future LoRA fine-tuning rounds (up-rated only by default)."""
+def export_training_pairs(min_score: int = 0, user_token: str | None = None) -> list[dict]:
+    """Rated pairs for a LoRA round (up-rated only by default).
+
+    Scoped to one account when a token is given. It used to ignore the owner
+    and return every rating in the database, which only stayed safe because
+    the route in front of it required an admin — a leak waiting for the next
+    caller.
+    """
     c = conn()
-    rows = c.execute(
-        "SELECT message, reply, rating, created FROM ratings WHERE rating >= ? ORDER BY created",
-        (min_score,),
-    ).fetchall()
+    if user_token is not None:
+        rows = c.execute(
+            "SELECT message, reply, rating, created FROM ratings"
+            " WHERE rating >= ? AND user_key=? ORDER BY created",
+            (min_score, _key(user_token)),
+        ).fetchall()
+    else:
+        rows = c.execute(
+            "SELECT message, reply, rating, created FROM ratings"
+            " WHERE rating >= ? ORDER BY created",
+            (min_score,),
+        ).fetchall()
     return [{"instruction": r["message"], "output": r["reply"], "rating": r["rating"],
              "created": r["created"]} for r in rows]
 

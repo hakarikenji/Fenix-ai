@@ -545,7 +545,35 @@ def api_ratings_export():
     admin = os.environ.get("FENIX_ADMIN_EMAIL", "").strip().lower()
     if not admin or user["email"].lower() != admin:
         return jsonify({"error": "Admin only — set FENIX_ADMIN_EMAIL on the server"}), 403
-    return jsonify({"pairs": db.export_training_pairs()})
+    # Scoped: the admin sees their own account's rows like anyone else, not
+    # every rating in the database.
+    return jsonify({"pairs": db.export_training_pairs(0, token)})
+
+
+@app.route("/api/training-data", methods=["GET"])
+def api_training_data():
+    """This account's training set as JSONL — the file a Colab cell curls.
+
+    Owner-scoped, so it exposes nothing the caller cannot already read through
+    /api/conversations. It is a plain file rather than JSON so the notebook can
+    save it without a second parsing step.
+    """
+    token, user = _require_user()
+    if not user:
+        return jsonify({"error": "Sign in first"}), 401
+    try:
+        import train_dataset
+        report = train_dataset.build(min_pairs=0, user_token=token)
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"error": f"Could not build the dataset: {e}"}), 500
+    report["email"] = user["email"]
+    body = train_dataset.to_jsonl(report["pairs"])
+    return Response(body, mimetype="application/x-ndjson", headers={
+        "Content-Disposition": 'attachment; filename="fenix-sft.jsonl"',
+        "X-Fenix-Pairs": str(len(report["pairs"])),
+        "X-Fenix-Ready": "1" if report["count"] >= train_dataset.MIN_PAIRS else "0",
+        "X-Fenix-Distinct": str(report["distinct_replies"]),
+    })
 
 
 # ===================== Fenix semantic memory reindex =====================

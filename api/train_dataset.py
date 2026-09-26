@@ -86,7 +86,7 @@ def looks_like_a_real_exchange(prompt: str, reply: str) -> bool:
     return True
 
 
-def _pairs_from_conversations(limit: int = 0) -> list[dict]:
+def _pairs_from_conversations(limit: int = 0, user_token: str | None = None) -> list[dict]:
     """Every user turn paired with the reply that answered it."""
     try:
         import db
@@ -95,9 +95,15 @@ def _pairs_from_conversations(limit: int = 0) -> list[dict]:
     out: list[dict] = []
     try:
         c = db.conn()
-        convs = c.execute(
-            "SELECT id FROM conversations ORDER BY updated DESC"
-            + (f" LIMIT {int(limit)}" if limit else "")).fetchall()
+        if user_token is not None:
+            convs = c.execute(
+                "SELECT id FROM conversations WHERE user_key=? ORDER BY updated DESC"
+                + (f" LIMIT {int(limit)}" if limit else ""),
+                (db._key(user_token),)).fetchall()
+        else:
+            convs = c.execute(
+                "SELECT id FROM conversations ORDER BY updated DESC"
+                + (f" LIMIT {int(limit)}" if limit else "")).fetchall()
     except Exception:
         return []
     for conv in convs:
@@ -123,7 +129,7 @@ def _pairs_from_conversations(limit: int = 0) -> list[dict]:
     return out
 
 
-def _pairs_from_ratings() -> list[dict]:
+def _pairs_from_ratings(user_token: str | None = None) -> list[dict]:
     """Up-rated pairs, and the down-rated ones kept aside for the eval split."""
     try:
         import db
@@ -131,9 +137,16 @@ def _pairs_from_ratings() -> list[dict]:
         return []
     good, bad = [], []
     try:
-        rows = db.conn().execute(
-            "SELECT message, reply, rating, reason, brain, created FROM ratings"
-            " ORDER BY created").fetchall()
+        c = db.conn()
+        if user_token is not None:
+            rows = c.execute(
+                "SELECT message, reply, rating, reason, brain, created FROM ratings"
+                " WHERE user_key=? ORDER BY created",
+                (db._key(user_token),)).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT message, reply, rating, reason, brain, created FROM ratings"
+                " ORDER BY created").fetchall()
     except Exception:
         return []
     for r in rows:
@@ -150,9 +163,13 @@ def _pairs_from_ratings() -> list[dict]:
     return good + bad
 
 
-def build(min_pairs: int = MIN_PAIRS) -> dict:
-    """Build the set and report honestly on whether it is worth training."""
-    raw = _pairs_from_ratings() + _pairs_from_conversations()
+def build(min_pairs: int = MIN_PAIRS, user_token: str | None = None) -> dict:
+    """Build the set and report honestly on whether it is worth training.
+
+    `user_token` scopes the set to one account. Without it the whole database
+    is read, which is only ever right for a local training run.
+    """
+    raw = _pairs_from_ratings(user_token) + _pairs_from_conversations(0, user_token)
 
     kept: list[dict] = []
     seen: set[str] = set()
@@ -212,18 +229,25 @@ def build(min_pairs: int = MIN_PAIRS) -> dict:
     }
 
 
+def to_jsonl(pairs: list[dict]) -> str:
+    """The dataset as a string, in the chat format the trainer reads."""
+    lines = []
+    for p in pairs:
+        lines.append(json.dumps({"messages": [
+            {"role": "system", "content":
+             "You are Fenix Core LoRA, the primary AI identity built by Hakari. "
+             "Answer in the user's language. Be honest about what you did and "
+             "did not do."},
+            {"role": "user", "content": p["prompt"]},
+            {"role": "assistant", "content": p["reply"]},
+        ]}, ensure_ascii=False))
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
 def write_jsonl(report: dict, path: str) -> str:
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        for p in report["pairs"]:
-            f.write(json.dumps({"messages": [
-                {"role": "system", "content":
-                 "You are Fenix Core LoRA, the primary AI identity built by Hakari. "
-                 "Answer in the user's language. Be honest about what you did and "
-                 "did not do."},
-                {"role": "user", "content": p["prompt"]},
-                {"role": "assistant", "content": p["reply"]},
-            ]}, ensure_ascii=False) + "\n")
+        f.write(to_jsonl(report["pairs"]))
     return path
 
 
