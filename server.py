@@ -5,6 +5,7 @@ Fenix — خادم التطبيق
 
 التشغيل:  python server.py
 """
+import hashlib
 import importlib.util
 import json
 import os
@@ -33,10 +34,109 @@ import identity_guard  # noqa: E402
 import store  # noqa: E402
 import memory as memory_store  # noqa: E402
 import evolution as evolution_store  # noqa: E402
+import gradio_client  # noqa: E402
+
+# Public engines that already run these models, so audio and real motion work
+# before anyone hosts anything. They are a stopgap with real limits: each has a
+# shared daily GPU allowance, a queue, and no uptime promise.
+#
+# More than one host is listed on purpose. The allowance is per host, so an
+# exhausted host is a reason to try the next one, not a dead end. Setting
+# MUSIC_GEN_SPACE_URL / VIDEO_GEN_SPACE_URL to your own Space replaces the list
+# with just yours; setting them to an empty string turns the shared hosts off.
+# MUSIC_GEN_URL / VIDEO_GEN_URL replace them with a direct engine entirely.
+# Sampler and step budget for the audio engines. Both are overridable so a
+# slower host can trade a little quality for a shorter queue, and so the
+# numbers can be re-measured without touching the call sites.
+_MUSIC_SAMPLER = os.environ.get("MUSIC_GEN_SAMPLER", "pingpong").strip() or "pingpong"
+_MUSIC_STEPS = max(4, int(os.environ.get("MUSIC_GEN_STEPS", "20") or 20))
+_MUSIC_STEPS_OPEN = max(4, int(os.environ.get("MUSIC_GEN_STEPS_OPEN", "50") or 50))
+# The engine ships more than one model size. The small one is what a free daily
+# allowance can afford several times over; the larger one is clearly better
+# sounding but costs several times the GPU seconds per track, so it is opt-in
+# rather than a surprise.
+_MUSIC_VARIANT = os.environ.get("MUSIC_GEN_VARIANT", "small-music").strip() or "small-music"
+
+
+def _music_args(prompt: str, seconds: float, seed) -> list:
+    # A host reads 0 as "pick a seed for me", so a missing seed is not an error.
+    #
+    # The sampler and step count are not cosmetic. Measured on this engine, a
+    # weak sampler at few steps roughly doubles the energy above 2 kHz, which is
+    # the thin rattling ring people describe as "not really music". The engine's
+    # own default sampler with a few more steps renders the same prompt
+    # measurably cleaner for the same seconds of GPU.
+    return [_MUSIC_VARIANT, prompt, int(seconds), _MUSIC_STEPS, 1.0,
+            _MUSIC_SAMPLER, int(seed) if seed else 0]
+
+
+def _music_args_open(prompt: str, seconds: float, seed) -> list:
+    # This host is a plain diffusion pass, so the step count is the whole cost.
+    return [prompt, int(seconds), _MUSIC_STEPS_OPEN, 7.0]
+
+
+def _clip_args(prompt: str, seconds: float, width: int, height: int, seed) -> list:
+    # This host is image-to-video first, so the image slot stays empty for a
+    # text-to-video clip.
+    return [None, prompt, int(height), int(width), "blur, watermark, text",
+            int(seconds), 5.0, 20, int(seed) if seed else 42, False]
+
+
+DEMO_MUSIC_HOSTS = [
+    {"url": "https://stabilityai-stable-audio-3.hf.space", "api": "infer",
+     "args": _music_args},
+    {"url": "https://artificialguybr-stable-audio-open-zero.hf.space", "api": "predict",
+     "args": _music_args_open},
+]
+
+DEMO_VIDEO_HOSTS = [
+    {"url": "https://multimodalart-wan2-1-fast.hf.space", "api": "generate_video",
+     "args": _clip_args},
+]
+
+
+def engine_token_set() -> bool:
+    """True when an engine token is configured. Never reports its value.
+
+    Without a token the app calls the shared public hosts anonymously, which
+    comes with a small allowance that any other anonymous caller can drain.
+    This is the single fact that explains most "the engine is busy" reports.
+    """
+    return bool(os.environ.get("HF_TOKEN", "").strip())
+
+
+def _quota_note() -> str:
+    return ("" if engine_token_set() else
+            " No engine token is set, so the shared public allowance is being used "
+            "— it is small and anyone can drain it. Set HF_TOKEN for your own.")
+
+
+def _host_list(name: str, defaults: list) -> list:
+    """Resolve the engine hosts to try, in order."""
+    value = os.environ.get(name)
+    if value is None:
+        return defaults
+    url = value.strip().rstrip("/")
+    if not url:
+        return []
+    # An explicit host keeps the default call signature for its kind, so one
+    # variable is enough to point the app anywhere that speaks the same API.
+    kind = "clip" if name.startswith("VIDEO") else "audio"
+    template = (DEMO_VIDEO_HOSTS if kind == "clip" else DEMO_MUSIC_HOSTS)[0]
+    return [{"url": url, "api": template["api"], "args": template["args"]}]
+
+
+def music_hosts() -> list:
+    return _host_list("MUSIC_GEN_SPACE_URL", DEMO_MUSIC_HOSTS)
+
+
+def video_hosts() -> list:
+    return _host_list("VIDEO_GEN_SPACE_URL", DEMO_VIDEO_HOSTS)
 import research as research_engine  # noqa: E402
 import tool_registry  # noqa: E402
 import context_engine  # noqa: E402
 import observability  # noqa: E402
+import quota  # noqa: E402
 import urllib.request
 
 research_engine.load_config()  # read SERPER_API_KEY from the server environment
@@ -301,6 +401,61 @@ def api_preflight(_any):
     return Response(status=204)
 
 
+# ---------------- Generation quota (server-side, the only authority) ----------------
+
+def _quota_caller() -> str:
+    """Opaque per-caller key for metering.
+
+    Signed-in callers are keyed by their account token, so a quota survives
+    signing out, switching device, clearing localStorage or opening a second
+    tab. The APK / offline path has no token, so its callers are keyed by
+    their network address instead. Neither the token nor the address is ever
+    written to disk — only a one-way hash of it.
+    """
+    token = store.bearer_token()
+    if token and store.get_user(token):
+        return quota.key_for("user:" + token)
+    origin = (request.headers.get("X-Forwarded-For") or request.remote_addr or "local")
+    return quota.key_for("addr:" + str(origin).split(",")[0].strip())
+
+
+def _quota_error(feature: str, snap: dict, code: str, retry_after: int = 0):
+    """One structured shape for every refused generation, in plain language.
+
+    Engine, host and accelerator details stay in the server logs; the reply
+    only ever says what happened and when the caller can try again.
+    """
+    unit = "track" if feature == "music" else "video scene"
+    limit = snap.get("limit", 0)
+    hours = round(snap.get("reset_in", 0) / 3600.0, 1)
+    if code == "COOLDOWN":
+        message = (f"Just finishing the last {unit} — try again in "
+                   f"{retry_after}s.")
+    else:
+        message = ("Your free generation limit has been reached. Your next "
+                   f"{unit} becomes available in {hours}h.")
+    return jsonify({
+        "error": "QUOTA_EXCEEDED" if code != "COOLDOWN" else "COOLDOWN",
+        "code": code,
+        "feature": feature,
+        "remaining": 0,
+        "limit": limit,
+        "reset_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(snap.get("reset_at", 0))),
+        "reset_in": snap.get("reset_in", 0),
+        "retry_after": retry_after,
+        "message": message,
+    }), 429
+
+
+@app.route("/api/quota", methods=["GET"])
+def api_quota():
+    """What the caller has left. Read-only; it grants nothing."""
+    try:
+        return jsonify(quota.report(_quota_caller()))
+    except Exception as e:  # noqa: BLE001 - the studio must not break on this
+        return jsonify({"features": {}, "error": str(e)}), 200
+
+
 def _sse(data: dict) -> str:
     return "data: " + json.dumps(data, ensure_ascii=False) + "\n\n"
 
@@ -405,13 +560,13 @@ def api_memory_reindex():
     return jsonify({"indexed": semantic_memory.reindex_all(token, entries)})
 
 
-@app.route("/api/chat/stream", methods=["POST"])
-def api_chat_stream():
-    """Streaming chat with Fenix Core first, then free providers, then Gemini.
+def _chat_sse_response():
+    """Build the chat reply as an SSE response.
 
-    Fenix Core is the primary brain. Gemini is only a fallback when the custom
-    LoRA endpoint is unavailable, times out, or returns no text. Events:
-    {t:'delta', v:text} | {t:'done', brain:label} | {t:'error', v:message}."""
+    Shared by the streaming route and the non-streaming one, so both answer
+    from exactly the same brain chain. Keeping this a function rather than
+    inlining it is what stops the two from drifting apart again.
+    """
     limited, payload = _rate_limit("chat_stream", limit=20)
     if not limited:
         return jsonify(payload), 429
@@ -590,9 +745,66 @@ def api_chat_stream():
                     return
         yield _sse({"t": "error", "v": "Fenix is unavailable right now — try again in a moment"})
 
+    # No explicit Connection header. It is a hop-by-hop header the server owns,
+    # and setting it here made the response carry both "Connection: keep-alive"
+    # and the server's own "Connection: close". Anything proxying this stream
+    # can read that contradiction as a broken response and cut the body off, so
+    # the client sees a failed read even though the reply was generated fine.
     return Response(gen(), mimetype="text/event-stream", headers={
-        "Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"
+        "Cache-Control": "no-cache", "X-Accel-Buffering": "no"
     })
+
+
+@app.route("/api/chat/stream", methods=["POST"])
+def api_chat_stream():
+    """Streaming chat with Fenix Core first, then free providers, then Gemini.
+
+    Fenix Core is the primary brain. Gemini is only a fallback when the custom
+    LoRA endpoint is unavailable, times out, or returns no text. Events:
+    {t:'delta', v:text} | {t:'done', brain:label} | {t:'error', v:message}."""
+    return _chat_sse_response()
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """The same reply, whole, as JSON.
+
+    The app falls back to this when the stream cannot be read — a proxy that
+    buffers, a browser that drops the connection. It has to exist for that
+    fallback to be anything but a dead end, and it must share the brain chain
+    so the answer never depends on which transport delivered it.
+    """
+    limited, payload = _rate_limit("chat", limit=20)
+    if not limited:
+        return jsonify(payload), 429
+    stream = _chat_sse_response()
+    # A failure raised before the first byte is a real HTTP error, so it is
+    # passed through instead of being flattened into an empty reply.
+    if not isinstance(stream, Response) or stream.status_code != 200:
+        return stream
+    reply, brain, problem = [], None, None
+    for chunk in stream.response:
+        text = chunk.decode("utf-8", "replace") if isinstance(chunk, bytes) else str(chunk)
+        for block in text.split("\n\n"):
+            line = block.find("data:")
+            if line < 0:
+                continue
+            try:
+                event = json.loads(block[line + 5:].strip())
+            except ValueError:
+                continue
+            kind = event.get("t")
+            if kind == "delta" and event.get("v"):
+                reply.append(event["v"])
+            elif kind == "done":
+                brain = event.get("brain")
+            elif kind == "error":
+                problem = event.get("v")
+    full = "".join(reply).strip()
+    if not full:
+        return jsonify({"error": problem or "Fenix is unavailable right now — try again in a moment",
+                        "reply": "", "brain": None}), 502
+    return jsonify({"reply": full, "brain": brain})
 
 
 def _persist_conversation_reply(conv_id: str, token, user, message: str, reply_text: str) -> None:
@@ -1076,7 +1288,11 @@ def api_brains():
         "tools": tool_registry.tool_catalog(),
         "server_ai": bool(KEY),
         "free_images": True,
-        "audio_gen": bool(os.environ.get("MUSIC_GEN_URL") or os.environ.get("HF_TOKEN")),
+        "audio_gen": bool(os.environ.get("MUSIC_GEN_URL")
+                         or os.environ.get("MUSIC_GEN_SPACE_URL")
+                         or os.environ.get("HF_TOKEN")),
+        "clip_gen": bool(os.environ.get("VIDEO_GEN_URL")
+                        or os.environ.get("VIDEO_GEN_SPACE_URL")),
     })
 
 
@@ -1195,6 +1411,25 @@ def _call_music_worker(worker_url: str, prompt: str, duration: int,
         return r.read(), "worker"
 
 
+def _call_space_musicgen(prompt: str, duration: int, seed) -> tuple[bytes | None, str]:
+    """The hosted audio engine(s), tried in order until one answers.
+
+    Each host meters its own daily allowance, so a refused host means "try the
+    next one", not "no music today". Every refusal is kept so the last one
+    reaching the user explains the real blocker instead of a generic failure.
+    """
+    refused = []
+    for host in music_hosts():
+        try:
+            data = gradio_client.run(host["api"], host["args"](prompt, duration, seed),
+                                     host["url"])
+        except Exception as e:  # noqa: BLE001
+            refused.append(f"{host['url'].split('//')[-1].split('.')[0]}: {e}")
+            continue
+        return data, "hosted-engine"
+    raise gradio_client.GradioError(" | ".join(refused) or "no audio host configured")
+
+
 def _call_hf_musicgen(prompt: str, hf_token: str) -> tuple[bytes | None, str]:
     """Fallback: hosted MusicGen-small on the free tier."""
     body = json.dumps({"inputs": prompt}).encode()
@@ -1203,6 +1438,181 @@ def _call_hf_musicgen(prompt: str, hf_token: str) -> tuple[bytes | None, str]:
         data=body, headers={"Authorization": "Bearer " + hf_token})
     with urllib.request.urlopen(req, timeout=600) as r:
         return r.read(), "hosted-free-tier"
+
+
+def _clip_bytes(data: bytes) -> bool:
+    """True when the bytes really are an mp4, not an HTML error page."""
+    if not data or len(data) < 1000:
+        return False
+    if data[4:8] == b"ftyp":
+        return True
+    if data[:4] in (b"RIFF", b"OggS", b"fLaC"):
+        return False
+    if data[:5] in (b"<?xml", b"<html", b"<!DOC", b"{\"erro"):
+        return False
+    return True
+
+
+def _call_video_worker(worker_url: str, prompt: str, seconds: float,
+                       width: int, height: int, seed,
+                       token: str) -> tuple[bytes | None, str]:
+    """Call the self-hosted text-to-video engine. Returns (clip, source)."""
+    body = json.dumps({"prompt": prompt, "seconds": seconds, "width": width,
+                       "height": height, "seed": seed if seed else None}).encode()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = urllib.request.Request(worker_url, data=body, headers=headers)
+    with urllib.request.urlopen(req, timeout=600) as r:
+        return r.read(), "clip-engine"
+
+
+def _call_space_video(prompt: str, seconds: float, width: int, height: int,
+                      seed) -> tuple[bytes | None, str]:
+    """The hosted clip engine(s), tried in order until one answers."""
+    refused = []
+    for host in video_hosts():
+        try:
+            data = gradio_client.run(host["api"],
+                                     host["args"](prompt, seconds, width, height, seed),
+                                     host["url"])
+        except Exception as e:  # noqa: BLE001
+            refused.append(f"{host['url'].split('//')[-1].split('.')[0]}: {e}")
+            continue
+        return data, "hosted-engine"
+    raise gradio_client.GradioError(" | ".join(refused) or "no clip host configured")
+
+
+@app.route("/api/video/clip-check")
+def api_video_clip_check():
+    """Reachability of the clip engine, without spending a generation."""
+    worker_url = os.environ.get("VIDEO_GEN_URL", "").rstrip("/")
+    space_url = bool(video_hosts())
+    token = os.environ.get("VIDEO_GEN_API_KEY", "")
+    info = {"worker_url_set": bool(worker_url), "space_url_set": bool(space_url),
+            "worker_reachable": False, "worker_says": None,
+            "engine_token_set": engine_token_set(), "problem": None}
+    if not worker_url and space_url:
+        info["hosts"] = [h["url"] for h in video_hosts()]
+        for host in video_hosts():
+            try:
+                info["space_says"] = gradio_client.health(host["url"])
+                info["space_reachable"] = True
+                info["problem"] = ("The clip engine answers, but a shared host "
+                                   "can still refuse a job. The first scene "
+                                   "settles it.")
+                break
+            except Exception as e:  # noqa: BLE001 - try the next host
+                info["problem"] = f"No clip host answered: {e}"
+        info["ready"] = bool(info.get("space_reachable"))
+        return jsonify(info)
+    if not worker_url:
+        info["problem"] = ("Clip engine is not connected. Scene stills, captions and the "
+                           "music bed all work without it — set VIDEO_GEN_URL when you have "
+                           "a host (fenix-video/generator/README.md).")
+        return jsonify(info)
+    req = urllib.request.Request(worker_url if worker_url.endswith("/") else worker_url + "/",
+                                 headers={"Authorization": "Bearer " + token} if token else {})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            info["worker_reachable"] = True
+            info["worker_says"] = r.read(600).decode("utf-8", "replace")
+            info["problem"] = "Reachable — a scene will swap its still for a real clip."
+    except urllib.error.HTTPError as e:
+        info["problem"] = (f"Engine answered HTTP {e.code}."
+                           + (" The token was rejected — VIDEO_GEN_API_KEY must match "
+                              "VIDEO_GEN_TOKEN." if e.code == 401 else ""))
+    except Exception as e:
+        info["problem"] = f"Could not reach the engine: {type(e).__name__}: {e}"
+    info["ready"] = info["worker_reachable"] and info["worker_says"] is not None
+    return jsonify(info)
+
+
+@app.route("/api/video/clip", methods=["POST"])
+def api_video_clip():
+    """{prompt, seconds?, width?, height?, seed?} -> {url, source, bytes}.
+
+    Real motion for one scene. When no engine is connected the studio keeps
+    using its still frame, so this route reports honestly instead of
+    pretending.
+    """
+    data = request.get_json(silent=True) or {}
+    prompt = (data.get("prompt") or "").strip()[:800]
+    if not prompt:
+        return jsonify({"error": "Prompt is empty"}), 400
+    worker_url = os.environ.get("VIDEO_GEN_URL", "").rstrip("/")
+    space_url = bool(video_hosts())
+    if not worker_url and not space_url:
+        return jsonify({"error": "Clip engine is not connected",
+                        "detail": "Scene stills, captions and the music bed still work — "
+                                  "set VIDEO_GEN_URL for a direct engine, or "
+                                  "VIDEO_GEN_SPACE_URL for a hosted one.",
+                        "clip_engine_required": True}), 503
+    try:
+        seconds = float(data.get("seconds") or 4)
+    except (TypeError, ValueError):
+        seconds = 4.0
+    # The server owns the ceiling: a client cannot ask for a longer or larger
+    # render by changing a field, a query string or its own stored settings.
+    clipped = seconds > quota.video_max_seconds()
+    seconds = quota.clamp_video_seconds(seconds)
+    width = max(256, min(1280, int(data.get("width") or 832)))
+    height = max(256, min(1280, int(data.get("height") or 480)))
+    token = os.environ.get("VIDEO_GEN_API_KEY", "")
+    # Credits scale with the work asked for, so a long or high-resolution scene
+    # costs more than a short one instead of being free.
+    caller = _quota_caller()
+    reservation = quota.reserve("video", caller, quota.video_cost(seconds, width, height),
+                                fingerprint=hashlib.sha256(
+                                    (prompt + f"|{int(width)}x{int(height)}").encode()).hexdigest()[:64])
+    if not reservation.get("granted"):
+        return _quota_error("video", reservation.get("snapshot") or {},
+                            reservation.get("code", "QUOTA_EXCEEDED"),
+                            reservation.get("retry_after", 0))
+    job_id = reservation.get("id")
+    clip, source = None, None
+    t0 = time.time()
+    if worker_url:
+        try:
+            clip, source = _call_video_worker(
+                worker_url, prompt, seconds, width, height, data.get("seed"), token)
+        except Exception as e:  # noqa: BLE001 - keep the reason, try the next host
+            source = f"direct engine error: {e}"
+            clip = None
+    if clip is None and space_url:
+        try:
+            clip, source = _call_space_video(
+                prompt, seconds, width, height, data.get("seed"))
+        except Exception as e:  # noqa: BLE001
+            source = f"hosted engine error: {e}"
+            clip = None
+    if clip is None:
+        quota.settle(job_id, ok=False, refund=True, outcome=str(source)[:200])
+        return jsonify({"error": "Clip generation failed",
+                        "last_failure": source,
+                        "quota": quota.snapshot("video", caller)}), 502
+    if not _clip_bytes(clip):
+        quota.settle(job_id, ok=False, refund=True, outcome="not a video")
+        return jsonify({"error": "Engine replied with something that is not a video",
+                        "detail": f"{source} returned {len(clip)} bytes that are not mp4"}), 502
+    out = Path("/tmp") / f"fenix-clip-{int(time.time())}-{os.getpid()}.mp4"
+    out.write_bytes(clip)
+    quota.settle(job_id, ok=True, outcome=source)
+    return jsonify({"url": f"/clip/{out.name}", "source": source,
+                    "bytes": len(clip), "seconds": round(time.time() - t0, 1),
+                    "clamped": clipped,
+                    "quota": quota.snapshot("video", caller)})
+
+
+@app.route("/clip/<path:name>")
+def serve_clip(name):
+    # Same scoping rule as audio: never hand back an arbitrary /tmp file.
+    base = os.path.basename(name)
+    if not base.startswith("fenix-clip-") or not base.endswith(".mp4"):
+        return jsonify({"error": "Unknown clip"}), 404
+    if not (Path("/tmp") / base).exists():
+        return jsonify({"error": "Clip expired — generate it again"}), 404
+    return send_from_directory("/tmp", base, mimetype="video/mp4")
 
 
 @app.route("/api/free-scaling")
@@ -1226,18 +1636,39 @@ def api_free_scaling():
 def api_music_generator_check():
     """Tell the truth about the audio worker before the user waits on a track."""
     worker_url = os.environ.get("MUSIC_GEN_URL", "").rstrip("/")
+    space_url = bool(music_hosts())
     token = os.environ.get("MUSIC_GEN_API_KEY", "")
     info = {
         "worker_url_set": bool(worker_url),
+        "space_url_set": bool(space_url),
         "shared_secret_set": bool(token),
         "hosted_free_tier_set": bool(os.environ.get("HF_TOKEN")),
         "worker_reachable": False,
         "worker_says": None,
+        "engine_token_set": engine_token_set(),
         "problem": None,
     }
+    if not worker_url and music_hosts():
+        info["hosts"] = [h["url"] for h in music_hosts()]
+        for host in music_hosts():
+            try:
+                info["space_says"] = gradio_client.health(host["url"])
+                info["space_reachable"] = True
+                info["problem"] = ("Hosted engine is reachable — generate a track to "
+                                   "confirm the model loads.")
+                if not os.environ.get("MUSIC_GEN_SPACE_URL"):
+                    info["shared_host"] = True
+                    info["problem"] += (" (shared public host — set "
+                                        "MUSIC_GEN_SPACE_URL for your own)")
+                break
+            except Exception as e:  # noqa: BLE001 - try the next host
+                info["problem"] = f"No audio host answered: {e}"
+        info["ready"] = bool(info.get("space_reachable"))
+        return jsonify(info)
     if not worker_url:
-        info["problem"] = ("MUSIC_GEN_URL is not set. Deploy the audio worker once with: "
-                           "modal deploy fenix-music/generator/worker.py")
+        info["problem"] = ("Audio engine is not connected. Lyrics, audio prompts, chat and the "
+                           "whole video studio work without it — set MUSIC_GEN_URL for a "
+                           "direct engine, or MUSIC_GEN_SPACE_URL for a hosted one.")
         return jsonify(info)
     req = urllib.request.Request(worker_url if worker_url.endswith("/") else worker_url + "/",
                                  headers={"Authorization": "Bearer " + token} if token else {})
@@ -1247,23 +1678,23 @@ def api_music_generator_check():
             info["worker_says"] = r.read(600).decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            info["problem"] = ("Worker is up but rejected the token \u2014 MUSIC_GEN_API_KEY "
+            info["problem"] = ("Engine is up but rejected the token \u2014 MUSIC_GEN_API_KEY "
                                "must match MUSIC_GEN_TOKEN.")
         else:
-            info["problem"] = f"Worker answered HTTP {e.code}."
+            info["problem"] = f"Engine answered HTTP {e.code}."
     except Exception as e:
-        info["problem"] = f"Could not reach the worker: {type(e).__name__}: {e}"
+        info["problem"] = f"Could not reach the engine: {type(e).__name__}: {e}"
     if not info["problem"]:
-        info["problem"] = "Worker is reachable \u2014 generate a track to confirm the GPU model loads."
-    info["ready"] = info["worker_reachable"] and not info["problem"].startswith("Worker is reachable")
+        info["problem"] = "Reachable \u2014 generate a track to confirm the model loads."
+    info["ready"] = info["worker_reachable"] and bool(info["worker_says"])
     return jsonify(info)
 
 
 @app.route("/api/music/generate", methods=["POST"])
 def api_music_generate():
     """{prompt, duration, seed?} → {url}. WAV from the nearest real generator:
-    1) Modal GPU worker (MUSIC_GEN_URL)  2) Hugging Face MusicGen (HF_TOKEN, free).
-    Honest 503 with setup instructions when neither is configured."""
+    1) the connected engine (MUSIC_GEN_URL)  2) the hosted free tier (HF_TOKEN).
+    Honest 503 when neither is configured — the studio still works without audio."""
     data = request.get_json(silent=True) or {}
     prompt = (data.get("prompt") or "").strip()[:800]
     if not prompt:
@@ -1273,7 +1704,33 @@ def api_music_generate():
     except (TypeError, ValueError):
         duration = 20
     worker_url = os.environ.get("MUSIC_GEN_URL", "").rstrip("/")
+    space_url = bool(music_hosts())
     token = os.environ.get("MUSIC_GEN_API_KEY", "")
+    if not (worker_url or space_url or os.environ.get("HF_TOKEN")):
+        # Nothing is connected, so no inference can start and no credit is
+        # spent. The honest 503 below is returned exactly as before.
+        return jsonify({
+            "error": "The audio engine is busy right now",
+            "detail": "No audio engine is connected. Lyrics, audio prompts, chat "
+                      "and the whole video studio work without it.",
+            "generator_required": True,
+            "last_failure": "no engine configured",
+            "worker_url_set": False, "space_url_set": False,
+            "hosted_free_tier_set": False}), 503
+    # Everything above this line is free. From here the engine really runs,
+    # so this is where the credit is taken — never when the screen is opened.
+    caller = _quota_caller()
+    reservation = quota.reserve("music", caller, 0,
+                                fingerprint=hashlib.sha256(prompt.encode()).hexdigest()[:64])
+    if not reservation.get("granted"):
+        return _quota_error("music", reservation.get("snapshot") or {},
+                            reservation.get("code", "QUOTA_EXCEEDED"),
+                            reservation.get("retry_after", 0))
+    job_id = reservation.get("id")
+    # Each stage keeps its own reason. Only the last one used to survive,
+    # so the message a user read described the least unlikely cause instead
+    # of the one that actually stopped the track.
+    failures = []
     t0 = time.time()
     try:
         audio, source = None, None
@@ -1282,34 +1739,47 @@ def api_music_generate():
                 audio, source = _call_music_worker(
                     worker_url, prompt, duration, data.get("seed"), token)
             except Exception as e:
-                source = f"worker error: {e}"
+                failures.append(f"self-hosted engine: {e}")
+        if audio is None and space_url:
+            # The hosted engine. A cold host can refuse the first job, so the
+            # reason it gave is kept rather than replaced with a generic 503.
+            try:
+                audio, source = _call_space_musicgen(prompt, duration, data.get("seed"))
+            except Exception as e:
+                failures.append(f"hosted engine: {e}")
         if audio is None and os.environ.get("HF_TOKEN"):
             try:
                 audio, source = _call_hf_musicgen(prompt, os.environ["HF_TOKEN"])
             except Exception as e:
-                source = f"free tier error: {e}"
+                failures.append(f"hosted free tier: {e}")
         if audio is None:
+            quota.settle(job_id, ok=False, refund=True, outcome=" | ".join(failures)[:200])
             return jsonify({
-                "error": "Audio generation is not connected yet",
-                "detail": "Lyrics, audio prompts and chat all work free right now — only the "
-                          "audio itself needs a one-time GPU worker. Deploy the audio worker once: "
-                          "modal deploy fenix-music/generator/worker.py, then set MUSIC_GEN_URL to the "
-                          "URL that deploy prints (plus MUSIC_GEN_API_KEY if you created a shared "
-                          "secret). Diagnose the wiring at /api/music/generator-check. "
-                          "Alternative: set HF_TOKEN for the hosted free tier.",
+                "error": "The audio engine is busy right now",
+                "detail": ("Every configured host refused this track — usually a "
+                           "spent daily allowance. Lyrics, audio prompts, chat and "
+                           "the whole video studio work without it. "
+                           + ("Set HF_TOKEN for your own allowance."
+                              if not engine_token_set() else
+                              "/api/music/generator-check shows the exact state.")),
                 "generator_required": True,
-                "last_failure": source,
+                "last_failure": " | ".join(failures) or "no engine answered",
                 "worker_url_set": bool(worker_url),
+                "space_url_set": bool(space_url),
                 "hosted_free_tier_set": bool(os.environ.get("HF_TOKEN"))}), 503
         if not _looks_like_audio(audio):
+            quota.settle(job_id, ok=False, refund=True, outcome="not audio")
             return jsonify({"error": "Generator replied with something that is not audio",
                             "detail": f"{source} returned {len(audio)} bytes that are not WAV/MP3/OGG",
                             "generator_required": True}), 502
         out = Path("/tmp") / f"fenix-music-{int(time.time())}-{os.getpid()}.wav"
         out.write_bytes(audio)
+        quota.settle(job_id, ok=True, outcome=source)
         return jsonify({"url": f"/audio/{out.name}", "source": source,
-                        "bytes": len(audio), "seconds": round(time.time() - t0, 1)})
+                        "bytes": len(audio), "seconds": round(time.time() - t0, 1),
+                        "quota": quota.snapshot("music", caller)})
     except Exception as e:
+        quota.settle(job_id, ok=False, refund=True, outcome=f"exception: {e}"[:200])
         return jsonify({"error": f"Generation failed: {e}"}), 502
 
 
@@ -1330,11 +1800,22 @@ def serve_audio(name):
 
 @app.route("/api/video/script", methods=["POST"])
 def api_video_script():
-    """{topic, language, style} → {title, scenes, brain}."""
+    """{topic, language, style, format?, duration?} → {title, scenes, format, brain}.
+
+    A format is a complete directing brief (see fenix-video/api/brain.py). The
+    director writes to it; nothing else in the request changes meaning.
+    """
     data = request.get_json(silent=True) or {}
     topic = (data.get("topic") or "").strip()[:400]
     language = (data.get("language") or "English").strip()[:30]
     style = (data.get("style") or "cinematic, moody, neon").strip()[:80]
+    # A format can carry its own grade; the client normally sends it, but a
+    # bare API call should still get the right look instead of the default.
+    fmt = str(data.get("format") or "").strip().lower()[:20] or None
+    if fmt:
+        _spec = _video_formats().get(fmt)
+        if _spec and not data.get("style"):
+            style = _spec["style"]
     try:
         temperature = float(data.get("temperature") or 0.9)
     except (TypeError, ValueError):
@@ -1345,7 +1826,7 @@ def api_video_script():
             wanted = int(data.get("duration") or 25)
         except (TypeError, ValueError):
             wanted = 25
-        script = vb.write_script(language, style, topic, temperature, wanted)
+        script = vb.write_script(language, style, topic, temperature, wanted, fmt)
         active = vb.VIDEO_BRAIN_MODEL if vb.VIDEO_BRAIN_URL else ("fenix-core" if vb.CORE_BRAIN_URL else "gemini")
     except Exception:
         return jsonify({"error": "Video brain unavailable right now"}), 503
@@ -1356,7 +1837,66 @@ def api_video_script():
     return jsonify({**script, "brain": "fenix-video"})
 
 
-@app.route("/api/video/scene-image")
+def _video_formats() -> dict:
+    """The format catalog, read from the director so there is one source."""
+    try:
+        vb = _video_brain()
+        return dict(getattr(vb, "FORMATS", {}) or {})
+    except Exception:
+        return {}
+
+
+@app.route("/api/video/formats", methods=["GET"])
+def api_video_formats():
+    """What a user can pick. Public, static, and costs nothing to fetch."""
+    out = []
+    for key, spec in _video_formats().items():
+        out.append({
+            "id": spec.get("id", key),
+            "label": spec.get("label", key.title()),
+            "blurb": spec.get("blurb", ""),
+            "audience": spec.get("audience", ""),
+            "style": spec.get("style", ""),
+            "camera": spec.get("camera", ""),
+            "ratio": spec.get("ratio", "9:16"),
+            "duration": int(spec.get("duration", 25) or 25),
+            "example": spec.get("example", ""),
+        })
+    if not out:
+        return jsonify({"error": "Video formats unavailable", "formats": []}), 503
+    return jsonify({"formats": out, "default": "explain"})
+
+
+@app.route("/api/video/ideas", methods=["GET"])
+def api_video_ideas():
+    """Starting points for a format. Free, and it costs no brain quota.
+
+    The list is static and the rotation is a hash of the caller, so this route
+    never touches the director — which is the scarce resource. Asking the
+    brain for three ideas would spend the tightest budget in Fenix on the
+    least important screen in the studio.
+    """
+    try:
+        vb = _video_brain()
+        fmt = (request.args.get("format") or "").strip().lower()[:20] or None
+        try:
+            count = int(request.args.get("count") or 3)
+        except (TypeError, ValueError):
+            count = 3
+        # The rotation key is derived server-side from the same identity the
+        # quota uses, so it is per-account and never taken from a URL the
+        # client can edit to see a different list on purpose.
+        rotate = _quota_caller() + "|" + (request.args.get("seed") or "")
+        out = vb.ideas(fmt, count, rotate)
+        spec = vb.get_format(fmt)
+        return jsonify({"format": spec["id"], "ideas": out, "count": len(out),
+                        "brain_used": False})
+    except Exception as e:  # noqa: BLE001 - the studio must still work
+        return jsonify({"error": "Suggestions unavailable", "ideas": [],
+                        "detail": "Type your idea instead — everything else works."}), 200
+
+
+@app.route("/api/video/scene-image")  # stills are cheap: never metered
 def api_video_scene_image():
     """Free scene image proxy — works without any key. Provider chain:
     1) Pollinations (POLLINATIONS_API_KEY optional — better quality when set)

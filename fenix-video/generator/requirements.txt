@@ -1,0 +1,16 @@
+# Fenix Video text-to-video engine dependencies.
+#
+# torch: pick the CUDA build your host has, or the CPU build with
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# The 1.3B checkpoint needs a real GPU; CPU will not produce a clip in a
+# usable amount of time.
+torch==2.7.1
+diffusers>=0.36.0
+transformers>=4.51
+accelerate
+imageio[ffmpeg]
+huggingface-hub
+fastapi
+uvicorn
+
+# ffmpeg binary (apt-get install ffmpeg) is required by the mp4 exporter.

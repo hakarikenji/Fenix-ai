@@ -79,6 +79,7 @@ api/
   memory.py              Structured memory store (6 categories, CRUD + export)
   evolution.py           Evidence-based evolution profile + log
   research.py            Serper web search + Gemini synthesis (honest when unconfigured)
+  quota.py               Server-side generation allowance for Music + Video (FREE-GENERATION-ALLOWANCE.md)
 web/
   index.html             App UI (PWA + Capacitor APK)
   config.js              The ONLY config file: server URL for the APK (non-secret)
@@ -96,6 +97,13 @@ Server environment variables (users never see or enter these):
 | `SANDBOX_URL` | optional | Isolated code-execution service URL; Fenix never executes generated code in-process |
 | `SANDBOX_API_KEY` | optional | Server-only credential for the isolated sandbox provider |
 | `SANDBOX_TIMEOUT_MS` | optional | Maximum execution budget, capped at 10 seconds (default `5000`) |
+| `MUSIC_DAILY_CREDITS` | optional | Free audio generations per window (default `3`) |
+| `VIDEO_DAILY_CREDITS` | optional | Free motion scenes per window (default `5`) |
+| `VIDEO_MAX_DURATION_SECONDS` | optional | Hard ceiling on one rendered scene (default `10`) |
+| `QUOTA_ENABLED` | optional | `0` turns generation metering off entirely |
+
+Chat, research, memory, lyrics and the whole storyboard half of the video studio
+are never metered. See **[FREE-GENERATION-ALLOWANCE.md](FREE-GENERATION-ALLOWANCE.md)**.
 
 On Freebuff: **Settings → Environment** for the sandbox/preview, and **Deploy → Environment** for production hosting. The key is read by the server only — it never reaches any client.
 

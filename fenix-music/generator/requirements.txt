@@ -1,11 +1,24 @@
-# Fenix Music audio worker dependencies.
-# The worker pins its own image (see worker.py); this file exists so the same
-# set can be installed locally or on any other host.
+# Fenix Music audio engine dependencies.
 #
-# Deliberately minimal: the model ships its own transformers implementation, so
-# audiocraft / ffmpeg / xformers are not needed and are the usual cause of
-# install failures.
-torch>=2.3
-transformers>=4.51
-numpy
+# The engine (worker.py) has no framework dependency and no ffmpeg. It runs
+# unchanged on Modal, a Hugging Face Space, a VPS, or a local machine — only
+# this list has to be installed.
+#
+# torch/torchaudio: pick the CUDA build your host has, or the CPU build with
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+torch==2.7.1
+torchaudio==2.7.1
+transformers>=5.8.0
+numpy>=2.2.6
+einops>=0.8.2
+einops-exts>=0.0.4
+soundfile>=0.13.1
+huggingface-hub>=1.7.1
 fastapi
+uvicorn
+
+# The open-weight audio engine itself. Not on PyPI, so it installs from source.
+git+https://github.com/Stability-AI/stable-audio-3.git
+
+# Optional fallback engine, only needed if you set MUSIC_GEN_ENGINE=musicgen.
+# transformers already pulls it in, so nothing extra is required.

@@ -155,6 +155,164 @@ SCHEMA_RULES = (
 )
 
 
+# ---------------------------- Video formats ---------------------------- #
+# Each one is a complete directing brief: the shape of the film, how the
+# narration should read, and what the camera and grade should feel like.
+# They exist so a user picks an outcome ("teach me this", "show me the
+# build") instead of assembling six dropdowns, and so the free tier's short
+# daily video budget goes to something that is actually watchable.
+FORMATS: dict[str, dict] = {
+    "explain": {
+        "id": "explain",
+        "label": "Explainer",
+        "blurb": "Teach one idea fast — hook, three beats, payoff.",
+        "audience": "developers",
+        "example": "e.g. why a race condition only shows up in production, and the one-line fix",
+        "style": "clean studio light, soft shadows, shallow depth of field",
+        "camera": "slow dolly-in, composed",
+        "ratio": "16:9",
+        "duration": 45,
+        "direction": (
+            "FORMAT: Explainer. Open on the problem in the first shot — no logo, "
+            "no greeting. Take exactly one idea and land it. Structure: a hook "
+            "shot that shows the pain, two or three shots that each make one "
+            "point, and a final shot that shows the result working. Narration "
+            "is direct and concrete: name the thing, say why it matters, say "
+            "what to do. No filler, no 'in this video I will', no hype words. "
+            "Every visual must be something you could actually film."
+        ),
+    },
+    "ship": {
+        "id": "ship",
+        "label": "Build log",
+        "blurb": "Show the work — what broke, what changed, what it looks like now.",
+        "audience": "developers",
+        "example": "e.g. day 4 of shipping an app: the migration that broke prod at 2am",
+        "style": "dark desk, warm monitor glow, close focus on hands and screen",
+        "camera": "static tripod, composed",
+        "ratio": "16:9",
+        "duration": 45,
+        "direction": (
+            "FORMAT: Build log. This is about the making, not the theory. Open "
+            "on the state before the work — a broken screen, a failing test, a "
+            "rough first version. Then the change, shown as a before and an "
+            "after rather than explained. Close on the finished thing running. "
+            "Narration is a calm first-person account: what I tried, what the "
+            "error actually said, what fixed it. Honest about the failed "
+            "attempts — they are the interesting part. Never invent a benchmark "
+            "or a number that was not given."
+        ),
+    },
+    "mood": {
+        "id": "mood",
+        "label": "Mood film",
+        "blurb": "Pure atmosphere — for a page, a drop, a world with no talking.",
+        "audience": "creators",
+        "example": "e.g. a rain-soaked rooftop at dusk, one streetlight, a city that never sleeps",
+        "style": "cinematic, moody, volumetric light, deep shadows",
+        "camera": "aerial drone sweep",
+        "ratio": "9:16",
+        "duration": 25,
+        "direction": (
+            "FORMAT: Mood film. There is no teaching here. The images carry it. "
+            "Slow, deliberate shots with strong composition and one clear light "
+            "source; let each frame sit. Narration is optional — if you write "
+            "it, keep it to a single short line per shot at most, or leave 'vo' "
+            "empty and let the visuals run. Build a visual through-line so the "
+            "film feels like one place, not a mood-board."
+        ),
+    },
+}
+
+DEFAULT_FORMAT = "explain"
+
+
+def get_format(fmt: str | None) -> dict:
+    """The named format, or the default. Never raises on a bad id."""
+    key = str(fmt or "").strip().lower()
+    return FORMATS.get(key) or FORMATS[DEFAULT_FORMAT]
+
+
+# ---------------------------- Idea bank ---------------------------- #
+# Starting points, written by hand, one list per format. They are deliberately
+# specific: a vague prompt gets a vague film, and the whole point of the
+# suggestion button is to save the user from facing a blank textarea.
+#
+# This is a static list on purpose. Asking the brain for ideas would spend the
+# scarcest resource in Fenix on the least important screen in the studio.
+IDEAS: dict[str, list[str]] = {
+    "explain": [
+        "why a race condition only shows up in production, and the one-line fix",
+        "what a race condition actually is, told in 45 seconds",
+        "why your database migration locked a table for 4 minutes",
+        "the difference between an error and a warning, and why it matters",
+        "how caching works, explained without a single diagram",
+        "why 'it works on my machine' is a real engineering problem",
+        "what an API rate limit is and how to design around it",
+        "the bug that only appears every 1000 requests",
+        "how a load balancer decides which server gets your request",
+        "why feature flags are better than branching",
+        "what a deadlock is, and how you write code that cannot cause one",
+        "how to read a stack trace top-to-bottom in 30 seconds",
+        "why your app is slow: the latency budget",
+        "the difference between authentication and authorisation",
+        "what idempotency means and why payments need it",
+    ],
+    "ship": [
+        "day 4 of shipping an app: the migration that broke prod at 2am",
+        "the rewrite I almost shipped, and the bug that stopped me",
+        "going from prototype to real users in one week",
+        "the first outage of my side project, explained honestly",
+        "cutting my build time in half and what it cost",
+        "the feature I deleted instead of building",
+        "shipping something I was not proud of, and why I did it anyway",
+        "week 1 vs week 12: the same product, side by side",
+        "the bug report that turned into the best feature I ever made",
+        "what I learned from watching 500 people use my app",
+        "the refactor that made everything worse",
+        "going from local to deployed: the whole list of what broke",
+        "my app's first real user, and the feedback that hurt",
+        "the week I nearly quit the project",
+    ],
+    "mood": [
+        "a rain-soaked rooftop at dusk, one streetlight, a city that never sleeps",
+        "an empty train carriage at 5am, gold light through the windows",
+        "a night market after the crowds leave, steam still rising",
+        "a lone figure crossing a long bridge in the fog",
+        "the last page of a letter, a desk, evening light",
+        "neon reflections in a puddle, a city that does not know it is beautiful",
+        "a workshop at dawn, sawdust in the light, tools put away",
+        "rain on a window, the room behind it out of focus",
+        "a road between two mountains just after the snow stops",
+        "a laundromat at 3am, fluorescent light, one person waiting",
+        "desert dunes at the exact moment the sun touches the horizon",
+        "an old cinema, the last reel, dust in the projector beam",
+    ],
+}
+
+
+def ideas(fmt: str | None, count: int = 3, rotate: str = "") -> list[str]:
+    """Up to `count` starting points for a format, rotated by `rotate`.
+
+    `rotate` is any stable per-caller string. The same caller keeps the same
+    set until the app asks for a different seed, so the list does not shuffle
+    under them between two visits — but two people never start from the same
+    three ideas.
+    """
+    spec = get_format(fmt)
+    bank = IDEAS.get(spec["id"]) or IDEAS["explain"]
+    n = max(1, min(int(count or 3), len(bank)))
+    if len(bank) <= n:
+        return list(bank[:n])
+    # A stable hash, not a random one: the same caller must see the same
+    # suggestions on every load without the server remembering anyone.
+    seed = 0
+    for ch in str(rotate or spec["id"]):
+        seed = (seed * 31 + ord(ch)) & 0xFFFFFFFF
+    start = seed % len(bank)
+    return [bank[(start + i) % len(bank)] for i in range(n)]
+
+
 def scene_budget(duration: int) -> tuple[int, int, str]:
     """Work out how many scenes and how long each one should be.
 
@@ -173,17 +331,24 @@ def scene_budget(duration: int) -> tuple[int, int, str]:
     return count, per, rule
 
 
-def script_system(language: str, style: str, topic: str, duration: int = 25) -> str:
+def script_system(language: str, style: str, topic: str, duration: int = 25,
+                  fmt: str | None = None) -> str:
     _count, _per, _rule = scene_budget(duration)
+    spec = get_format(fmt)
+    # The format's own duration wins unless the user asked for something
+    # specific — the preset is the default, not an override.
     return (
         f"{PERSONA}\n{SCHEMA_RULES.replace('{scene_rule}', _rule)}\n"
+        f"{spec['direction']}\n"
+        f"Camera language for this format: {spec['camera']}.\n"
         f"User language for narration/title: {language}. "
         f"Visual style: {style}. Video idea: {topic or 'surprise me with your best idea'}."
     )
 
 
 def write_script(language: str, style: str, topic: str,
-                 temperature: float = 0.9, duration: int = 25) -> dict:
+                 temperature: float = 0.9, duration: int = 25,
+                 fmt: str | None = None) -> dict:
     """سيناريو كامل عبر سلسلة العقول ثم Gemini. يرفع آخر خطأ إذا فشل الكل.
 
     duration is the target film length in seconds. It decides the scene count
@@ -192,7 +357,8 @@ def write_script(language: str, style: str, topic: str,
     undershoots instead of silently shipping a 20s cut of a 90s brief.
     """
     count, per, _rule = scene_budget(duration)
-    system = script_system(language, style, topic, duration)
+    spec = get_format(fmt)
+    system = script_system(language, style, topic, duration, fmt)
     user = f"Write the video script JSON for: {topic or 'your best idea'}."
     raw = _brains_call(system, user, temperature)
     if not raw:
@@ -207,6 +373,7 @@ def write_script(language: str, style: str, topic: str,
     if not raw:
         raise RuntimeError("Director unavailable right now — " + " | ".join(_errors))
     out = parse_script(raw)
+    out["format"] = spec["id"]
     # A director that ignored the budget should not silently ship a 12s film
     # for a 90s request: pad the cut to the requested length by holding shots.
     target = max(10, min(int(duration or 25), 600))

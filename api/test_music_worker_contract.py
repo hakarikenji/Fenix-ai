@@ -14,6 +14,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api"))
+# This suite is about the engine contract, not the allowance. Metering is
+# exercised on its own in api/test_quota*.py, so it is off here or the repeated
+# stub calls would spend a real (shared, loopback) allowance and each later
+# check would be refused for the wrong reason.
+os.environ["QUOTA_ENABLED"] = "0"
 import server as s  # noqa: E402
 
 FAKE_URL = None
@@ -104,13 +109,14 @@ r5 = c.post("/api/music/generate", json={"prompt": "x", "duration": 5})
 check("dead worker -> 503", r5.status_code == 503, str(r5.status_code))
 d5 = r5.get_json()
 check("503 names the real failure", bool(d5.get("last_failure")), str(d5.get("last_failure"))[:90])
-check("503 names the RIGHT file", "generator/worker.py" in d5.get("detail", ""),
-      "worker.py mentioned" if "generator/worker.py" in d5.get("detail", "") else "WRONG FILE")
+_msg = f"{d5.get('error', '')} {d5.get('detail', '')}".lower()
+check("503 points at the audio engine", "audio engine" in _msg, _msg[:80])
 check("503 does NOT point at the lyrics brain",
       "music_brain_modal" not in d5.get("detail", ""), "ok")
 
-# 5. no worker configured at all
+# 5. no worker configured at all (empty string turns the shared host off)
 s.os.environ.pop("MUSIC_GEN_URL", None)
+s.os.environ["MUSIC_GEN_SPACE_URL"] = ""
 r6 = c.post("/api/music/generate", json={"prompt": "x", "duration": 5})
 check("unconfigured -> 503", r6.status_code == 503, str(r6.status_code))
 
@@ -120,9 +126,17 @@ r7 = c.get("/api/music/generator-check")
 d7 = r7.get_json()
 check("generator-check reaches the worker", d7.get("worker_reachable") is True, str(d7)[:100])
 s.os.environ.pop("MUSIC_GEN_URL", None)
+s.os.environ["MUSIC_GEN_SPACE_URL"] = ""
 r8 = c.get("/api/music/generator-check")
-check("generator-check explains when unset",
-      "worker.py" in (r8.get_json().get("problem") or ""), str(r8.get_json().get("problem"))[:80])
+check("generator-check explains when off",
+      "audio engine" in (r8.get_json().get("problem") or "").lower(),
+      str(r8.get_json().get("problem"))[:80])
+
+# 7. with nothing set at all, the app still has a working engine
+s.os.environ.pop("MUSIC_GEN_SPACE_URL", None)
+d = c.get("/api/music/generator-check").get_json()
+check("a default engine is configured", d.get("space_url_set") is True, str(d)[:90])
+check("the default is labelled a shared host", d.get("shared_host") is True, str(d.get("problem"))[:90])
 
 srv.shutdown()
 print("\nALL CONTRACT TESTS PASSED" if ok else "\nSOME TESTS FAILED")

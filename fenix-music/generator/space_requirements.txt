@@ -1,0 +1,17 @@
+# Fenix Music Engine — Space dependencies.
+#
+# A hosted GPU Space needs a CUDA build of torch. Pick the wheel index that
+# matches your Space if the default is wrong.
+torch==2.7.1
+torchaudio==2.7.1
+transformers>=5.8.0
+numpy>=2.2.6
+einops>=0.8.2
+einops-exts>=0.0.4
+soundfile>=0.13.1
+huggingface-hub>=1.7.1
+gradio
+spaces
+
+# The open-weight audio engine itself. Not on PyPI, so it installs from source.
+git+https://github.com/Stability-AI/stable-audio-3.git

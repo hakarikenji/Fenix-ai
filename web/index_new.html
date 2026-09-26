@@ -358,6 +358,38 @@
   .comp-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .comp-btn.rec { color: var(--danger); border-color: var(--danger); background: rgba(239, 68, 68, .08); animation: pulse 1.1s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .35); } 55% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); } }
+  /* Idea suggestions: shortcuts, not a menu. The textarea is never replaced. */
+  .idea-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  .idea-row .sub { margin:0; flex:0 0 auto; }
+  .idea-chip { font-size:12.5px; padding:6px 12px; border-radius:99px; cursor:pointer;
+    border:1px solid var(--line); background: var(--surface-2); color: var(--text-2);
+    transition: all .15s; text-align:start; }
+  .idea-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .idea-chip.more { border-style:dashed; opacity:.85; }
+  .idea-chip.picked { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  /* Format picker — the first question is "what kind of video", not "which dropdown". */
+  .fmt-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
+  .fmt-card { text-align:start; cursor:pointer; padding:13px 14px; border-radius:14px;
+    border:1px solid var(--line); background: var(--surface-2); color: var(--text);
+    display:flex; gap:11px; align-items:flex-start; transition: all .16s; }
+  .fmt-card:hover { border-color: var(--accent); background: var(--surface); transform: translateY(-1px); }
+  .fmt-card.on { border-color: var(--accent); background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent) inset; }
+  .fmt-ic { width:32px; height:32px; flex:0 0 32px; border-radius:9px; display:grid;
+    place-items:center; font-size:13px; color: var(--accent); background: var(--surface); }
+  .fmt-card.on .fmt-ic { background: var(--accent); color: #fff; }
+  .fmt-name { font-weight:650; font-size:14px; display:flex; align-items:center; gap:7px; }
+  .fmt-tag { font-size:10px; letter-spacing:.04em; text-transform:uppercase; opacity:.6;
+    border:1px solid var(--line); border-radius:99px; padding:1px 7px; }
+  .fmt-blurb { font-size:12.5px; color: var(--text-3); margin-top:3px; line-height:1.45; }
+  /* Usage indicator: a status line, never a warning sign. */
+  .quota-line { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:12.5px; color: var(--text-3); margin: 0 0 12px;
+    padding: 8px 12px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--line); }
+  .quota-line i { color: var(--accent); font-size: 11px; }
+  .quota-line .q-sub { color: var(--text-3); opacity: .78; }
+  .quota-line.q-out { background: var(--accent-soft); }
   .model-tag { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 0 6px; }
   .model-tag.code { color: var(--gold); }
   .send-btn {
@@ -1101,6 +1133,7 @@
               <label for="mu-lyrics-custom">Custom lyrics (optional — overrides AI lyrics)</label>
               <textarea id="mu-lyrics-custom" placeholder="[Verse]&#10;write your own lines here…" style="min-height:110px"></textarea>
             </div>
+            <div class="quota-line hide" id="music-quota"></div>
             <div class="cta-row">
               <button class="btn-main" id="mu-btn-lyrics"><i class="fa-solid fa-feather"></i>Write lyrics</button>
               <button class="btn-ghost" id="mu-btn-prompt"><i class="fa-solid fa-wave-square"></i>Build audio prompt</button>
@@ -1154,6 +1187,14 @@
             <span class="pipe-step" data-step="assets"><i class="fa-solid fa-photo-film"></i>Assets</span>
             <span class="pipe-step" data-step="voice"><i class="fa-solid fa-microphone-lines"></i>Voice</span>
             <span class="pipe-step" data-step="render"><i class="fa-solid fa-film"></i>Render</span>
+          </div>
+
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-clapperboard"></i></span>What kind of video?</h2>
+            <p class="sub">Pick a format and the studio sets the shape, the look and the length for you. Every setting below stays editable.</p>
+            <div class="fmt-grid" id="vd-formats">
+              <div class="sub" style="grid-column:1/-1">Loading formats…</div>
+            </div>
           </div>
 
           <div class="card">
@@ -1234,6 +1275,10 @@
               <label for="vd-topic">Video idea</label>
               <textarea id="vd-topic" placeholder="e.g. the story of a music band rising from the neighborhood to the stage…" maxlength="400"></textarea>
             </div>
+            <div class="idea-row">
+              <span class="sub">Need a start?</span>
+              <span id="vd-ideas" style="display:contents"></span>
+            </div>
             <div class="cta-row">
               <button class="btn-main" id="vd-btn-script"><i class="fa-solid fa-scroll"></i>Write script</button>
               <button class="btn-ghost hide" id="vd-btn-rewrite"><i class="fa-solid fa-rotate"></i>Regenerate</button>
@@ -1245,8 +1290,15 @@
           <div class="card hide" id="vd-scenes-card">
             <h2><span class="ico"><i class="fa-solid fa-images"></i></span>Storyboard <span class="badge" id="vd-brain"></span></h2>
             <p class="sub" id="vd-scenes-title"></p>
+            <div class="quota-line hide" id="video-quota"></div>
+            <p class="sub" id="vd-motion-note" style="margin-top:-6px">
+              Scenes render as stills with a slow push-in and a crossfade. Press
+              <b>Real motion</b> to replace each scene with a generated moving clip —
+              it takes about a minute per scene.
+            </p>
             <div id="vd-scenes"></div>
             <div class="cta-row">
+              <button class="btn-ghost" id="vd-btn-clips"><i class="fa-solid fa-clapperboard"></i>Real motion</button>
               <button class="btn-main btn-gold" id="vd-btn-render"><i class="fa-solid fa-film"></i>Render video</button>
               <div class="fld" style="min-width:190px">
                 <label for="vd-music-src">Background music</label>
@@ -1614,6 +1666,58 @@ const API_BASE = (IS_NATIVE
   ? (((window.FENIX_SERVER || window.PHOENIX_SERVER) || '') + '').replace(/\/+$/, '')
   : '');
 const apiUrl = (p) => API_BASE + p;
+
+/* ================= Generation allowance (server is the authority) =================
+   The browser only renders what /api/quota reports. Nothing here counts, decides
+   or grants — refreshing, signing out or switching device changes nothing. */
+const QUOTA = { music: null, video: null, timer: null };
+
+function quotaHuman(s) {
+  s = Math.max(0, Math.round(s || 0));
+  if (s <= 0) return 'a moment';
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.round(s / 60) + ' min';
+  var h = s / 3600;
+  if (h < 24) return (h < 1.5 ? '1' : Math.round(h)) + 'h';
+  return Math.round(h / 24) + 'd';
+}
+function quotaLabel(f) { return f === 'music' ? 'generation' : 'motion scene'; }
+function paintQuota(f) {
+  var q = QUOTA[f], el = document.getElementById(f + '-quota');
+  if (!el) return;
+  if (!q || q.limit <= 0) { el.textContent = ''; el.classList.add('hide'); return; }
+  el.classList.remove('hide');
+  var left = q.remaining;
+  if (left > 0) {
+    el.innerHTML = '<i class="fa-solid fa-gauge-high"></i> ' + left + ' / ' + q.limit
+      + ' free ' + quotaLabel(f) + (q.limit === 1 ? '' : 's') + ' left today'
+      + ' <span class="q-sub">· resets in ' + quotaHuman(q.reset_in) + '</span>';
+  } else {
+    el.innerHTML = '<i class="fa-solid fa-mug-hot"></i> Free generation limit reached'
+      + ' <span class="q-sub">· your next ' + quotaLabel(f) + ' is ready in '
+      + quotaHuman(q.reset_in) + '</span>';
+  }
+  el.classList.toggle('q-out', left <= 0);
+}
+async function loadQuota() {
+  try {
+    var r = await fetch(apiUrl('/api/quota'), { headers: authHeaders() });
+    if (!r.ok) return;
+    var d = await r.json();
+    if (d && d.features) {
+      QUOTA.music = d.features.music; QUOTA.video = d.features.video;
+      paintQuota('music'); paintQuota('video');
+    }
+  } catch (e) { /* the studio still works without the indicator */ }
+}
+function applyQuota(f, snap) { if (snap && snap.limit >= 0) { QUOTA[f] = snap; paintQuota(f); } }
+/* Turns a structured refusal into one calm sentence, never an error dump. */
+function quotaRefusal(f, d) {
+  applyQuota(f, (d && d.feature) ? d : null);
+  var wait = (d && (d.reset_in || d.retry_after)) || 0;
+  return (d && d.message) || ('Free generation limit reached \u00b7 your next '
+    + quotaLabel(f) + ' is ready in ' + quotaHuman(wait));
+}
 const canUseServer = () => !IS_NATIVE || !!API_BASE;
 
 /* ============================ i18n ============================ */
@@ -2045,7 +2149,7 @@ function streamAI(message, history, atts, onDelta) {
       signal: ctrl.signal,
     }).then(async (res) => {
       if (!res.ok || !res.body) {
-        let msg = 'Server unreachable (HTTP ' + res.status + ')';
+        let msg = 'The server answered with HTTP ' + res.status;
         try { const d = await res.json(); if (d.error) msg = d.error; } catch (e) {}
         throw new Error(msg);
       }
@@ -2082,8 +2186,13 @@ async function callAI(message, history, atts) {
     body: JSON.stringify({ message, history, attachments: atts, model: SET.model, style: SET.style, projectId: activeProjectId || undefined }),
   });
   const raw = await res.text();
-  let data; try { data = JSON.parse(raw); } catch (e) { throw new Error('Server unreachable (HTTP ' + res.status + ')'); }
-  if (!res.ok) throw new Error(data.error || 'Unknown error');
+  let data; try { data = JSON.parse(raw); } catch (e) {
+    // A non-JSON body means the server answered but not with a chat reply.
+    // "Unreachable" was the wrong word for every one of these, so the status
+    // is reported and the real cause is left to the server's own log.
+    throw new Error('The server answered with HTTP ' + res.status + ' instead of a reply');
+  }
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
   lastSources = data.sources || null;
   lastBrain = data.brain || null;
   return data.reply;
@@ -2594,6 +2703,21 @@ async function loadBrains() {
 }
 $('#md-refresh').addEventListener('click', () => { BRAINS = null; loadBrains(); showToast('Brain status refreshed'); });
 
+/* Allowance: read once on boot, then keep the countdown honest. The server is
+   re-read after every generation, so the numbers can never drift into fiction. */
+loadQuota();
+if (QUOTA.timer) clearInterval(QUOTA.timer);
+QUOTA.timer = setInterval(() => {
+  // Only the countdown moves locally; the allowance itself always comes from
+  // the server, and a full refresh happens every few minutes.
+  ['music', 'video'].forEach((f) => {
+    var q = QUOTA[f]; if (!q) return;
+    q.reset_in = Math.max(0, (q.reset_at * 1000 - Date.now()) / 1000);
+    paintQuota(f);
+  });
+}, 30000);
+setInterval(loadQuota, 5 * 60 * 1000);
+
 /* ============================ Prompt Library ============================ */
 async function loadLibrary() {
   const list = $('#lib-list'); if (!list) return;
@@ -2721,17 +2845,23 @@ async function startMusicGeneration(s, seed) {
     || ($('#mu-out').textContent || '').slice(0, 600)
     || muPromptFromSettings(s);
   const btn = $('#mu-btn-generate'); btn.disabled = true;
-  showState('mu-state', '🎹 Generating audio… this needs a GPU worker or HF token on the server.', 'ok');
+  showState('mu-state', '🎹 Generating audio… composing your track.', 'ok');
   try {
     const r = await fetch(apiUrl('/api/music/generate'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({ prompt, duration: s.duration, seed: seed || null }),
     });
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      showState('mu-state', (d.error || 'Generation failed') + (d.detail ? ' — ' + d.detail : ''), 'err');
+      if (d && (d.error === 'QUOTA_EXCEEDED' || d.code === 'COOLDOWN')) {
+        showState('mu-state', quotaRefusal('music', d), 'warn');
+        return;
+      }
+      showState('mu-state', (d.error || 'Generation failed') + '\n' +
+        (d.detail || MUSIC_ENGINE_HINT), 'err');
       return;
     }
+    applyQuota('music', d.quota);
     const track = {
       id: Date.now().toString(36), title: (s.topic || s.genre).slice(0, 40) || 'Untitled',
       url: d.url, prompt, settings: s, date: new Date().toISOString(), dur: s.duration + 's',
@@ -2808,7 +2938,7 @@ function renderTracks() {
 }
 
 /* ============================ Fenix Video studio ============================ */
-const VD = { scenes: [], title: '', images: {}, ratio: '9:16', quality: 768, music: null, musicPending: false, duration: 25, camera: 'handheld, raw energy', topic: '', style: '' };
+const VD = { scenes: [], title: '', images: {}, ratio: '9:16', quality: 768, music: null, musicPending: false, duration: 25, camera: 'handheld, raw energy', topic: '', style: '', format: '' };
 const RATIO_DIMS = { '9:16': [720, 1280], '16:9': [1280, 720], '1:1': [900, 900], '4:5': [864, 1080] };
 const vdRatio = $('#vd-ratio');
 if (vdRatio) vdRatio.addEventListener('change', () => {
@@ -2829,6 +2959,94 @@ function vdPipe(step) {
   });
 }
 vdPipe('idea');
+/* ---------------- Video formats ----------------
+   The catalog comes from the server, so the client never invents a format the
+   director does not know how to write. */
+const VD_FORMATS = { list: [], byId: {} };
+function vdApplyFormat(id) {
+  var f = VD_FORMATS.byId[id]; if (!f) return;
+  var setSel = (sel, val) => { var el = $(sel); if (!el) return;
+    var opt = Array.from(el.options || []).find(function (o) { return o.value === String(val); });
+    if (opt) el.value = opt.value;
+  };
+  // Only set what the UI actually offers, so a future format cannot silently
+  // put the studio into a state it cannot show.
+  setSel('#vd-ratio', f.ratio);
+  setSel('#vd-style', f.style);
+  setSel('#vd-camera', f.camera);
+  setSel('#vd-duration', f.duration);
+  var topic = $('#vd-topic');
+  if (topic && !topic.value.trim()) topic.placeholder = f.example || 'Describe your video…';
+  VD.format = f.id;
+  document.querySelectorAll('#vd-formats .fmt-card').forEach(function (c) {
+    c.classList.toggle('on', c.dataset.fmt === f.id);
+  });
+  const n = $('#vd-format-note');
+  if (n) n.textContent = 'Format: ' + f.label + ' — ' + f.blurb;
+  // Suggestions belong to the format; the previous ones would mislead.
+  if (typeof loadIdeas === 'function') loadIdeas(false);
+}
+async function loadVideoFormats() {
+  var box = $('#vd-formats'); if (!box) return;
+  try {
+    var r = await fetch(apiUrl('/api/video/formats'));
+    var d = await r.json();
+    var list = (d && d.formats) || [];
+    if (!list.length) throw new Error('none');
+    VD_FORMATS.list = list;
+    list.forEach(function (f) { VD_FORMATS.byId[f.id] = f; });
+    box.innerHTML = list.map(function (f) {
+      return '<button type="button" class="fmt-card' + (f.id === (d.default || 'explain') ? ' on' : '')
+        + '" data-fmt="' + escHtml(f.id) + '">'
+        + '<span class="fmt-ic"><i class="fa-solid '
+        + ({ explain: 'fa-graduation-cap', ship: 'fa-code', mood: 'fa-cloud-moon' }[f.id] || 'fa-film')
+        + '"></i></span><span><span class="fmt-name">' + escHtml(f.label)
+        + '<span class="fmt-tag">' + escHtml(f.audience) + '</span></span>'
+        + '<span class="fmt-blurb">' + escHtml(f.blurb) + '</span></span></button>';
+    }).join('');
+    box.querySelectorAll('.fmt-card').forEach(function (c) {
+      c.addEventListener('click', function () { vdApplyFormat(c.dataset.fmt); });
+    });
+    vdApplyFormat(d.default || (list[0] && list[0].id));
+  } catch (e) {
+    box.innerHTML = '<p class="sub" style="grid-column:1/-1">Formats are unavailable right now — the studio still works, just fill the settings below.</p>';
+  }
+}
+loadVideoFormats();
+
+/* ---------------- Idea suggestions ----------------
+   Free by design: the route answers from a curated list, so a user who does
+   not know what to film never has to spend brain quota finding out. */
+let VD_IDEAS = { key: '', shown: [] };
+async function loadIdeas(force) {
+  var box = $('#vd-ideas'); if (!box) return;
+  const fmt = VD.format || 'explain';
+  // Already loaded for this format — "More" just rotates the seed.
+  if (!force && VD_IDEAS.key === fmt && VD_IDEAS.shown.length) return;
+  try {
+    const seed = force ? String(Date.now()) : '';
+    const r = await fetch(apiUrl('/api/video/ideas?format=' + encodeURIComponent(fmt) + (seed ? '&seed=' + seed : '')));
+    const d = await r.json();
+    if (!d || !d.ideas || !d.ideas.length) { box.innerHTML = ''; return; }
+    VD_IDEAS = { key: fmt, shown: d.ideas };
+    box.innerHTML = d.ideas.map(function (t) {
+      return '<button type="button" class="idea-chip">' + escHtml(t) + '</button>';
+    }).join('') + '<button type="button" class="idea-chip more"><i class="fa-solid fa-rotate"></i> More</button>';
+    box.querySelectorAll('.idea-chip:not(.more)').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const topic = $('#vd-topic');
+        if (topic) { topic.value = b.textContent; topic.focus(); }
+        box.querySelectorAll('.idea-chip').forEach(function (x) { x.classList.remove('picked'); });
+        b.classList.add('picked');
+      });
+    });
+    const more = box.querySelector('.idea-chip.more');
+    if (more) more.addEventListener('click', function () { loadIdeas(true); });
+  } catch (e) { box.innerHTML = ''; }
+}
+
+if (typeof loadIdeas === 'function') loadIdeas(false);
+
 $('#vd-btn-script').addEventListener('click', async () => {
   const topic = $('#vd-topic').value.trim();
   const btn = $('#vd-btn-script');
@@ -2842,15 +3060,19 @@ $('#vd-btn-script').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ topic, language: $('#vd-lang').value, style: $('#vd-style').value,
         duration: +(($('#vd-duration') && $('#vd-duration').value) || 25),
+        format: VD.format || '',
         camera: ($('#vd-camera') && $('#vd-camera').value) || '' }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Script failed');
-    VD.scenes = d.scenes; VD.title = d.title; VD.images = {};
+    VD.scenes = d.scenes; VD.title = d.title; VD.images = {}; VD.clips = {};
     (d.scenes || []).forEach(function (sc) { if (sc) { sc._anchored = false; sc._rawVisual = ''; } });
     VD.duration = d.scenes.reduce((a, s) => a + (s.secs || 6), 0);
     $('#vd-brain').textContent = 'Brain: ' + (d.brain || 'fenix-video');
-    $('#vd-scenes-title').textContent = '“' + d.title + '” — tweak any scene duration or swap its image, then render.';
+    var fLabel = (VD_FORMATS.byId[d.format] || {}).label;
+    $('#vd-scenes-title').textContent = '“' + d.title + '”'
+      + (fLabel ? ' · ' + escHtml(fLabel) : '')
+      + ' — tweak any scene duration or swap its image, then render.';
     renderScenes();
     $('#vd-scenes-card').classList.remove('hide');
     $('#vd-btn-rewrite').classList.remove('hide');
@@ -2869,6 +3091,70 @@ function vdImgUrl(prompt, seed) {
   const h = dim[0] >= dim[1] ? Math.round(VD.quality * 0.62) : VD.quality;
   return apiUrl('/api/video/scene-image?w=' + w + '&h=' + h + '&seed=' + seed + '&prompt=' + encodeURIComponent(prompt));
 }
+/* Real motion: ask the clip engine for a moving take of every scene. The
+   still frame is already on screen, so a missing or slow clip never blocks
+   the render — it just means that scene stays a still. */
+function vdClipDims() {
+  var dim = RATIO_DIMS[VD.ratio] || [832, 480];
+  return { width: dim[0], height: dim[1] };
+}
+function vdRequestClip(i, seed) {
+  var sc = VD.scenes[i];
+  if (!sc) return Promise.resolve(false);
+  var dim = vdClipDims();
+  var prompt = (sc.visual || '') + ', cinematic motion, ' + (VD.topic || '');
+  return fetch(apiUrl('/api/video/clip'), {
+    method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+    body: JSON.stringify({
+      prompt: prompt.slice(0, 700),
+      seconds: Math.min(5, Math.max(2, sc.secs || 4)),
+      width: dim.width, height: dim.height, seed: seed || null,
+    }),
+  }).then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }).catch(function () { return null; }); })
+  .then(function (d) {
+    if (d && (d.error === 'QUOTA_EXCEEDED' || d.code === 'COOLDOWN')) {
+      VD.quotaHit = d;
+      applyQuota('video', d);
+      return false;
+    }
+    if (!d || !d.url) return false;
+    return new Promise(function (resolve) {
+      var v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.crossOrigin = 'anonymous';
+      v.src = apiUrl(d.url);
+      v.onloadeddata = function () { VD.clips[i] = v; resolve(true); };
+      v.onerror = function () { resolve(false); };
+      setTimeout(function () { resolve(false); }, 45000);
+    });
+  }).catch(function () { return false; });
+}
+$('#vd-btn-clips').addEventListener('click', async function () {
+  var btn = this; btn.disabled = true;
+  var total = (VD.scenes || []).length, got = 0;
+  VD.quotaHit = null;
+  for (var i = 0; i < total; i++) {
+    showState('vd-state', '🎬 Real motion ' + (i + 1) + ' / ' + total + ' — this takes a minute per scene.', 'ok');
+    if (await vdRequestClip(i, 4000 + i * 31)) { got++; continue; }
+    if (VD.quotaHit) break;   // the allowance ran out — stop instead of failing 12 times
+  }
+  btn.disabled = false;
+  var note = $('#vd-motion-note');
+  if (note) {
+    note.textContent = got
+      ? '🎬 ' + got + ' of ' + total + ' scenes have real motion. Render to use them.'
+      : 'No real motion yet — the storyboard, captions and music bed still work. Press '
+        + 'Real motion to try again.';
+  }
+  if (VD.quotaHit) {
+    showState('vd-state', quotaRefusal('video', VD.quotaHit) +
+      ' The storyboard, stills, captions and music bed are all still free.', 'warn');
+    return;
+  }
+  showState('vd-state', got
+    ? '✅ ' + got + ' of ' + total + ' scenes now have real motion. Render to use them.'
+    : 'Real motion could not be reached. The shared engine may be busy or out of its '
+      + 'daily allowance — the storyboard, captions and music bed still work.', got ? 'ok' : 'err');
+});
 function renderScenes() {
   const list = $('#vd-scenes');
   list.innerHTML = '';
@@ -2895,6 +3181,7 @@ function renderScenes() {
     const body = document.createElement('div'); body.className = 'body';
     const meta = document.createElement('div'); meta.className = 'meta';
     meta.textContent = 'Scene ' + sc.n + ' · ' + sc.secs + 's';
+    if ((VD.clips || {})[i]) meta.textContent += ' · 🎬 real motion';
     const vo = document.createElement('div'); vo.className = 'vo'; vo.dir = 'auto'; vo.textContent = sc.vo || '(no narration)';
     const secs = document.createElement('input');
     secs.type = 'number'; secs.min = 3; secs.max = 12; secs.step = 0.5; secs.value = sc.secs;
@@ -2909,6 +3196,7 @@ function renderScenes() {
     list.appendChild(div);
   });
 }
+const MUSIC_ENGINE_HINT = 'lyrics, prompts and the whole video studio work without it';
 const vdMusicSrc = $('#vd-music-src');
 if (vdMusicSrc) vdMusicSrc.addEventListener('change', async () => {
   const mode = vdMusicSrc.value;
@@ -2924,11 +3212,17 @@ if (vdMusicSrc) vdMusicSrc.addEventListener('change', async () => {
   VD.music = null; VD.musicPending = false;
   try {
     const r = await fetch(apiUrl('/api/music/generate'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({ prompt: (($('#vd-topic').value.trim() || VD.title || 'cinematic underscore') + ', instrumental underscore'), duration: Math.min(30, Math.max(10, VD.duration || 25)) }),
     });
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok && (d.error === 'QUOTA_EXCEEDED' || d.code === 'COOLDOWN')) {
+      applyQuota('music', d);
+      throw new Error(quotaRefusal('music', d));
+    }
+    applyQuota('music', d.quota);
     if (!r.ok) throw new Error(d.error || 'Music generation unavailable');
+    if (!d.url) throw new Error('The audio engine is not connected yet');
     VD.music = apiUrl(d.url);
     if (m) m.textContent = '🎵 AI bed ready';
     showToast('Background music ready');
@@ -2954,7 +3248,7 @@ function vdSpeak(i) {
   });
 }
 $('#vd-btn-render').addEventListener('click', () => {
-  const ready = VD.scenes.filter((_, i) => VD.images[i]).length;
+  const ready = VD.scenes.filter((_, i) => VD.images[i] || (VD.clips || {})[i]).length;
   if (!ready) { showState('vd-state', 'No scene image ready yet — wait for generation or swap images.', 'warn'); return; }
   vdPipe('render');
   startRender();
@@ -3057,9 +3351,29 @@ function startRender() {
       (canvas.height - dh) / 2, dw, dh);
     return true;
   }
+  function paintClip(v, i, tt) {
+    if (!v || !v.videoWidth || v.readyState < 2) return false;
+    var span = Math.max(0.001, VD.scenes[i].secs);
+    var dur = v.duration && isFinite(v.duration) ? v.duration : span;
+    var at = tt < span - 0.35 ? tt : Math.max(0, dur - 0.12);
+    if (Math.abs((v.__at === undefined ? -1 : v.__at) - at) > 0.04) {
+      v.__at = at;
+      try { v.currentTime = at; } catch (e) {}
+    }
+    var iw = v.videoWidth, ih = v.videoHeight;
+    var base = Math.max(canvas.width / iw, canvas.height / ih);
+    var dw = iw * base, dh = ih * base;
+    ctx.drawImage(v, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    return true;
+  }
   function drawScene(i, tt) {
     const img = VD.images[i];
+    const clip = (VD.clips || {})[i];
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (clip && paintClip(clip, i, tt)) {
+      drawSceneOverlay(i, tt);
+      return;
+    }
     const prev = i > 0 ? VD.images[i - 1] : null;
     if (prev && prev.complete && prev.naturalWidth && tt < FADE) {
       // Hold the outgoing shot at its final framing, then fade the new one in.
@@ -3071,6 +3385,9 @@ function startRender() {
     } else {
       paintStill(img, i, tt);
     }
+    drawSceneOverlay(i, tt);
+  }
+  function drawSceneOverlay(i, tt) {
     const g = ctx.createLinearGradient(0, canvas.height * .62, 0, canvas.height);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.78)');
     ctx.fillStyle = g; ctx.fillRect(0, canvas.height * .62, canvas.width, canvas.height * .38);

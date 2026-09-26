@@ -121,22 +121,28 @@
 
   function onAudioAttempt() {
     fetchBrains().then(function (b) {
-      if (b && b.audio_gen) return; /* a real generator exists: stay quiet */
-      toast('Audio generation is not connected yet. Lyrics, audio prompts and ' +
-            'the video storyboard all work free — only the audio file needs a one-time ' +
-            'worker. Check /api/music/generator-check for the exact state.');
+      if (b && b.audio_gen) return; /* a real engine exists: stay quiet */
+      toast('The audio engine is not connected yet. Lyrics, audio prompts and the ' +
+            'whole video studio work without it. /api/music/generator-check shows the ' +
+            'exact state.');
     }).catch(function () {});
   }
 
+  /* The music bed follows the real engine state instead of being hard-disabled:
+     an engine that comes online must not stay greyed out. */
   function patchMusicPicker() {
     var sel = $('#vd-music-src');
-    if (!sel || sel.dataset.slPatched) return;
-    sel.dataset.slPatched = '1';
+    if (!sel) return;
     var opt = sel.querySelector('option[value="fenix"]');
-    if (opt) {
+    if (!opt) return;
+    fetchBrains().then(function (b) {
+      var on = !!(b && b.audio_gen);
+      opt.disabled = !on;
+      opt.textContent = on ? 'Fenix Music bed (AI)'
+                            : 'Fenix Music bed (the audio engine is not connected)';
+    }).catch(function () {
       opt.disabled = true;
-      opt.textContent = 'Fenix Music bed (needs the audio worker — not connected)';
-    }
+    });
   }
 
   function boot() {

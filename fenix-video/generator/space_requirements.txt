@@ -1,0 +1,12 @@
+# Fenix Video Engine — Space dependencies.
+#
+# A hosted GPU Space needs a CUDA build of torch and ffmpeg for the mp4
+# exporter. The Space's system packages list must include ffmpeg.
+torch==2.7.1
+diffusers>=0.36.0
+transformers>=4.51
+accelerate
+imageio[ffmpeg]
+huggingface-hub
+gradio
+spaces
