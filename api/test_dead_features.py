@@ -1,0 +1,138 @@
+"""
+No feature may be complete on the server and unreachable from the product.
+
+This project has shipped that failure three times, and each time silently:
+  - a tool registry with five working tools and no button,
+  - a training-data export with no way to download it,
+  - a whole Evolution panel whose functions lived in the legacy page.
+
+Nothing raised. The code was there, the tests were green, and the user simply
+had no way to reach any of it. So the property is now asserted directly: every
+route the server serves must be called by the front end, or appear on a short
+allowlist that says exactly why not.
+
+Run:  python3 api/test_dead_features.py
+"""
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+WEB = os.path.join(ROOT, "web")
+
+PASS = FAIL = 0
+
+
+def check(label, ok, detail=""):
+    global PASS, FAIL
+    if ok:
+        PASS += 1
+        print(f"  ok   {label}")
+    else:
+        FAIL += 1
+        print(f"  FAIL {label} {detail}")
+
+
+def read(name):
+    p = os.path.join(WEB, name)
+    return open(p, encoding="utf-8").read() if os.path.exists(p) else ""
+
+
+UI = "".join(read(n) for n in ("index_new.html", "studio-live.js"))
+server = open(os.path.join(ROOT, "server.py"), encoding="utf-8").read()
+
+# Routes that are correct without a browser caller. Each needs a reason, so
+# this list cannot quietly grow into a graveyard.
+ALLOW = {
+    "/": "the page itself",
+    "/legacy": "kept for old bookmarks",
+    "/sw.js": "fetched by the browser, not the page",
+    "/manifest.json": "fetched by the browser, not the page",
+    "/healthz": "infrastructure probe",
+    "/api/<path:_any>": "CORS preflight",
+    "/api/tools/<tool_name>": "tool dispatch for an agent; the browser reads the catalog via /api/brains",
+    "/api/tools": "catalog; the same list is served inside /api/brains",
+    "/audio/<path:name>": "streamed to an <audio> element by URL",
+    "/clip/<path:name>": "streamed to a <video> element by URL",
+}
+
+routes = set()
+for m in re.finditer(r'@app\.route\(\s*"([^"]+)"', server):
+    routes.add(m.group(1))
+
+
+def norm(p):
+    return re.sub(r"<[^>]*>", "*", p).rstrip("/") or "/"
+
+
+def covered_by_ui(route):
+    """Does any front-end call match this route?
+
+    Calls appear as a literal path, as a literal plus a query string, or as a
+    literal prefix with a dynamic id appended (`'/api/evolution/insight/' + id`).
+    """
+    r = norm(route)
+    if r.endswith("*"):
+        prefix = re.escape(r[:-1])
+        if re.search(r"""['"]%s[^'"]*['"]\s*\+\s""" % prefix, UI):
+            return True
+    pat = re.escape(r).replace(re.escape("*"), r"[^/]*")
+    # allow a query string on the call: '/api/training-data?meta=1'
+    return bool(re.search(r"""['"]%s(?:\?[^'"]*)?['"]""" % pat, UI))
+
+
+print("every server route is reachable from the product")
+dead = []
+for route in sorted(routes):
+    if route in ALLOW:
+        continue
+    if not covered_by_ui(route):
+        dead.append(route)
+for route in sorted(routes & set(ALLOW)):
+    check("allowlisted with a reason: %s" % route, route in ALLOW, ALLOW.get(route, ""))
+check("no route is unreachable from the product", not dead, ", ".join(dead))
+
+print("the allowlist itself is not a graveyard")
+for route in sorted(ALLOW):
+    if route in routes:
+        continue
+    check("allowlist entry still exists: %s" % route, False, "the route is gone — delete the entry")
+
+print("the features that were dead are now rendered")
+for label, needle in [
+    ("training readiness", "loadTrainingData"),
+    ("the JSONL download", "td-download"),
+    ("the rated-pairs export", "td-ratings"),
+    ("the context preview", "td-context-btn"),
+    ("the memory reindex", "memReindexBtn"),
+    ("the tool catalog", "renderTools"),
+    ("the free-scaling panel", "renderFreeScaling"),
+    ("the music brain chain", "renderBrainChain"),
+    ("the evolution panel", "loadEvolution"),
+]:
+    check(label + " is wired", needle in UI, needle)
+
+print("the newly reachable features are honest about their own state")
+check("training readiness is measured, not assumed", "'/api/training-data?meta=1'" in UI)
+check("the download says how many pairs it got", "X-Fenix-Pairs" in UI)
+check("a refused export shows the server's own reason", "d.error" in UI)
+check("the context preview shows labels, not a blob", "s.label" in UI)
+check("a provider chip follows the server's own rule", "rate-limited" in UI)
+
+print("nothing regressed into a second definition")
+for name in ("streamAI", "loadEvolution", "renderTools", "loadTrainingData", "api_chat"):
+    pattern = r"(?:async )?function %s\(" % name if name != "api_chat" else r"^def api_chat\("
+    hay = UI if name != "api_chat" else server
+    hits = len(re.findall(pattern, hay, re.M))
+    check("%s is defined exactly once" % name, hits == 1, "found %d" % hits)
+
+print("the dead brain chain is not retried on every request")
+check("a cool-off exists", "BRAIN_DEAD_TTL_S" in server and "_brain_dead" in server)
+check("a 404 is distinguished from a busy host", "urllib.error.HTTPError" in server)
+check("a host that answers is un-marked", '_brain_mark(base_url, "", True)' in server)
+check("what each host is doing is reported", '"chain"' in server and "_brain_errors" in server)
+
+print()
+print(f"{PASS} passed, {FAIL} failed")
+sys.exit(1 if FAIL else 0)

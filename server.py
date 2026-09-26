@@ -22,7 +22,6 @@ from common import (  # noqa: E402
     EMBEDDED_MODEL_CHAINS,
     KEY,
     gemini_chat,
-    gemini_coder,
     gemini_enhance,
     load_prompts,
 )
@@ -137,11 +136,13 @@ import tool_registry  # noqa: E402
 import context_engine  # noqa: E402
 import observability  # noqa: E402
 import quota  # noqa: E402
+# urllib.error is needed to tell a URL that does not exist (404/410) apart
+# from a host that is merely busy; the brain chain refuses to retry the former
+# on every request.
+import urllib.error
 import urllib.request
 
 research_engine.load_config()  # read SERPER_API_KEY from the server environment
-
-import urllib.request
 
 app = Flask(__name__, static_folder="web", static_url_path="")
 
@@ -293,6 +294,26 @@ MUSIC_BRAIN_TIMEOUT = float(os.environ.get("MUSIC_BRAIN_TIMEOUT", "150"))
 MUSIC_BRAIN_API_KEY = os.environ.get("MUSIC_BRAIN_API_KEY", "")
 
 _brain_errors: list = []
+# Hosts that answered 404/refused recently. Retrying one on every user request
+# pays its connection cost each time, and a dead entry at the front of the
+# chain delays the first host that would actually have answered. A host is
+# skipped for BRAIN_DEAD_TTL_S and then retried for real, so a Space that
+# wakes up is picked up without anyone editing a URL.
+BRAIN_DEAD_TTL_S = 900
+_brain_dead: dict = {}
+
+
+def _brain_alive(url: str) -> bool:
+    """False while this host is inside its cool-off after a real failure."""
+    until = _brain_dead.get(url)
+    return not (until and until[0] > time.time())
+
+
+def _brain_mark(url: str, reason: str, ok: bool) -> None:
+    if ok:
+        _brain_dead.pop(url, None)
+    else:
+        _brain_dead[url] = (time.time() + BRAIN_DEAD_TTL_S, reason[:120])
 
 
 def _openai_style_brain_chain(urls: tuple, model: str, system: str, user: str,
@@ -312,20 +333,34 @@ def _openai_style_brain_chain(urls: tuple, model: str, system: str, user: str,
     for base_url in urls:
         if not base_url:
             continue
+        if not _brain_alive(base_url):
+            errors.append(f"{base_url}: skipped — {_brain_dead[base_url][1]}")
+            continue
         try:
             req = urllib.request.Request(base_url + "/chat/completions",
                                          data=body, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 raw = r.read().decode("utf-8", "ignore")
             if raw.lstrip().lower().startswith("modal-http:"):
+                _brain_mark(base_url, "modal workspace disabled/limit", False)
                 errors.append(f"{base_url}: modal workspace disabled/limit")
                 continue  # فشل فوري — لا انتظار المهلة
             out = json.loads(raw)
             text = ((out.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip()
             if text:
+                _brain_mark(base_url, "", True)
                 return text
+            _brain_mark(base_url, "empty reply", False)
             errors.append(f"{base_url}: empty reply")
+        except urllib.error.HTTPError as e:
+            # A 404 on a Modal/HF endpoint is a URL that does not exist, not a
+            # brain that is having a bad day. It must not be retried per request.
+            reason = f"HTTP {e.code}" if e.code in (404, 410) else type(e).__name__
+            _brain_mark(base_url, reason, False)
+            errors.append(f"{base_url}: {reason}")
+            continue
         except Exception as e:
+            _brain_mark(base_url, type(e).__name__, False)
             errors.append(f"{base_url}: {e}")
             continue
     _brain_errors.clear()
@@ -567,6 +602,24 @@ def api_training_data():
     except Exception as e:  # noqa: BLE001
         return jsonify({"error": f"Could not build the dataset: {e}"}), 500
     report["email"] = user["email"]
+    if (request.args.get("meta") or "") in ("1", "true", "yes"):
+        # Readiness only. Downloading the whole file to draw a progress bar
+        # would be a pointless transfer, and the file itself is large.
+        return jsonify({
+            "pairs": report["count"],
+            "distinct_replies": report["distinct_replies"],
+            "min_pairs": train_dataset.MIN_PAIRS,
+            # Both conditions matter: enough rows, and nothing the builder
+            # objects to. Reporting only the count would call a repetitive,
+            # unusable set "ready".
+            "enough_rows": report["count"] >= train_dataset.MIN_PAIRS,
+            "ready": bool(report["count"] >= train_dataset.MIN_PAIRS and report.get("ready")),
+            "problems": report.get("problems", []),
+            "rated": report.get("rated", 0),
+            "raw_seen": report.get("raw_seen", 0),
+            "dropped": report.get("dropped", {}),
+            "email": user["email"],
+        })
     body = train_dataset.to_jsonl(report["pairs"])
     return Response(body, mimetype="application/x-ndjson", headers={
         "Content-Disposition": 'attachment; filename="fenix-sft.jsonl"',
@@ -586,6 +639,37 @@ def api_memory_reindex():
     entries = memory_store.list_memory(token)
     import semantic_memory
     return jsonify({"indexed": semantic_memory.reindex_all(token, entries)})
+
+
+def _evolution_observe(token, user, message: str, project_id: str | None) -> None:
+    """Let the profile learn from a real, repeated signal in a project chat.
+
+    This used to live in an unrouted `api_chat` that the route decorator above
+    had already shadowed, so the learning path had never once run. It is called
+    from the shared chain builder instead, which is what both the streaming and
+    the non-streaming transport go through, so neither can drift again.
+
+    Nothing is invented here: the same single observation is repeated, and
+    evolution.observe() withholds it from the live prompt until MIN_EVIDENCE
+    real occurrences exist. Best-effort — a failure here must never cost the
+    user their reply.
+    """
+    if not (token and user and project_id):
+        return
+    if not evolution_store.is_enabled(token):
+        return
+    if not any(word in message.lower() for word in
+               ("test", "verify", "build", "error", "fix")):
+        return
+    try:
+        evolution_store.observe(
+            token, "work_style",
+            "Wants explicit verification after code changes",
+            "Report verification status honestly; label code as Proposed until the user confirms it runs",
+            "User mentions testing/verification in project chats",
+        )
+    except Exception:
+        pass
 
 
 def _chat_sse_response():
@@ -647,6 +731,10 @@ def _chat_sse_response():
             temperature, chain = 0.7, EMBEDDED_MODEL_CHAINS.get(tier, EMBEDDED_MODEL_CHAINS["flash"])
     except Exception:
         return jsonify({"error": "Connection failed — check the server and try again"}), 502
+
+    # Learn from the turn, on the request side, so every transport that shares
+    # this builder teaches the profile exactly once.
+    _evolution_observe(token, user, message, data.get("projectId"))
 
     # Server-side conversation persistence (opt-in via conversationId).
     conv_id = data.get("conversationId") if isinstance(data.get("conversationId"), str) else ""
@@ -866,108 +954,6 @@ def _persist_conversation_reply(conv_id: str, token, user, message: str, reply_t
         pass
 
 
-def api_chat():
-    """Multimodal Fenix chat with full memory: history + new turn → model reply."""
-    limited, payload = _rate_limit("chat", limit=30)
-    if not limited:
-        return jsonify(payload), 429
-    data = request.get_json(silent=True) or {}
-    message = (data.get("message") or "").strip()
-    history = data.get("history") or []
-    attachments = data.get("attachments") or []
-    tier = data.get("model") if data.get("model") in ("pro", "flash") else "flash"
-    style = data.get("style") if data.get("style") in ("concise", "detailed") else "concise"
-    if not message and not attachments:
-        return jsonify({"error": "Type a message first"}), 400
-    if not isinstance(history, list):
-        history = []
-    history = history[-40:]
-    try:
-        token = store.bearer_token()
-        user = store.get_user(token)
-        # Signed-in users get their memory + evolution in the system prompt.
-        hints = ""
-        if user:
-            hints = (memory_store.memory_block(token, query=message)
-                     + evolution_store.evolution_block(token))
-        # Coder mode: the chat belongs to a project → ultra code-builder persona
-        # with the full project context injected into the system instruction.
-        pid = data.get("projectId")
-        if pid:
-            if not user:
-                return jsonify({"error": "Sign in to work on projects"}), 401
-            proj = store.get_project(token, pid)
-            if not proj:
-                return jsonify({"error": "Project not found"}), 404
-            if data.get("save") and data.get("files"):
-                store.save_files(token, pid, data["files"])
-                proj = store.get_project(token, pid) or proj
-            from common import gemini_coder_system  # noqa: E402
-            coder_system = gemini_coder_system(
-                style, hints, store.project_context(proj))
-            core = custom_brain_reply(
-                message, history, attachments, style, hints, coder_system,
-            )
-            if core:
-                reply, engine = identity_guard.sanitize_reply(core), "fenix-core-lora"
-            else:
-                reply = gemini_coder(
-                    history, message, attachments, tier, style,
-                    project_context=store.project_context(proj),
-                    memory_hint=hints,
-                )
-                reply = identity_guard.sanitize_reply(reply)
-                engine = "fenix-core-lora-coder"
-            # Evolution: evidence-based observation (only a real repeated signal).
-            if user and any(c in message.lower() for c in ("test", "verify", "build", "error", "fix")):
-                evolution_store.observe(
-                    token, "work_style",
-                    "Wants explicit verification after code changes",
-                    "Report verification status honestly; label code as Proposed until the user confirms it runs",
-                    "User mentions testing/verification in project chats",
-                )
-            return jsonify({"reply": reply, "brain": PUBLIC_BRAIN, "engine": engine})
-
-        # Fenix Core: try the private fine-tuned brain first (if configured).
-        core = custom_brain_reply(message, history, attachments, style, hints)
-        if core:
-            return jsonify({"reply": identity_guard.sanitize_reply(core), "brain": PUBLIC_BRAIN,
-                            "engine": "fenix-core-lora"})
-
-        # Fenix Research runs before generic fallback so current-information
-        # requests receive labelled, verifiable sources rather than model-only text.
-        res = research_engine.maybe_research(message, gemini_key=KEY, tier=tier)
-        if res:
-            research_context = context_engine.build_context(
-                token, message, history, research=res,
-            )
-            return jsonify({"reply": identity_guard.sanitize_reply(res["answer"]), "sources": res["sources"],
-                            "note": res["note"], "brain": PUBLIC_BRAIN,
-                            "engine": "fenix-core-lora-research",
-                            "context_labels": [s["label"] for s in research_context["sections"]]})
-
-        # Free always-on brains (Groq -> OpenRouter -> Cerebras): $0, no hosting.
-        # Only runs when the user has a free key; otherwise silently skipped.
-        from common import gemini_chat_system  # noqa: E402
-        fb = _free_core_reply(
-            gemini_chat_system(style, hints),
-            _free_brain_user_text(message, history),
-        )
-        if fb:
-            text, public_label, actual_provider = fb
-            return jsonify({"reply": identity_guard.sanitize_reply(text), "brain": PUBLIC_BRAIN,
-                            "engine": "fenix-core-lora"})
-
-        return jsonify({
-            "reply": identity_guard.sanitize_reply(
-                gemini_chat(history, message, attachments, tier, style, memory_hint=hints)),
-            "brain": PUBLIC_BRAIN,
-            "engine": "fenix-core-lora",
-        })
-    except Exception:
-        return jsonify({"error": "Connection failed — check the server and try again"}), 502
-
-
 @app.route("/api/enhance", methods=["POST"])
 def api_enhance():
     """تحويل أمر المستخدم البسيط إلى Enhanced Prompt عبر Gemini."""
@@ -1143,20 +1129,6 @@ def api_evolution_profile():
     return jsonify(evolution_store.profile(token))
 
 
-@app.route("/api/evolution/observe", methods=["POST"])
-def api_evolution_observe():
-    token, user = _require_user()
-    if not user:
-        return jsonify({"error": "Sign in first"}), 401
-    data = request.get_json(silent=True) or {}
-    entry = evolution_store.observe(
-        token, data.get("dimension"), data.get("observation"),
-        data.get("change"), data.get("reason"),
-    )
-    if entry is None:
-        return jsonify({"ok": False, "note": "Evolution disabled or empty observation"})
-    return jsonify({"ok": True, "entry": entry})
-
 
 @app.route("/api/evolution/toggle", methods=["POST"])
 def api_evolution_toggle():
@@ -1329,7 +1301,15 @@ def api_brains():
                  "state": CUSTOM_BRAIN_STATE,
                  "health": brain_health.status()},
         "music": {"configured": bool(MUSIC_BRAIN_URL or CORE_BRAIN_URL or KEY),
-                  "trained": bool(MUSIC_BRAIN_URL), "active": "fenix-music"},
+                  "trained": bool(MUSIC_BRAIN_URL), "active": "fenix-music",
+                  # Measured per host, not assumed from a URL being present.
+                  # A host inside its cool-off is listed so a silent 404 can
+                  # never read as a working brain.
+                  "chain": [{"url": u, "reachable": _brain_alive(u),
+                             "detail": _brain_dead[u][1] if u in _brain_dead else ""}
+                            for u in (MUSIC_BRAIN_URL, MUSIC_HF_URL,
+                                      CORE_BRAIN_URL, CORE_HF_URL) if u],
+                  "errors": list(_brain_errors[-4:])},
         "video": {"configured": video_ok,
                   "trained": bool(globals().get("VIDEO_BRAIN_URL") or _video_brain().VIDEO_BRAIN_URL),
                   "active": "fenix-video"},

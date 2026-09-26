@@ -1428,9 +1428,15 @@
             <button class="btn-ghost" id="md-refresh" style="margin-left:auto"><i class="fa-solid fa-rotate"></i>Refresh</button>
           </div>
           <div id="md-list"></div>
+          <div id="md-free"></div>
           <div class="card">
             <h2><span class="ico"><i class="fa-solid fa-circle-info"></i></span>How routing works</h2>
             <p class="sub" style="margin-bottom:0">Fenix Core LoRA is the primary brain identity. The app routes conversations through the Fenix Core path first; provider health remains available only in diagnostics.</p>
+          </div>
+          <div class="card">
+            <h2><span class="ico"><i class="fa-solid fa-screwdriver-wrench"></i></span>Fenix tools</h2>
+            <p class="sub">Actions the server can run on your behalf. Each one is dispatched by name, so the list here is the real registry, not a description of one.</p>
+            <div id="tools-list"></div>
           </div>
           <div class="card">
             <h2><span class="ico"><i class="fa-solid fa-circle-info"></i></span>Engine notes</h2>
@@ -1639,6 +1645,7 @@
       <button class="danger-btn" id="memExportBtn" style="flex:1"><i class="fa-solid fa-download"></i>Export</button>
       <button class="danger-btn" id="memClearBtn" style="flex:1"><i class="fa-solid fa-trash"></i>Clear all</button>
     </div>
+    <button class="danger-btn" id="memReindexBtn" style="margin-top:10px; width:100%"><i class="fa-solid fa-rotate"></i>Rebuild the memory index</button>
   </div>
 </div>
 
@@ -1661,6 +1668,31 @@
     <button class="danger-btn" id="evoClearBtn" style="margin-top:14px"><i class="fa-solid fa-eraser"></i>Reset evolution</button>
   </div>
 </div>
+
+<div class="sheet" id="trainingSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <b>Training data</b>
+    <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div class="save-note" style="margin-top:0">The exact file a Fenix Core LoRA round is trained on, built from your own signed-in exchanges. Nothing is trained yet — this is the honest count of what exists.</div>
+    <div class="set-label">Readiness</div>
+    <div id="td-status"><p style="color:var(--text-3); font-size:12.5px; padding:8px 0">Loading…</p></div>
+    <div style="display:flex; gap:10px; margin-top:12px">
+      <button class="danger-btn" id="td-refresh" style="flex:1"><i class="fa-solid fa-rotate"></i>Refresh</button>
+      <button class="danger-btn" id="td-download" style="flex:1"><i class="fa-solid fa-download"></i>Download JSONL</button>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px">
+      <button class="danger-btn" id="td-ratings" style="flex:1"><i class="fa-solid fa-star"></i>Export rated pairs</button>
+    </div>
+    <div class="set-label" style="margin-top:18px">What Fenix knows right now</div>
+    <div class="save-note" style="margin-top:0">Every source that goes into a reply, labelled. If something you expected is missing, it is missing here too.</div>
+    <div id="td-context" style="margin-top:10px"></div>
+    <button class="danger-btn" id="td-context-btn" style="margin-top:10px"><i class="fa-solid fa-diagram-project"></i>Preview this turn's context</button>
+  </div>
+</div>
+
 
 <div class="sheet" id="accountSheet">
   <div class="sheet-grab"></div>
@@ -2745,6 +2777,205 @@ $('#memExportBtn').addEventListener('click', async () => {
   } catch (e) { showToast('Export failed'); }
 });
 
+/* ============================ Evolution ============================
+   The sheet, the styles and every server route existed, but the functions
+   behind them only lived in the legacy page — this file called
+   loadEvolution() and never defined it, so tapping "Evolution" threw a
+   ReferenceError and the panel never opened. Ported from web/index.html. */
+const EVO_DIM = { communication: 'Communication', work_style: 'Work style', project_interaction: 'Project work' };
+async function loadEvolution() {
+  if (!USER) return;
+  const seg = $('#evoToggleSeg'), insBox = $('#evoInsights'), logBox = $('#evoLog');
+  if (!seg || !insBox || !logBox) return;
+  try {
+    const r = await fetch(apiUrl('/api/evolution'), { headers: authHeaders() });
+    if (!r.ok) return;
+    const d = await r.json();
+    seg.querySelectorAll('button').forEach(b =>
+      b.classList.toggle('on', (b.dataset.v === 'on') === d.enabled));
+    insBox.innerHTML = d.insights.length ? d.insights.map(i => `
+      <div class="evo-item">
+        <div class="mt"><span class="tag">${escHtml(EVO_DIM[i.dimension] || i.dimension)}</span><span>${escHtml(i.change || i.observation)}</span></div>
+        <div class="ev-meta">Evidence: ${i.evidence} interaction${i.evidence === 1 ? '' : 's'} · <span class="${i.active ? 'on' : ''}">${i.active ? 'active' : 'collecting evidence (' + d.min_evidence + ' needed)'}</span></div>
+        <div class="ops">
+          <button class="del" data-edel="${i.id}"><i class="fa-solid fa-trash"></i> Remove</button>
+        </div>
+      </div>`).join('')
+      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">No patterns yet — Fenix is still observing.</p>';
+    insBox.querySelectorAll('[data-edel]').forEach(b => b.addEventListener('click', async () => {
+      await fetch(apiUrl('/api/evolution/insight/' + b.dataset.edel), { method: 'DELETE', headers: authHeaders() });
+      loadEvolution(); showToast('Insight removed');
+    }));
+    logBox.innerHTML = d.log.length ? d.log.slice(0, 15).map(l => `
+      <div class="log-item">
+        <b>${escHtml(l.date)}</b> — ${escHtml(l.observation)}<br>
+        Change: ${escHtml(l.change)}<br>
+        <span class="ld">Reason: ${escHtml(l.reason)} · evidence ${l.evidence}${l.activated ? ' · ACTIVE' : ''}</span>
+      </div>`).join('')
+      : '<p style="text-align:center; color:var(--text-3); font-size:12.5px; padding:10px">Empty log.</p>';
+  } catch (e) {}
+}
+const evoSeg = $('#evoToggleSeg');
+if (evoSeg) evoSeg.querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+  const enabled = b.dataset.v === 'on';
+  await fetch(apiUrl('/api/evolution/toggle'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ enabled }),
+  });
+  showToast(enabled ? 'Evolution enabled' : 'Evolution disabled — nothing more will be learned');
+  loadEvolution();
+}));
+const evoClear = $('#evoClearBtn');
+if (evoClear) evoClear.addEventListener('click', async () => {
+  if (!USER) return;
+  if (!confirm('Reset the whole evolution profile and log?')) return;
+  await fetch(apiUrl('/api/evolution/clear'), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: '{}' });
+  loadEvolution(); showToast('Evolution reset');
+});
+
+/* ============================ Training data ============================
+   The JSONL, the readiness count, the owner-only ratings export and the
+   labelled context preview all existed on the server with no way to reach
+   them from the product. */
+function tdStat(label, value, sub) {
+  return `<div class="mem-item"><div class="mt"><span class="tag">${escHtml(label)}</span><span>${escHtml(value)}${sub ? ' <span style="color:var(--text-3); font-size:12px">' + escHtml(sub) + '</span>' : ''}</span></div></div>`;
+}
+async function loadTrainingData() {
+  const box = $('#td-status');
+  if (!box) return;
+  if (!USER) { box.innerHTML = '<p style="color:var(--text-3); font-size:12.5px; padding:8px 0">Sign in — signed-out chats are never stored server-side, so they cannot become training data.</p>'; return; }
+  try {
+    const r = await fetch(apiUrl('/api/training-data?meta=1'), { headers: authHeaders() });
+    if (!r.ok) { box.innerHTML = '<p style="color:var(--danger); font-size:12.5px">Could not read the dataset.</p>'; return; }
+    const d = await r.json();
+    const pct = Math.min(100, Math.round((d.pairs / Math.max(1, d.min_pairs)) * 100));
+    let html = `
+      <div class="mem-item">
+        <div class="mt"><span class="tag">pairs</span><span><b>${d.pairs}</b> of ${d.min_pairs} needed
+          <span style="color:var(--text-3); font-size:12px">(${d.raw_seen} exchanges seen, ${d.rated} rated)</span></span></div>
+        <div style="height:6px;border-radius:99px;background:var(--bg-2);margin-top:8px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--accent)"></div></div>
+      </div>`;
+    html += tdStat('distinct replies', String(d.distinct_replies), 'repetition is what a LoRA would learn instead of a style');
+    if (d.ready) {
+      html += '<p style="color:var(--accent); font-size:12.5px; margin-top:8px"><i class="fa-solid fa-circle-check"></i> Ready to train. Download the JSONL and run <b>fenix-core-lora/colab_train.ipynb</b> on a T4.</p>';
+    } else {
+      html += '<p style="color:var(--text-2); font-size:12.5px; margin-top:8px">Not ready to train — the round is refused on purpose. What is missing:</p>';
+      (d.problems || []).forEach(p => { html += '<div class="log-item" style="margin-top:4px">· ' + escHtml(p) + '</div>'; });
+      if (!d.problems || !d.problems.length) html += '<div class="log-item" style="margin-top:4px">· ' + (d.min_pairs - d.pairs) + ' more exchanges are needed.</div>';
+    }
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<p style="color:var(--danger); font-size:12.5px">Could not reach the server.</p>';
+  }
+}
+const tdRefresh = $('#td-refresh');
+if (tdRefresh) tdRefresh.addEventListener('click', loadTrainingData);
+const tdDownload = $('#td-download');
+if (tdDownload) tdDownload.addEventListener('click', async () => {
+  if (!USER) { closeAll(); startAuth('signin'); return; }
+  try {
+    const r = await fetch(apiUrl('/api/training-data'), { headers: authHeaders() });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); showToast(e.error || 'Download failed'); return; }
+    const pairs = r.headers.get('X-Fenix-Pairs') || '?';
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'fenix-sft.jsonl'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('Downloaded ' + pairs + ' pairs');
+  } catch (e) { showToast('Download failed'); }
+});
+const tdRatings = $('#td-ratings');
+if (tdRatings) tdRatings.addEventListener('click', async () => {
+  if (!USER) { closeAll(); startAuth('signin'); return; }
+  try {
+    const r = await fetch(apiUrl('/api/ratings/export'), { headers: authHeaders() });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.error || 'Export refused'); return; }
+    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'fenix-rated-pairs.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('Exported ' + ((d.pairs || []).length) + ' rated pairs');
+  } catch (e) { showToast('Export failed'); }
+});
+const tdContextBtn = $('#td-context-btn');
+if (tdContextBtn) tdContextBtn.addEventListener('click', async () => {
+  const box = $('#td-context');
+  if (!box) return;
+  if (!USER) { closeAll(); startAuth('signin'); return; }
+  box.innerHTML = '<p style="color:var(--text-3); font-size:12.5px">Building…</p>';
+  try {
+    const chat = currentChat();
+    const r = await fetch(apiUrl('/api/context'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        message: (chat && chat.messages.length ? chat.messages[chat.messages.length - 1].content : '') || '',
+        history: (chat && chat.messages) || [],
+        projectId: activeProjectId || undefined,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) { box.innerHTML = '<p style="color:var(--danger); font-size:12.5px">' + escHtml(d.error || 'Failed') + '</p>'; return; }
+    box.innerHTML = (d.sections && d.sections.length) ? d.sections.map(s => `
+      <div class="mem-item">
+        <div class="mt"><span class="tag">${escHtml(s.label)}</span><span>${escHtml(String(s.content || '').slice(0, 220))}${(s.content || '').length > 220 ? '…' : ''}</span></div>
+      </div>`).join('') + (d.truncated ? '<div class="log-item" style="margin-top:6px">· the assembled context hit Fenix\'s safety limit and was cut</div>' : '')
+      : '<p style="color:var(--text-3); font-size:12.5px">Nothing would be added to a reply right now.</p>';
+  } catch (e) { box.innerHTML = '<p style="color:var(--danger); font-size:12.5px">Could not reach the server.</p>'; }
+});
+const memReindex = $('#memReindexBtn');
+if (memReindex) memReindex.addEventListener('click', async () => {
+  if (!USER) return;
+  memReindex.disabled = true;
+  try {
+    const r = await fetch(apiUrl('/api/memory/reindex'), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: '{}' });
+    const d = await r.json().catch(() => ({}));
+    showToast(r.ok ? 'Reindexed ' + d.indexed + ' memories' : (d.error || 'Reindex failed'));
+  } catch (e) { showToast('Reindex failed'); }
+  memReindex.disabled = false;
+});
+function renderFreeScaling(d) {
+  const box = $('#md-free');
+  if (!box) return;
+  const c = d.cache || {};
+  const pct = Math.round((c.hit_rate || 0) * 100);
+  const top = (d.top_questions || []).slice(0, 5);
+  box.innerHTML = `
+    <div class="card">
+      <h2><span class="ico"><i class="fa-solid fa-gauge-high"></i></span>The $0 layer</h2>
+      <p class="sub">What the free tier actually absorbs, measured. A provider that is not answering is listed as unavailable rather than counted as ready.</p>
+      <div class="mem-item"><div class="mt"><span class="tag">cache</span><span>${pct}% of repeats served without calling anyone — ${c.hits || 0} hits across ${c.cache_entries || 0} entries</span></div></div>
+      <div class="mem-item"><div class="mt"><span class="tag">ready</span><span>${d.ready || 0} provider(s) verified live</span></div></div>
+      ${Object.keys(d.providers || {}).map(k => {
+        const detail = String(d.providers[k] || '');
+        // Mirrors free_brains.verify(): rate-limited still counts as usable.
+        const ok = /^(answered|rate-limited)$/i.test(detail.trim());
+        return `<div class="mem-item"><div class="mt"><span class="tag">${ok ? 'live' : 'down'}</span><span>${escHtml(k)}${detail ? ' — ' + escHtml(detail) : ''}</span></div></div>`;
+      }).join('')}
+      ${top.length ? '<div class="set-label" style="margin-top:14px">Asked more than once</div>' + top.map(q => `<div class="log-item">· ${escHtml(String(q.question || '').slice(0, 90))} <span class="ld">×${q.times || 1}</span></div>`).join('') : ''}
+      <p class="sub" style="margin:12px 0 0">${escHtml(d.note || '')}</p>
+    </div>`;
+}
+function renderBrainChain(chain) {
+  if (!chain || !chain.length) return '';
+  return '<div class="card"><h2><span class="ico"><i class="fa-solid fa-link"></i></span>Music brain chain</h2>'
+    + '<p class="sub">Each host the songwriter tries, measured. A host that is not reachable is skipped for a while instead of costing every request its connection time.</p>'
+    + chain.map(c => `<div class="mem-item"><div class="mt"><span class="tag">${c.reachable ? 'live' : 'down'}</span><span>${escHtml(c.url)}${c.detail ? ' — ' + escHtml(c.detail) : ''}</span></div></div>`).join('')
+    + '</div>';
+}
+function renderTools(catalog) {
+  const box = $('#tools-list');
+  if (!box) return;
+  const list = catalog || (typeof BRAINS !== 'undefined' && BRAINS && BRAINS.tools);
+  if (!list || !list.length) { box.innerHTML = '<p style="color:var(--text-3); font-size:12.5px">No tools registered.</p>'; return; }
+  box.innerHTML = list.map(t => `
+    <div class="mem-item">
+      <div class="mt"><span class="tag">${escHtml(t.name)}</span><span>${escHtml(t.description || '')}</span></div>
+      <div class="ev-meta">${Object.keys(t.inputSchema && t.inputSchema.properties || {}).map(escHtml).join(', ') || 'no arguments'}</div>
+    </div>`).join('');
+}
+
 /* ============================ Account & Auth ============================ */
 function initials(s) { return (s || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'; }
 function renderAvatar() {
@@ -2763,11 +2994,13 @@ function renderAccountSheet() {
       </div>
       <button class="ghost-btn" id="openProjectsBtn" style="margin-bottom:10px"><i class="fa-solid fa-folder-tree"></i>My projects</button>
       <button class="ghost-btn" id="openMemoryBtn" style="margin-bottom:10px"><i class="fa-solid fa-brain"></i>Memory</button>
-      <button class="ghost-btn" id="openEvoBtn" style="margin-bottom:14px"><i class="fa-solid fa-seedling"></i>Evolution</button>
+      <button class="ghost-btn" id="openEvoBtn" style="margin-bottom:10px"><i class="fa-solid fa-seedling"></i>Evolution</button>
+      <button class="ghost-btn" id="openTrainingBtn" style="margin-bottom:14px"><i class="fa-solid fa-database"></i>Training data</button>
       <button class="danger-btn" id="signOutBtn"><i class="fa-solid fa-right-from-bracket"></i>Sign out</button>`;
     $('#openProjectsBtn').addEventListener('click', () => { closeAll(); loadProjects(); openDrawer('projectsDrawer'); });
     $('#openMemoryBtn').addEventListener('click', () => { closeAll(); loadMemory(); openSheet('memorySheet'); });
     $('#openEvoBtn').addEventListener('click', () => { closeAll(); loadEvolution(); openSheet('evoSheet'); });
+    $('#openTrainingBtn').addEventListener('click', () => { closeAll(); loadTrainingData(); openSheet('trainingSheet'); });
     $('#signOutBtn').addEventListener('click', () => {
       clearAuth(); renderAvatar();
       leaveCoder('silent');
@@ -2875,6 +3108,15 @@ async function loadBrains() {
         <div class="mr-body"><div class="mr-name">${r.name}</div><div class="mr-desc">${r.d}</div></div>
         ${active}${state}</div>`;
     }).join('');
+    renderTools(BRAINS.tools);
+    fetch(apiUrl('/api/free-scaling')).then(r => r.json()).then(renderFreeScaling).catch(() => {});
+    const chainHost = $('#md-list');
+    if (chainHost && BRAINS.music && BRAINS.music.chain) {
+      const old = $('#md-chain');
+      if (old) old.remove();
+      chainHost.insertAdjacentHTML('afterend', '<div id="md-chain"></div>');
+      $('#md-chain').innerHTML = renderBrainChain(BRAINS.music.chain);
+    }
   } catch (e) {
     box.innerHTML = '<p class="sub">Could not reach the server — brain status unknown.</p>';
   }
@@ -3018,11 +3260,29 @@ $('#mu-btn-prompt').addEventListener('click', async () => {
   } catch (e) { showState('mu-state', e.message, 'err'); }
   btn.disabled = false;
 });
+async function musicEngineReady() {
+  /* Ask before spending a generation. The engine is a shared host that can be
+     asleep or out of allowance; finding that out after the wait is worse than
+     finding out first. Any failure here is treated as 'let the server decide'
+     rather than as a refusal. */
+  try {
+    const r = await fetch(apiUrl('/api/music/generator-check'));
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
 async function startMusicGeneration(s, seed) {
   const prompt = muAudioPrompt()
     || ($('#mu-out').textContent || '').slice(0, 600)
     || muPromptFromSettings(s);
   const btn = $('#mu-btn-generate'); btn.disabled = true;
+  const eng = await musicEngineReady();
+  if (eng && eng.ready === false) {
+    showState('mu-state', (eng.problem || 'The audio engine is not ready yet.') +
+      '\nLyrics and audio prompts still work — only the rendered track needs it.', 'err');
+    btn.disabled = false;
+    return;
+  }
   showState('mu-state', '🎹 Generating audio… composing your track.', 'ok');
   try {
     const r = await fetch(apiUrl('/api/music/generate'), {

@@ -1,5 +1,10 @@
 /* Fenix — Service Worker */
-const CACHE = "fenix-v28-training-export";
+/* v29 — the stale `fenix-v28` shell carried an orphaned script
+   (stream-fix.js) that shadowed streamAI with a build missing
+   `conversationId`, so cached pages lost server-side conversation
+   persistence and reported every failed reply as "Server unreachable".
+   The new cache name retires that shell on activate. */
+const CACHE = "fenix-v29-evolution";
 const SHELL = [
   "/",
   "/index.html",
