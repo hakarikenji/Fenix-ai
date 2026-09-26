@@ -1,0 +1,60 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # The suites exercise routes that fall back to an HTTP client, so a
+          # real client library is needed even when no key is configured.
+          pip install requests || true
+
+      - name: Front-end syntax
+        run: |
+          node --check web/studio-live.js
+          node --check web/sw.js
+          # The app is one large inline <script>; it must at least parse.
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('web/index_new.html', 'utf8');
+            const re = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+            let m, n = 0;
+            while ((m = re.exec(html))) {
+              n++;
+              if (!m[1].trim()) continue;
+              new Function(m[1]);
+            }
+            console.log('inline script blocks checked:', n);
+          "
+
+      - name: The server imports
+        run: python -c "import sys; sys.path.insert(0,'api'); import server"
+
+      - name: Test suites
+        run: |
+          status=0
+          for t in api/test_*.py; do
+            printf '%-34s' "$(basename "$t")"
+            if timeout 900 python3 "$t" > /tmp/out.log 2>&1; then
+              echo "PASS  $(grep -Eo '[0-9]+ passed, [0-9]+ failed|ALL .*PASSED|all .*passed' /tmp/out.log | tail -1)"
+            else
+              echo "FAIL"
+              grep -i '^FAIL' /tmp/out.log | head -5
+              status=1
+            fi
+          done
+          exit $status

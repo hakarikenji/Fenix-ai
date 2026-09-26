@@ -1316,9 +1316,9 @@
             <p class="sub" id="vd-scenes-title"></p>
             <div class="quota-line hide" id="video-quota"></div>
             <p class="sub" id="vd-motion-note" style="margin-top:-6px">
-              Scenes render as stills with a slow push-in and a crossfade. Press
-              <b>Real motion</b> to replace each scene with a generated moving clip —
-              it takes about a minute per scene.
+              Scenes render as stills with a slow push-in and a crossfade, and that film is
+              complete and exportable as it stands. Press <b>Real motion</b> to replace each
+              scene with a generated moving clip.
             </p>
             <div id="vd-scenes"></div>
             <div class="cta-row">
@@ -3075,7 +3075,7 @@ function renderTracks() {
 }
 
 /* ============================ Fenix Video studio ============================ */
-const VD = { scenes: [], title: '', images: {}, ratio: '9:16', quality: 768, music: null, musicPending: false, duration: 25, camera: 'handheld, raw energy', topic: '', style: '', format: '' };
+const VD = { scenes: [], title: '', images: {}, ratio: '9:16', quality: 768, music: null, musicPending: false, duration: 25, camera: 'handheld, raw energy', topic: '', style: '', format: '', motionSlow: false, engineRefused: null };
 const RATIO_DIMS = { '9:16': [720, 1280], '16:9': [1280, 720], '1:1': [900, 900], '4:5': [864, 1080] };
 const vdRatio = $('#vd-ratio');
 if (vdRatio) vdRatio.addEventListener('change', () => {
@@ -3215,6 +3215,7 @@ $('#vd-btn-script').addEventListener('click', async () => {
     $('#vd-btn-rewrite').classList.remove('hide');
     vdPipe('scenes');
     showState('vd-state', '✅ ' + d.scenes.length + ' scenes ready.', 'ok');
+    checkMotionEngine();
     $('#vd-scenes-card').scrollIntoView({ behavior: 'smooth' });
   } catch (e) { showState('vd-state', e.message, 'err'); vdPipe('idea'); }
   btn.disabled = false;
@@ -3254,6 +3255,12 @@ function vdRequestClip(i, seed) {
       applyQuota('video', d);
       return false;
     }
+    if (d && d.__status && d.__status >= 500) {
+      // The engine refused. It will refuse every remaining scene the same
+      // way, so stop here instead of walking the whole list.
+      VD.engineRefused = d;
+      return false;
+    }
     if (!d || !d.url) return false;
     return new Promise(function (resolve) {
       var v = document.createElement('video');
@@ -3265,14 +3272,55 @@ function vdRequestClip(i, seed) {
     });
   }).catch(function () { return false; });
 }
+/* What "Real motion" can honestly promise, decided by asking the engine rather
+   than by assuming. Reachability is not a guarantee: a shared public host
+   answers a health check and still refuses the job, which is exactly what a
+   promise written at page load gets wrong. */
+async function checkMotionEngine() {
+  var mode = 'unknown';
+  try {
+    var r = await fetch(apiUrl('/api/video/clip-check'));
+    var d = await r.json();
+    mode = (d && d.mode) || 'unknown';
+  } catch (e) { mode = 'unknown'; }
+  VD.motionSlow = (mode === 'shared');
+  vdMotionNote(mode);
+  return mode;
+}
+function vdMotionNote(mode) {
+  var el = $('#vd-motion-note');
+  if (!el) return;
+  var base = 'Scenes render as stills with a slow push-in and a crossfade, and that film '
+    + 'is complete and exportable as it stands.';
+  if (mode === 'off') {
+    el.innerHTML = base + ' <b>Real motion</b> is not connected right now, so the button '
+      + 'will not produce moving clips.';
+    return;
+  }
+  if (mode === 'shared') {
+    el.innerHTML = base + ' <b>Real motion</b> runs on a shared public engine, so it is '
+      + 'slower than usual and the host can refuse a job — if it does, your film is '
+      + 'unaffected.';
+    return;
+  }
+  if (mode === 'own') {
+    el.innerHTML = base + ' <b>Real motion</b> is on a dedicated engine — about a minute '
+      + 'per scene.';
+    return;
+  }
+  el.innerHTML = base;
+}
+
 $('#vd-btn-clips').addEventListener('click', async function () {
   var btn = this; btn.disabled = true;
   var total = (VD.scenes || []).length, got = 0;
-  VD.quotaHit = null;
+  VD.quotaHit = null; VD.engineRefused = null;
   for (var i = 0; i < total; i++) {
-    showState('vd-state', '🎬 Real motion ' + (i + 1) + ' / ' + total + ' — this takes a minute per scene.', 'ok');
+    showState('vd-state', '🎬 Real motion ' + (i + 1) + ' / ' + total
+      + (VD.motionSlow ? ' — shared engine, about a minute per scene.' : '.'), 'ok');
     if (await vdRequestClip(i, 4000 + i * 31)) { got++; continue; }
-    if (VD.quotaHit) break;   // the allowance ran out — stop instead of failing 12 times
+    // Nothing more to learn from scene 2..12 once the host has said no.
+    if (VD.quotaHit || VD.engineRefused) break;
   }
   btn.disabled = false;
   var note = $('#vd-motion-note');
@@ -3285,6 +3333,14 @@ $('#vd-btn-clips').addEventListener('click', async function () {
   if (VD.quotaHit) {
     showState('vd-state', quotaRefusal('video', VD.quotaHit) +
       ' The storyboard, stills, captions and music bed are all still free.', 'warn');
+    return;
+  }
+  if (VD.engineRefused) {
+    vdMotionNote('unavailable');
+    showState('vd-state', 'Real motion is not available right now — the engine turned the '
+      + 'job down, and it would turn down every other scene too. Your film is still '
+      + 'complete: the still scenes, captions, title and music bed all render and export '
+      + 'right now.', 'warn');
     return;
   }
   showState('vd-state', got

@@ -1253,6 +1253,15 @@ def api_project_files(pid):
 # Fenix Ecosystem — Music & Video brains (same chains as their apps)
 # =====================================================================
 
+def clip_engine_state() -> str:
+    """own | shared | off — what a "Real motion" press will actually meet."""
+    if os.environ.get("VIDEO_GEN_URL"):
+        return "own"
+    if os.environ.get("VIDEO_GEN_SPACE_URL") or video_hosts():
+        return "shared"
+    return "off"
+
+
 @app.route("/api/brains", methods=["GET"])
 def api_brains():
     """Ecosystem brain status — no secrets. The UI never lies about engines."""
@@ -1293,6 +1302,11 @@ def api_brains():
                          or os.environ.get("HF_TOKEN")),
         "clip_gen": bool(os.environ.get("VIDEO_GEN_URL")
                         or os.environ.get("VIDEO_GEN_SPACE_URL")),
+        # "own" is a self-hosted engine we control; "shared" is a public GPU
+        # host that can still refuse a job; "off" is nothing to call. The
+        # boolean above only ever said "is something configured", which is not
+        # the same as "a scene will render".
+        "clip_gen_state": clip_engine_state(),
     })
 
 
@@ -1491,7 +1505,13 @@ def api_video_clip_check():
     token = os.environ.get("VIDEO_GEN_API_KEY", "")
     info = {"worker_url_set": bool(worker_url), "space_url_set": bool(space_url),
             "worker_reachable": False, "worker_says": None,
-            "engine_token_set": engine_token_set(), "problem": None}
+            "engine_token_set": engine_token_set(), "problem": None,
+            "mode": clip_engine_state(),
+            "promise": ("A scene will render." if clip_engine_state() == "own" else
+                        "The engine answers, but a shared public host can still refuse a "
+                        "job. Reachability is not a guarantee — the first scene settles it."
+                        if clip_engine_state() == "shared" else
+                        "No clip engine is connected.")}
     if not worker_url and space_url:
         info["hosts"] = [h["url"] for h in video_hosts()]
         for host in video_hosts():
@@ -1588,13 +1608,20 @@ def api_video_clip():
             clip = None
     if clip is None:
         quota.settle(job_id, ok=False, refund=True, outcome=str(source)[:200])
+        # A refused host will refuse every remaining scene too, so say so
+        # instead of letting the studio walk the whole list failing.
+        engine_refused = True
         return jsonify({"error": "Clip generation failed",
                         "last_failure": source,
+                        "engine_refused": engine_refused,
+                        "mode": clip_engine_state(),
                         "quota": quota.snapshot("video", caller)}), 502
     if not _clip_bytes(clip):
         quota.settle(job_id, ok=False, refund=True, outcome="not a video")
         return jsonify({"error": "Engine replied with something that is not a video",
-                        "detail": f"{source} returned {len(clip)} bytes that are not mp4"}), 502
+                        "detail": f"{source} returned {len(clip)} bytes that are not mp4",
+                        "engine_refused": True,
+                        "quota": quota.snapshot("video", caller)}), 502
     out = Path("/tmp") / f"fenix-clip-{int(time.time())}-{os.getpid()}.mp4"
     out.write_bytes(clip)
     quota.settle(job_id, ok=True, outcome=source)

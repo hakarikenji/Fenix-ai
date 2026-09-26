@@ -149,7 +149,7 @@ check("the container is empty in the markup",
       'id="vd-formats"' in markup and "Loading formats" in markup)
 check("the cards are built from the catalog at runtime",
       "box.innerHTML = list.map" in ui and "loadVideoFormats()" in ui)
-check("the state carries the choice", "format: '' };" in ui)
+check("the state carries the choice", "format: ''" in ui)
 
 print()
 print(f"{PASS} passed, {FAIL} failed")

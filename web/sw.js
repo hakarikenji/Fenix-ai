@@ -1,5 +1,5 @@
 /* Fenix — Service Worker */
-const CACHE = "fenix-v25-coder-exit";
+const CACHE = "fenix-v26-honest-motion";
 const SHELL = [
   "/",
   "/index.html",
