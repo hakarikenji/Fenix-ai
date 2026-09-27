@@ -45,14 +45,23 @@ def call(path, body=None, token=None, method=None, timeout=60):
             return e.code, {"raw": raw[:160]}
 
 
-email = f"flywheel-probe-{os.getpid()}@fenix.test"
-st, s = call("/api/auth/signup", {"email": email, "password": "probe-pass-1234",
-                                  "name": "Flywheel probe"})
-if "token" not in s:
-    st, s = call("/api/auth/signin", {"email": email, "password": "probe-pass-1234"})
+# One stable probe account, not one per run. Signup is deliberately capped per
+# hour, so minting a fresh address every invocation made this suite fail once
+# a few live runs had happened. Each run makes its own conversation below, so
+# reusing the account costs nothing.
+PROBE_EMAIL = "flywheel-probe@fenix.test"
+PROBE_PASS = "probe-pass-1234"
+st, s = call("/api/auth/signin", {"email": PROBE_EMAIL, "password": PROBE_PASS})
 token = s.get("token")
+if not token:
+    st, s = call("/api/auth/signup", {"email": PROBE_EMAIL, "password": PROBE_PASS,
+                                      "name": "Flywheel probe"})
+    token = s.get("token")
 check("got a throwaway account", bool(token), s)
 if not token:
+    if s.get("code") == "rate_limited" or st == 429:
+        print("  SKIP account creation is rate-limited right now "
+              "(FENIX signup is capped per hour); try again later")
     sys.exit(1)
 
 st, conv = call("/api/conversations", {"title": "flywheel probe"}, token)

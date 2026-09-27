@@ -133,6 +133,52 @@ check("a 404 is distinguished from a busy host", "urllib.error.HTTPError" in ser
 check("a host that answers is un-marked", '_brain_mark(base_url, "", True)' in server)
 check("what each host is doing is reported", '"chain"' in server and "_brain_errors" in server)
 
+print("no Python function is defined and never called again")
+# A function carrying a decorator is bound at import time by the framework
+# (every Flask route, @lru_cache, @retry), so it has no textual caller and is
+# not dead. Everything else must be referenced somewhere.
+import ast  # noqa: E402
+
+py_files = ["server.py"] + sorted(
+    os.path.join("api", f) for f in os.listdir(os.path.join(ROOT, "api"))
+    if f.endswith(".py"))
+sources = {p: open(os.path.join(ROOT, p), encoding="utf-8").read() for p in py_files}
+# callers that live outside the server: tests, notebooks, deploy scripts, docs
+outside = ""
+for d in ("scripts", "fenix-brain-space", "fenix-core-lora", "fenix-music",
+          "fenix-video", "fenix-music-apk-kit", ".github"):
+    for dp, dns, fns in os.walk(os.path.join(ROOT, d)):
+        dns[:] = [x for x in dns if x not in ("__pycache__", "node_modules", ".git")]
+        for fn in fns:
+            if fn.endswith((".py", ".ipynb", ".sh", ".yml", ".md")):
+                try:
+                    outside += open(os.path.join(dp, fn), encoding="utf-8", errors="ignore").read()
+                except OSError:
+                    pass
+
+# Names bound by a framework rather than by a caller.
+DYNAMIC_OK = {"main", "read", "write", "generate", "reply", "load_engine", "health"}
+
+dead_fns = []
+for path, text in sources.items():
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        continue
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if node.decorator_list or node.name in DYNAMIC_OK:
+            continue
+        if node.name.startswith("test_"):
+            continue
+        refs = sum(len(re.findall(r"\b%s\b" % re.escape(node.name), t))
+                   for t in sources.values())
+        refs += len(re.findall(r"\b%s\b" % re.escape(node.name), outside))
+        if refs <= 1:  # only the definition itself
+            dead_fns.append("%s:%d %s" % (path, node.lineno, node.name))
+check("no function is defined and never called", not dead_fns, "; ".join(dead_fns))
+
 print()
 print(f"{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

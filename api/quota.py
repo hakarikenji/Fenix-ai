@@ -69,10 +69,6 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-def _env_float(name: str, default: float) -> float:
-    return float(_env_int(name, int(default)))
-
-
 def enabled() -> bool:
     return str(os.environ.get("QUOTA_ENABLED", "1")).strip().lower() not in (
         "0", "false", "off", "no")

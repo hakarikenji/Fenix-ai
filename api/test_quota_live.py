@@ -9,7 +9,6 @@ reaches the engine does not spend anything.
 Run:  python3 api/test_quota_live.py [base_url]
 """
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
@@ -60,15 +59,32 @@ def get(path, token=None, timeout=30):
 
 
 # A throwaway account, so a live run never eats the real user's allowance.
-email = f"quota-probe-{os.getpid()}@fenix.test"
-st, signup = post("/api/auth/signup", {"email": email, "password": "probe-pass-1234",
-                                       "name": "Quota probe"})
-if st != 200 or "token" not in signup:
-    st, signin = post("/api/auth/signin", {"email": email, "password": "probe-pass-1234"})
-    signup = signin
-token = signup.get("token")
-check("got a throwaway account", bool(token), signup)
+#
+# One stable account, not one per run: signup is deliberately capped at 10 per
+# hour, so minting a fresh address on every invocation made this suite fail
+# once a handful of live runs had happened — including the run that created the
+# account. Signing in first means only the very first run spends a signup.
+#
+# The suite is also careful never to consume a credit: an empty prompt is a
+# 400 before the engine, and an absurd duration is refused by the ceiling. So
+# the probe account keeps its full allowance run after run, which is what the
+# "starts full" assertion below relies on.
+PROBE_EMAIL = "quota-probe@fenix.test"
+PROBE_PASS = "probe-pass-1234"
+st, signin = post("/api/auth/signin", {"email": PROBE_EMAIL, "password": PROBE_PASS})
+token = signin.get("token")
 if not token:
+    st, signup = post("/api/auth/signup", {"email": PROBE_EMAIL, "password": PROBE_PASS,
+                                           "name": "Quota probe"})
+    token = signup.get("token")
+    auth_detail = signup
+else:
+    auth_detail = signin
+check("got a throwaway account", bool(token), auth_detail)
+if not token:
+    if auth_detail.get("error", "").lower().find("limit") >= 0 or st == 429:
+        print("  SKIP account creation is rate-limited right now "
+              "(FENIX signup is capped per hour); try again later")
     sys.exit(1)
 
 try:

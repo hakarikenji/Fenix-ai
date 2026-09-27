@@ -24,10 +24,6 @@ PBKDF2_ITERS = 120_000
 _lock = threading.Lock()
 
 
-def _ensure_dirs() -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-
 def _read(path: str, default):
     try:
         with open(path, encoding="utf-8") as f:

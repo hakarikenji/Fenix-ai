@@ -206,22 +206,8 @@ def configured_count() -> int:
     return len(configured_labels())
 
 
-def active_models() -> dict[str, str]:
-    """label -> model that will be tried first (no secrets involved)."""
-    return {
-        label: _model_chain(label, cfg[1], cfg[2])[0]
-        for label, cfg in PROVIDERS.items()
-        if os.environ.get(cfg[3], "").strip()
-    }
-
-
 def last_errors() -> list[str]:
     return list(_last_error)
-
-
-def last_provider() -> str:
-    """Internal provider label for diagnostics; never exposed as a brand in chat."""
-    return _last_provider
 
 
 def _post(base: str, key: str, body: dict, extra_headers: dict | None = None) -> str:

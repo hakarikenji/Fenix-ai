@@ -104,12 +104,6 @@ def engine_token_set() -> bool:
     return bool(os.environ.get("HF_TOKEN", "").strip())
 
 
-def _quota_note() -> str:
-    return ("" if engine_token_set() else
-            " No engine token is set, so the shared public allowance is being used "
-            "— it is small and anyone can drain it. Set HF_TOKEN for your own.")
-
-
 def _host_list(name: str, defaults: list) -> list:
     """Resolve the engine hosts to try, in order."""
     value = os.environ.get(name)
@@ -300,6 +294,8 @@ _brain_errors: list = []
 # skipped for BRAIN_DEAD_TTL_S and then retried for real, so a Space that
 # wakes up is picked up without anyone editing a URL.
 BRAIN_DEAD_TTL_S = 900
+# The whole chain gets this long, not this long per host.
+BRAIN_CHAIN_BUDGET_S = float(os.environ.get("BRAIN_CHAIN_BUDGET_S", "20"))
 _brain_dead: dict = {}
 
 
@@ -330,8 +326,18 @@ def _openai_style_brain_chain(urls: tuple, model: str, system: str, user: str,
     if api_key:
         headers["Authorization"] = "Bearer " + api_key
     errors = []
+    # A per-host timeout is not a budget. Four dead hosts at 150s each is ten
+    # minutes of the user watching a spinner, and the caller gives up long
+    # before the chain does — which surfaced as a dropped connection. The whole
+    # chain now shares one deadline, and each host only gets what is left of
+    # it, so a slow chain degrades into the fallback answer instead of silence.
+    deadline = time.monotonic() + min(timeout, BRAIN_CHAIN_BUDGET_S)
     for base_url in urls:
         if not base_url:
+            continue
+        left = deadline - time.monotonic()
+        if left <= 0.5:
+            errors.append(f"{base_url}: not tried — the chain ran out of time")
             continue
         if not _brain_alive(base_url):
             errors.append(f"{base_url}: skipped — {_brain_dead[base_url][1]}")
@@ -339,7 +345,7 @@ def _openai_style_brain_chain(urls: tuple, model: str, system: str, user: str,
         try:
             req = urllib.request.Request(base_url + "/chat/completions",
                                          data=body, headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=max(1.0, min(timeout, left))) as r:
                 raw = r.read().decode("utf-8", "ignore")
             if raw.lstrip().lower().startswith("modal-http:"):
                 _brain_mark(base_url, "modal workspace disabled/limit", False)
@@ -372,14 +378,6 @@ def music_brain_reply(system: str, user: str, temperature: float) -> str | None:
     return _openai_style_brain_chain(
         (MUSIC_BRAIN_URL, MUSIC_HF_URL, CORE_BRAIN_URL, CORE_HF_URL), MUSIC_BRAIN_MODEL,
         system, user, temperature, MUSIC_BRAIN_TIMEOUT, MUSIC_BRAIN_API_KEY)
-
-
-def music_brain_tag() -> str:
-    if MUSIC_BRAIN_URL:
-        return MUSIC_BRAIN_MODEL
-    if CORE_BRAIN_URL:
-        return "fenix-core"
-    return "gemini"
 
 
 def lyric_system(genre: str, mood: str, language: str, topic: str,

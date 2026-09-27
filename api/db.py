@@ -275,12 +275,6 @@ def set_summary(user_token: str, conversation_id: str, summary: str) -> None:
                   ((summary or "")[:2000], conversation_id, _key(user_token)))
 
 
-def get_summary(user_token: str, conversation_id: str) -> str:
-    row = conn().execute("SELECT summary FROM conversations WHERE id=? AND user_key=?",
-                         (conversation_id, _key(user_token))).fetchone()
-    return (row["summary"] if row else "") or ""
-
-
 # --------------------------- Semantic memory ---------------------------
 
 def store_embedding(user_token: str, entry_id: str, vector: list[float]) -> None:
