@@ -16,6 +16,9 @@ import tempfile
 _TMP = tempfile.mkdtemp(prefix="fenix-ideas-test-")
 os.environ["FENIX_DATA_DIR"] = _TMP
 os.environ["QUOTA_ENABLED"] = "1"
+# The header is only believed behind a real proxy, which is the production
+# setup. test_proxy_trust covers the default, where it is ignored.
+os.environ["FENIX_TRUST_PROXY"] = "1"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)

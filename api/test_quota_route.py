@@ -18,6 +18,11 @@ import tempfile
 _TMP = tempfile.mkdtemp(prefix="fenix-quota-route-")
 os.environ["FENIX_DATA_DIR"] = _TMP
 os.environ["QUOTA_ENABLED"] = "1"
+# Two callers are simulated by giving them two X-Forwarded-For values, which is
+# only believed when a real proxy is known to be in front — the production
+# setup, and the one this suite is about. test_proxy_trust covers the other
+# side, where a caller invents the header and must not get a fresh allowance.
+os.environ["FENIX_TRUST_PROXY"] = "1"
 os.environ["QUOTA_COOLDOWN_SECONDS"] = "3"
 os.environ["MUSIC_DAILY_CREDITS"] = "2"
 os.environ["MUSIC_CLIP_CREDITS"] = "1"

@@ -436,6 +436,35 @@ def api_preflight(_any):
 
 # ---------------- Generation quota (server-side, the only authority) ----------------
 
+def _trust_proxy() -> bool:
+    """Whether X-Forwarded-For may be believed.
+
+    Off by default. A header the client sets itself is not evidence of
+    anything, so trusting it hands any caller an unlimited supply of fresh
+    rate-limit buckets and, worse, a fresh generation quota — just by sending
+    a new value. Behind a real proxy that overwrites the header it is the only
+    way to see the real client, which is why it can be turned on.
+    """
+    return os.environ.get("FENIX_TRUST_PROXY", "").strip().lower() in (
+        "1", "true", "yes", "on")
+
+
+def _client_address() -> str:
+    """The one caller identity both metering and rate limiting agree on.
+
+    With a trusted proxy in front, the rightmost X-Forwarded-For entry is the
+    one our own proxy appended. The leftmost is the client's claim about
+    itself and is exactly what a caller controls, so taking it would restore
+    the spoofing this is here to prevent.
+    """
+    peer = (request.remote_addr or "").strip() or "unknown"
+    if not _trust_proxy():
+        return peer
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+    return parts[-1] if parts else peer
+
+
 def _quota_caller() -> str:
     """Opaque per-caller key for metering.
 
@@ -448,8 +477,7 @@ def _quota_caller() -> str:
     token = store.bearer_token()
     if token and store.get_user(token):
         return quota.key_for("user:" + token)
-    origin = (request.headers.get("X-Forwarded-For") or request.remote_addr or "local")
-    return quota.key_for("addr:" + str(origin).split(",")[0].strip())
+    return quota.key_for("addr:" + _client_address())
 
 
 def _quota_error(feature: str, snap: dict, code: str, retry_after: int = 0):
@@ -494,9 +522,14 @@ def _sse(data: dict) -> str:
 
 
 def _rate_limit(scope: str, limit: int, window_s: int = 60) -> tuple[bool, dict | None]:
-    """Per-user+scope fixed-window limiter. Falls open on DB errors."""
+    """Per-user+scope fixed-window limiter. Falls open on DB errors.
+
+    The caller identity is the account token when signed in, otherwise the
+    address from _client_address() — so a caller cannot mint a new bucket by
+    inventing a header.
+    """
     try:
-        token = store.bearer_token() or (request.headers.get("X-Forwarded-For") or request.remote_addr or "anon")
+        token = store.bearer_token() or _client_address()
         allowed, _remaining, retry = db.rate_limit(f"{scope}:{token}", limit, window_s)
         if not allowed:
             return False, {"error": f"Rate limit reached — try again in {retry}s", "code": "rate_limited"}
