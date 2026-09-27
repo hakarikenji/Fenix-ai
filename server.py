@@ -138,6 +138,16 @@ import urllib.request
 
 research_engine.load_config()  # read SERPER_API_KEY from the server environment
 
+# Generated clips and tracks. /tmp is per-container, so on a host where it is
+# shared these would land somewhere the app does not own; keeping them beside
+# the rest of the runtime data is also what lets a paid volume hold them.
+MEDIA_DIR = os.environ.get("FENIX_MEDIA_DIR") or os.path.join(
+    os.environ.get("FENIX_DATA_DIR", ".data"), "media")
+try:
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+except OSError:
+    MEDIA_DIR = "/tmp"
+
 app = Flask(__name__, static_folder="web", static_url_path="")
 
 # ===================== Optional error monitoring (Sentry) =====================
@@ -1718,7 +1728,7 @@ def api_video_clip():
                         "detail": f"{source} returned {len(clip)} bytes that are not mp4",
                         "engine_refused": True,
                         "quota": quota.snapshot("video", caller)}), 502
-    out = Path("/tmp") / f"fenix-clip-{int(time.time())}-{os.getpid()}.mp4"
+    out = Path(MEDIA_DIR) / f"fenix-clip-{int(time.time())}-{os.getpid()}.mp4"
     out.write_bytes(clip)
     quota.settle(job_id, ok=True, outcome=source)
     return jsonify({"url": f"/clip/{out.name}", "source": source,
@@ -1733,9 +1743,9 @@ def serve_clip(name):
     base = os.path.basename(name)
     if not base.startswith("fenix-clip-") or not base.endswith(".mp4"):
         return jsonify({"error": "Unknown clip"}), 404
-    if not (Path("/tmp") / base).exists():
+    if not (Path(MEDIA_DIR) / base).exists():
         return jsonify({"error": "Clip expired — generate it again"}), 404
-    return send_from_directory("/tmp", base, mimetype="video/mp4")
+    return send_from_directory(MEDIA_DIR, base, mimetype="video/mp4")
 
 
 @app.route("/api/free-scaling")
@@ -1895,7 +1905,7 @@ def api_music_generate():
             return jsonify({"error": "Generator replied with something that is not audio",
                             "detail": f"{source} returned {len(audio)} bytes that are not WAV/MP3/OGG",
                             "generator_required": True}), 502
-        out = Path("/tmp") / f"fenix-music-{int(time.time())}-{os.getpid()}.wav"
+        out = Path(MEDIA_DIR) / f"fenix-music-{int(time.time())}-{os.getpid()}.wav"
         out.write_bytes(audio)
         quota.settle(job_id, ok=True, outcome=source)
         return jsonify({"url": f"/audio/{out.name}", "source": source,
@@ -1908,15 +1918,14 @@ def api_music_generate():
 
 @app.route("/audio/<path:name>")
 def serve_audio(name):
-    # Only ever hand back a track this server generated. /tmp is shared with
-    # every other process on the box, so serving it wholesale would expose
-    # unrelated files by name.
+    # Only ever hand back a track this server generated. Serving the media
+    # directory wholesale would expose unrelated files by name.
     base = os.path.basename(name)
     if not base.startswith("fenix-music-") or not base.endswith(".wav"):
         return jsonify({"error": "Unknown audio track"}), 404
-    if not (Path("/tmp") / base).exists():
+    if not (Path(MEDIA_DIR) / base).exists():
         return jsonify({"error": "Track expired — generate it again"}), 404
-    return send_from_directory("/tmp", base, mimetype="audio/wav")
+    return send_from_directory(MEDIA_DIR, base, mimetype="audio/wav")
 
 
 # ---------------- Fenix Video ----------------
