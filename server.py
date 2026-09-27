@@ -650,6 +650,10 @@ def api_training_data():
             "raw_seen": report.get("raw_seen", 0),
             "dropped": report.get("dropped", {}),
             "email": user["email"],
+            # The flywheel only means something if the pairs outlive the
+            # process, so the caller is told here rather than discovering it
+            # as a permanently stuck counter.
+            "storage": storage_state(),
         })
     body = train_dataset.to_jsonl(report["pairs"])
     return Response(body, mimetype="application/x-ndjson", headers={
@@ -1307,6 +1311,32 @@ def brain_routing() -> dict:
     }
 
 
+def storage_state() -> dict:
+    """Whether the account's data outlives this process, and how to fix it.
+
+    A free instance has a container-local filesystem, so accounts,
+    conversations, memory, evolution, ratings and the training pairs are
+    replaced when it is recycled. Every one of those is something a user is
+    told is saved, so the app measures the fact and reports it instead of
+    letting a later cold start look like data loss.
+
+    FENIX_DATA_DURABLE=1 is set by the host when the data directory is a real
+    mounted volume; the answer is never guessed.
+    """
+    durable = os.environ.get("FENIX_DATA_DURABLE", "").strip().lower() in (
+        "1", "true", "yes", "on")
+    return {
+        "durable": durable,
+        "dir": os.environ.get("FENIX_DATA_DIR", ".data"),
+        "note": ("Accounts, conversations, memory and the training set are kept "
+                 "on a mounted volume and survive restarts." if durable else
+                 "This instance has a temporary filesystem. Accounts, "
+                 "conversations, memory and the training set are replaced when "
+                 "the host recycles it, so the training flywheel cannot "
+                 "accumulate here."),
+    }
+
+
 def clip_engine_state() -> str:
     """own | shared | off — what a "Real motion" press will actually meet."""
     if os.environ.get("VIDEO_GEN_URL"):
@@ -1359,6 +1389,8 @@ def api_brains():
                         "cache_hit_rate": free_brains_cache.stats()["hit_rate"],
                         "last_errors": len(free_brains.last_errors()[:5])},
         "tools": tool_registry.tool_catalog(),
+        # Measured, not assumed: a free host's disk is not the user's disk.
+        "storage": storage_state(),
         "server_ai": bool(KEY),
         "free_images": True,
         "audio_gen": bool(os.environ.get("MUSIC_GEN_URL")

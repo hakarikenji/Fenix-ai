@@ -2857,6 +2857,11 @@ async function loadTrainingData() {
           <div style="height:100%;width:${pct}%;background:var(--accent)"></div></div>
       </div>`;
     html += tdStat('distinct replies', String(d.distinct_replies), 'repetition is what a LoRA would learn instead of a style');
+    if (d.storage && !d.storage.durable) {
+      html += '<div class="mem-item" style="border:1px solid rgba(248,113,113,.35); background:rgba(248,113,113,.06)">'
+        + '<div class="mt"><span class="tag">temporary disk</span><span>'
+        + 'These pairs live on this instance only. When the host recycles it the count goes back to zero, so the round cannot be finished here. Download the JSONL before that happens, or run on a host with a mounted volume.</span></div></div>';
+    }
     if (d.ready) {
       html += '<p style="color:var(--accent); font-size:12.5px; margin-top:8px"><i class="fa-solid fa-circle-check"></i> Ready to train. Download the JSONL and run <b>fenix-core-lora/colab_train.ipynb</b> on a T4.</p>';
     } else {

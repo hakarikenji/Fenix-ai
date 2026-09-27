@@ -1,0 +1,36 @@
+# Fenix AI on Render.
+#
+# The free instance works for trying Fenix out, but its filesystem is
+# container-local: accounts, conversations, memory, evolution and the training
+# flywheel are replaced whenever the instance is recycled, and the instance
+# also sleeps after 15 idle minutes. Both facts are reported by the running
+# app (see /api/brains → storage), so nothing about it is a surprise.
+#
+# The one setting that is NOT optional: Render terminates TLS in front of the
+# app, so every request arrives with the proxy's address in X-Forwarded-For.
+# Without trusting that header the per-account generation allowance collapses
+# into one shared bucket for the whole site.
+services:
+  - type: web
+    name: fenix-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    # Secrets are never committed. Set these in the Render dashboard, or via
+    # `render env` locally — the names are listed so nothing is missed.
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: FENIX_ADMIN_EMAIL
+        sync: false
+      - key: FENIX_TRUST_PROXY
+        value: "1"
+      - key: FENIX_DATA_DURABLE
+        value: "0"
+      - key: FENIX_DATA_DIR
+        value: /data
+      - key: PYTHONUNBUFFERED
+        value: "1"
