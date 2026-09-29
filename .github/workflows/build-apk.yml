@@ -37,6 +37,20 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # The WebView opens assets/public/index.html, but that file is the
+      # compatibility copy of the legacy UI the server serves at /legacy. The
+      # current UI is index_new.html, so without this the APK ships the old
+      # screen: no Music, no Video, no builder. Copy it over after sync,
+      # because sync copies web/ verbatim and would undo an earlier rename.
+      - name: Point the WebView at the current UI
+        run: |
+          if [ -f web/index_new.html ]; then
+            cp web/index_new.html android/app/src/main/assets/public/index.html
+            echo "index.html now serves the current UI ($(wc -c < web/index_new.html) bytes)"
+          else
+            echo "no index_new.html — leaving the legacy index.html in place"
+          fi
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:

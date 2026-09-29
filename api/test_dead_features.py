@@ -179,6 +179,29 @@ for path, text in sources.items():
             dead_fns.append("%s:%d %s" % (path, node.lineno, node.name))
 check("no function is defined and never called", not dead_fns, "; ".join(dead_fns))
 
+# The APK shipped the wrong screen for weeks: the WebView opens
+# assets/public/index.html, and that file is the legacy UI the server serves at
+# /legacy. index_new.html — the UI the user actually sees — was in the APK the
+# whole time, unused. The build now copies it over after `cap sync`; if that
+# step is ever dropped, the APK silently goes back to a product with no Music,
+# no Video and no builder, and no test anywhere would notice.
+print("the APK opens the current UI, not the legacy screen")
+apk_wf = open(os.path.join(ROOT, ".github", "workflows", "build-apk.yml"),
+              encoding="utf-8").read()
+_COPIES = "cp web/index_new.html" in apk_wf
+check("the build copies index_new.html over index.html",
+      _COPIES and "android/app/src/main/assets/public/index.html" in apk_wf)
+# A crash here would itself be a failing signal, but a missing step should read
+# as a failed check, not a traceback that hides the rest of the suite.
+check("it happens after `cap sync`, which would otherwise undo it",
+      _COPIES and apk_wf.index("npx cap sync") < apk_wf.index("cp web/index_new.html"))
+check("the legacy screen is still reachable on the server",
+      "legacy_index" in server and '"/legacy"' in server)
+# The two files are genuinely different, so the copy is not a no-op.
+check("index.html is not just a copy of index_new.html",
+      read("index.html") != read("index_new.html"),
+      "they are identical — the APK problem cannot happen, but /legacy is a lie")
+
 print()
 print(f"{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
