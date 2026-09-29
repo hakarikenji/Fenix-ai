@@ -5,12 +5,46 @@ no card. It imports a WSGI file instead of starting a process, which is why
 `fenix_wsgi.py` exists and why the Docker and Render files are gone rather than
 left in place for a host that would never build them.
 
+## Getting the code onto the host
+
+The repository is public, so the **Bash** tab can clone it directly — no key,
+no token, no upload.
+
+```bash
+cd ~
+git clone https://github.com/hakarikenji/Fenix-ai.git
+```
+
+Three details that are easy to get wrong on this host:
+
+- **Clone into the home directory, not into `~/Fenix-ai` under a web app's own
+  source root.** PythonAnywhere's *Files* tab and the Bash tab are the same
+  filesystem, but the web app's "source code" path is a separate absolute path
+  and pasting files there does not update a clone.
+- **The WSGI file does not have to sit next to the clone.** PythonAnywhere
+  imports the file in the *WSGI configuration file* box, so pasting
+  `fenix_wsgi.py` there is enough. If you point that box at the cloned file
+  instead, use the absolute path — `~/Fenix-ai` is not a valid import path.
+- **Pull, do not re-clone, on every later change:**
+  ```bash
+  cd ~/Fenix-ai && git pull
+  ```
+  then **Reload** the web app.
+
+If you prefer not to use git at all, the **Files** tab can upload a zip, but it
+has to be unzipped in place and there is no record of what version is running.
+Git is the only route that leaves a trace.
+
 ## Setup
 
 1. Create a **Beginner** account at pythonanywhere.com (free, no card).
 2. **Web** tab → **Add a new web app** → **Manual configuration** → Python 3.11.
    Pick the `username.pythonanywhere.com` domain; no card is needed for it.
 3. Open the **WSGI configuration file** and paste the whole of `fenix_wsgi.py`.
+   Because that file lives in the config box and not next to the code, paste the
+   file body rather than importing it — the import form only works if the
+   absolute path is right, and a wrong path fails silently at reload with an
+   import error in the log.
 4. **Environment variables** in the web app (not the shell, not a dotfile):
 
    ```
@@ -19,6 +53,19 @@ left in place for a host that would never build them.
    SERPER_API_KEY    your key
    FENIX_ADMIN_EMAIL your email
    ```
+
+   Then install the dependencies from the Bash tab, into the **same** Python
+   the web app runs — not into a venv you make yourself, which the WSGI file
+   would never import:
+
+   ```bash
+   pip install --user -r ~/Fenix-ai/requirements.txt
+   ```
+
+   `--user` is the right call here. The site-packages directory is read-only on
+   this host, and installing into your home is what the web app's interpreter
+   picks up. If the `pip` on PATH is not 3.11, check the exact version the web
+   app reports in the **Web** tab and use `pip3.11` instead.
 
    `FENIX_DATA_DIR` must exist and be writable: `mkdir -p ~/fenix-data`.
    This is the one host where the data survives a restart, so it is the one
