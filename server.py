@@ -549,6 +549,44 @@ def _log(message: str) -> None:
 _chain_error = threading.local()
 
 
+def _key_format() -> str:
+    """Which generation of the configured credential is this, without ever
+    showing the credential.
+
+    The issuer changed the key format and the previous generation is now being
+    refused outright, but a key is refused for reasons that look identical from
+    the outside — a revoked key, a host that cannot reach the destination, a
+    model that was retired. Reporting the format lets the operator rule one out
+    in a single glance instead of inferring it from a 502.
+    """
+    if not KEY:
+        return "missing"
+    # Deliberately not asserted anywhere else: the request authenticates with
+    # the key as a query parameter against the native endpoint, and both
+    # generations of it work that way. Only the label changes.
+    return "current" if not KEY.startswith("AIza") else "legacy"
+
+
+def _classify(e: Exception) -> str:
+    """Turn a transport failure into the knob the operator has to turn.
+
+    The exception class alone does not separate "the key was refused" from
+    "this host cannot make that connection", and those have nothing to do with
+    each other — so the status code decides, not the transport.
+    """
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (400, 401, 403):
+            return "key-rejected"
+        if e.code == 404:
+            return "unknown-model"
+        if e.code == 429:
+            return "quota-exhausted"
+        return f"http-{e.code}"
+    if isinstance(e, urllib.error.URLError):
+        return "network-blocked"
+    return "brain-error"
+
+
 def _rate_limit(scope: str, limit: int, window_s: int = 60) -> tuple[bool, dict | None]:
     """Per-user+scope fixed-window limiter. Falls open on DB errors.
 
@@ -929,11 +967,12 @@ def _chat_sse_response(rate_scope: str = "chat_stream"):
                 _chain_error.reason = "empty-response"
                 _log(f"chat: {model} answered 200 with no text in the stream")
             except Exception as e:
-                _chain_error.reason = "all-models-failed"
-                # The class is the diagnosis. On a host with an outbound
-                # allowlist a refused destination arrives as URLError, a
-                # rejected key as HTTPError 400/403, an unknown model as 404.
-                _log(f"chat: {model} failed — {type(e).__name__}: {e}")
+                _chain_error.reason = _classify(e)
+                # The status is the diagnosis: a refused credential and a host
+                # that cannot reach the destination arrive as the same
+                # exception class with a different answer to the same question.
+                _log(f"chat: {model} failed — {_classify(e)} "
+                     f"({type(e).__name__}: {e}) key={_key_format()}")
                 # Only fall through when nothing was streamed yet.
                 if got_any:
                     yield _sse({"t": "done", "brain": PUBLIC_BRAIN})
@@ -1444,6 +1483,10 @@ def api_brains():
         # Measured, not assumed: a free host's disk is not the user's disk.
         "storage": storage_state(),
         "server_ai": bool(KEY),
+        # Which generation of credential is configured. The format label is
+        # deliberately free of any vendor name — every brain reports as Fenix
+        # Core LoRA to the client, including in diagnostics.
+        "key_format": _key_format(),
         "free_images": True,
         "audio_gen": bool(os.environ.get("MUSIC_GEN_URL")
                          or os.environ.get("MUSIC_GEN_SPACE_URL")

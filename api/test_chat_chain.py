@@ -19,6 +19,7 @@ import io
 import os
 import sys
 import tempfile
+import urllib.error
 from contextlib import redirect_stderr
 
 _TMP = tempfile.mkdtemp(prefix="fenix-chat-chain-")
@@ -104,7 +105,10 @@ server.EMBEDDED_MODEL_CHAINS = {"flash": ["brain-one", "brain-two"]}
 
 
 def _refuse(*a, **k):
-    raise OSError("connection refused by peer")
+    # What urlopen actually raises when the destination cannot be reached —
+    # a bare OSError would not be the thing a host's allowlist produces, and
+    # testing it here would let a real refusal slip past as an unknown error.
+    raise urllib.error.URLError("connection refused by peer")
 
 
 server.urllib.request.urlopen = _refuse
@@ -116,11 +120,48 @@ log_text = _logged.getvalue()
 
 check("it still answers 502", response.status_code == 502)
 check("the reason distinguishes it from a missing key",
-      (response.get_json() or {}).get("reason") == "all-models-failed")
+      (response.get_json() or {}).get("reason") == "network-blocked")
 check("every model tried is named in the log",
       "brain-one" in log_text and "brain-two" in log_text)
 check("the underlying error text survives", "connection refused" in log_text)
-check("the exception class is recorded", "OSError" in log_text)
+check("the exception class is recorded", "URLError" in log_text)
+check("the credential format is in the log too", "key=" in log_text)
+
+# ------------------------------------------------- telling causes apart ----
+# The issuer moved the key format and the previous generation is now refused
+# outright, but a refused credential, an unreachable destination and a retired
+# model all arrive as the same bare failure. The status code is the only thing
+# that separates them, so it has to be read.
+print("\ncauses are told apart by status, not by transport")
+
+
+def _http(code: int):
+    return urllib.error.HTTPError("u", code, "msg", {}, None)
+
+
+for code, expected in ((400, "key-rejected"), (401, "key-rejected"),
+                       (403, "key-rejected"), (404, "unknown-model"),
+                       (429, "quota-exhausted"), (503, "http-503")):
+    check(f"HTTP {code} reads as {expected}", server._classify(_http(code)) == expected)
+
+check("an unreachable destination is not blamed on the key",
+      server._classify(urllib.error.URLError("refused")) == "network-blocked")
+check("a refused key is not blamed on the network",
+      server._classify(_http(403)) != "network-blocked")
+check("an unrelated failure is not forced into a bucket",
+      server._classify(ValueError("x")) == "brain-error")
+
+# --------------------------------------------------------- key format ----
+print("\nthe credential format is reported without showing the credential")
+for value, expected in (("", "missing"), ("AIzaSyExample", "legacy"),
+                        ("AQ.AbExample", "current")):
+    server.KEY = value
+    check(f"a {expected} credential is recognised", server._key_format() == expected)
+
+server.KEY = "AQ.AbExample-not-a-real-key"
+brains = _client.get("/api/brains").get_json() or {}
+check("/api/brains reports the format", brains.get("key_format") == "current")
+check("the credential itself is not echoed back", "AQ.AbExample" not in str(brains))
 
 _restore()
 
