@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 import sys
+import threading
 import time
 import urllib.parse
 from pathlib import Path
@@ -531,6 +532,23 @@ def _sse(data: dict) -> str:
     return "data: " + json.dumps(data, ensure_ascii=False) + "\n\n"
 
 
+def _log(message: str) -> None:
+    """One line to the host's error log.
+
+    stderr rather than app.logger: on the PythonAnywhere deployment the only
+    thing reliably captured is the process stderr, and a brain-chain failure
+    that leaves no trace is the failure you cannot diagnose later.
+    """
+    print(f"[fenix] {message}", file=sys.stderr, flush=True)
+
+
+# The chain runs inside a generator, so its failure reason cannot travel back
+# through the return value — the Response is already built by then. Park the
+# reason here for the JSON route to read. Thread-local so two overlapping
+# requests cannot read each other's reason.
+_chain_error = threading.local()
+
+
 def _rate_limit(scope: str, limit: int, window_s: int = 60) -> tuple[bool, dict | None]:
     """Per-user+scope fixed-window limiter. Falls open on DB errors.
 
@@ -717,14 +735,17 @@ def _evolution_observe(token, user, message: str, project_id: str | None) -> Non
         pass
 
 
-def _chat_sse_response():
+def _chat_sse_response(rate_scope: str = "chat_stream"):
     """Build the chat reply as an SSE response.
 
     Shared by the streaming route and the non-streaming one, so both answer
     from exactly the same brain chain. Keeping this a function rather than
     inlining it is what stops the two from drifting apart again.
+
+    `rate_scope` lets the caller charge its own bucket instead of the inner
+    one, so a single message is counted once rather than twice.
     """
-    limited, payload = _rate_limit("chat_stream", limit=20)
+    limited, payload = _rate_limit(rate_scope, limit=20)
     if not limited:
         return jsonify(payload), 429
     data = request.get_json(silent=True) or {}
@@ -861,7 +882,15 @@ def _chat_sse_response():
         # through (nor be split across) a chunk.
         scrub = identity_guard.make_stream_scrubber()
         pending = ""
-        last_err = None
+        # A missing key, a host that refuses the outbound connection, and a
+        # model the upstream does not know all end as an empty chain, and every
+        # one of them used to surface as the same bare 502 with nothing written
+        # anywhere. Fail fast where that is the actual cause, and log the rest.
+        if not KEY:
+            _chain_error.reason = "no-key"
+            _log("chat: no API key in the server environment — chain not attempted")
+            yield _sse({"t": "error", "v": "Fenix is unavailable right now — try again in a moment"})
+            return
         for model in chain:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={KEY}"
             req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
@@ -894,16 +923,23 @@ def _chat_sse_response():
                     yield _sse({"t": "done", "brain": PUBLIC_BRAIN})
                     _persist_conversation_reply(conv_id, token, user, message, "".join(full_reply))
                     return
-                if got_any:
-                    yield _sse({"t": "done", "brain": PUBLIC_BRAIN})
-                    return
-                last_err = RuntimeError("Empty response from " + model)
+                # A 200 with no text in it — the model name resolved but the
+                # body was empty. Worth saying out loud, it is not a network
+                # problem and the allowlist will not fix it.
+                _chain_error.reason = "empty-response"
+                _log(f"chat: {model} answered 200 with no text in the stream")
             except Exception as e:
-                last_err = e
+                _chain_error.reason = "all-models-failed"
+                # The class is the diagnosis. On a host with an outbound
+                # allowlist a refused destination arrives as URLError, a
+                # rejected key as HTTPError 400/403, an unknown model as 404.
+                _log(f"chat: {model} failed — {type(e).__name__}: {e}")
                 # Only fall through when nothing was streamed yet.
                 if got_any:
                     yield _sse({"t": "done", "brain": PUBLIC_BRAIN})
                     return
+        _chain_error.reason = getattr(_chain_error, "reason", "chain-empty")
+        _log(f"chat: brain chain exhausted ({len(chain)} models) — no reply")
         yield _sse({"t": "error", "v": "Fenix is unavailable right now — try again in a moment"})
 
     # No explicit Connection header. It is a hop-by-hop header the server owns,
@@ -935,12 +971,14 @@ def api_chat():
     fallback to be anything but a dead end, and it must share the brain chain
     so the answer never depends on which transport delivered it.
     """
-    limited, payload = _rate_limit("chat", limit=20)
-    if not limited:
-        return jsonify(payload), 429
-    stream = _chat_sse_response()
-    # A failure raised before the first byte is a real HTTP error, so it is
-    # passed through instead of being flattened into an empty reply.
+    # One message, one bucket. This route used to charge "chat" and then call
+    # the shared builder, which charged "chat_stream" again — so every fallback
+    # reply cost two of the visitor's twenty, and a client that fell back after
+    # a long stream got a 429 from the fallback instead of an answer. The
+    # builder charges the scope it is given, and a rate-limit refusal comes
+    # back as a tuple rather than a Response, which the check below passes
+    # straight through.
+    stream = _chat_sse_response(rate_scope="chat")
     if not isinstance(stream, Response) or stream.status_code != 200:
         return stream
     reply, brain, problem = [], None, None
@@ -963,8 +1001,12 @@ def api_chat():
                 problem = event.get("v")
     full = "".join(reply).strip()
     if not full:
+        # `reason` is a short code, not an upstream name: it tells the operator
+        # which knob to turn without handing the caller a vendor.
+        reason = getattr(_chain_error, "reason", "chain-empty")
+        _log(f"chat: /api/chat returning 502 — reason={reason}")
         return jsonify({"error": problem or "Fenix is unavailable right now — try again in a moment",
-                        "reply": "", "brain": None}), 502
+                        "reply": "", "brain": None, "reason": reason}), 502
     return jsonify({"reply": full, "brain": brain})
 
 
